@@ -107,6 +107,29 @@
   .play:focus-visible, .small:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   .small { font-size: 13px; color: var(--muted); }
 
+  .badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 8px;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 500;
+    vertical-align: 2px;
+  }
+  .note { margin: -8px 0 18px; font-size: 13px; color: var(--muted); }
+  .feedback {
+    margin-top: 40px;
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+  }
+  .feedback h2 { margin-top: 0; }
+  .feedback p { margin: 0 0 16px; }
+  .feedback .small { display: block; margin-top: 14px; }
+
   footer.wrap {
     margin-top: 64px;
     padding-top: 28px;
@@ -137,7 +160,7 @@
       <li class="card slime">
         <div class="card-art"><img src="assets/slime-line.png" alt="분홍 슬라임" width="384" height="384"></div>
         <div class="card-body">
-          <h3>슬라임 라인</h3>
+          <h3>슬라임 라인<span class="badge">테스트 중</span></h3>
           <p class="genre">선 그리기 퍼즐 · 모두</p>
           <p class="desc">선을 그려 슬라임의 길을 만들어요. 사계절 모험, 우리 마을과 봄 산책 섬을 만나세요.</p>
           <div class="actions">
@@ -149,9 +172,10 @@
       <li class="card gyeongguk">
         <div class="card-art"><img src="assets/gyeongguk.png" alt="경국지계 로고, 금빛 원 안의 傾" width="384" height="384"></div>
         <div class="card-body">
-          <h3>경국지계</h3>
+          <h3>경국지계<span class="badge">테스트 중</span></h3>
           <p class="genre">카드 대전 TCG</p>
           <p class="desc">덮어 둔 카드 한 장이 판을 뒤집는다. 미인과 계략의 삼국 카드 대전.</p>
+          <p class="note">테스트 기간이라 전설을 포함한 모든 카드를 쓸 수 있어요. 기록은 정식 시즌 전에 초기화될 수 있어요.</p>
           <div class="actions">
             <a class="play" data-game="gyeongguk" href="https://gyeongguk.gracekingames.com/">바로 플레이</a>
             <a class="small" data-privacy="gyeongguk" href="https://gyeongguk.gracekingames.com/privacy">개인정보처리방침</a>
@@ -159,6 +183,13 @@
         </div>
       </li>
     </ul>
+
+    <section class="feedback" aria-labelledby="feedback-title">
+      <h2 id="feedback-title">버그 제보·의견</h2>
+      <p>아직 만들어 가는 게임들이에요. 해 보시고 이상한 점이나 하고 싶은 말이 있으면 알려 주세요. 로그인 없이 1분이면 보낼 수 있어요.</p>
+      <a class="play" href="https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform" target="_blank" rel="noopener">제보·의견 보내기</a>
+      <span class="small">경국지계는 게임 안 '문제 신고'와 '소감 남기기'로도 보낼 수 있어요.</span>
+    </section>
   </main>
 
   <footer class="wrap">
