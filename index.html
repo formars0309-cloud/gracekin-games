@@ -3,198 +3,244 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gracekin Games</title>
-<meta name="description" content="Gracekin Games(그레이스킨 게임즈)의 게임을 브라우저에서 바로 플레이하세요. 슬라임 라인, 경국지계.">
-<meta property="og:title" content="Gracekin Games">
-<meta property="og:description" content="누르면 바로 시작하는 게임 모음 — 슬라임 라인, 경국지계">
+<title>Gracekin Games · 그레이스킨 게임즈</title>
+<meta name="description" content="설치 없이, 누르면 바로 시작되는 게임들. 슬라임 라인과 경국지계를 브라우저에서 바로 플레이하세요.">
+<meta name="theme-color" content="#0C0A10">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://gracekingames.com/assets/slime-line.png">
-<link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+<meta property="og:url" content="https://gracekingames.com/">
+<meta property="og:site_name" content="Gracekin Games">
+<meta property="og:title" content="Gracekin Games · 그레이스킨 게임즈">
+<meta property="og:description" content="설치 없이, 누르면 바로 시작되는 두 개의 무대 — 슬라임 라인, 경국지계">
+<meta property="og:image" content="https://gracekingames.com/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&amp;family=Cinzel:wght@400;500&amp;family=Noto+Serif+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #faf7f2;
-    --surface: #ffffff;
-    --ink: #2b2622;
-    --muted: #6f665e;
-    --line: #e8e1d7;
-    --accent: #b0894f;
-    --accent-ink: #ffffff;
-    --shadow: 0 1px 2px rgba(43, 38, 34, .06), 0 8px 24px rgba(43, 38, 34, .06);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #17140f;
-      --surface: #211d17;
-      --ink: #f1ebe2;
-      --muted: #a89e92;
-      --line: #342e26;
-      --accent: #d2ae73;
-      --accent-ink: #1b1711;
-      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
-    }
-  }
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font: 16px/1.6 "Noto Sans KR", system-ui, -apple-system, sans-serif;
-  }
-  a { color: inherit; }
-  .wrap { max-width: 960px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
-
-  header { padding-top: 56px; padding-bottom: 32px; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .brand svg { width: 40px; height: 40px; flex: none; }
-  .brand-name {
-    font-family: "Gowun Batang", serif;
-    font-weight: 700;
-    font-size: 26px;
-    letter-spacing: .01em;
-  }
-  .tagline { margin: 20px 0 0; color: var(--muted); font-size: 17px; }
-
-  h2 {
-    font-family: "Gowun Batang", serif;
-    font-size: 20px;
-    margin: 16px 0 16px;
-  }
-  .games {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-    padding: 0;
-    margin: 0;
-    list-style: none;
-  }
-  .card {
-    display: flex;
-    flex-direction: column;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: var(--shadow);
-  }
-  .card-art { aspect-ratio: 16 / 10; overflow: hidden; }
-  .card-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .slime .card-art { background: linear-gradient(160deg, #fbeee9, #ece3f7); }
-  .slime .card-art img { object-position: center 70%; }
-  .gyeongguk .card-art { background: #141210; }
-  .gyeongguk .card-art img { object-fit: contain; padding: 18px; }
-  .card-body { padding: 18px 20px 20px; display: flex; flex-direction: column; flex: 1; }
-  .card h3 { margin: 0; font-size: 20px; }
-  .genre { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
-  .desc { margin: 12px 0 18px; flex: 1; }
-  .actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .play {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    padding: 0 22px;
-    border-radius: 999px;
-    background: var(--accent);
-    color: var(--accent-ink);
-    font-weight: 700;
-    text-decoration: none;
-  }
-  .play:hover { filter: brightness(1.06); }
-  .play:focus-visible, .small:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-  .small { font-size: 13px; color: var(--muted); }
-
-  .badge {
-    display: inline-block;
-    margin-left: 6px;
-    padding: 1px 8px;
-    border: 1px solid var(--accent);
-    border-radius: 999px;
-    color: var(--accent);
-    font-size: 12px;
-    font-weight: 500;
-    vertical-align: 2px;
-  }
-  .note { margin: -8px 0 18px; font-size: 13px; color: var(--muted); }
-  .feedback {
-    margin-top: 40px;
-    padding: 24px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 20px;
-  }
-  .feedback h2 { margin-top: 0; }
-  .feedback p { margin: 0 0 16px; }
-  .feedback .small { display: block; margin-top: 14px; }
-
-  footer.wrap {
-    margin-top: 64px;
-    padding-top: 28px;
-    padding-bottom: 48px;
-    border-top: 1px solid var(--line);
-    color: var(--muted);
-    font-size: 13px;
-  }
-  footer p { margin: 4px 0; }
+body{margin:0;background:#0C0A10}
+a{color:#E6C98A}a:hover{color:#FFF1CF}
+.gb-root{font-family:"Noto Serif KR",serif;color:#EFE7D8;background:#0C0A10;overflow:hidden}
+.gb-wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+.gb-nav{position:absolute;left:0;right:0;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 40px;flex-wrap:wrap}
+.gb-logo{display:flex;align-items:center;gap:12px;text-decoration:none;color:#EFE7D8 !important}
+.gb-logo span{font-family:"Cinzel",serif;font-size:15px;letter-spacing:.3em}
+.gb-navlinks{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+.gb-navlinks a{text-decoration:none;font-size:14px;letter-spacing:.12em;color:#E3D9C8}
+.gb-navlinks a:hover{color:#FFF1CF}
+.gb-stage{position:relative;display:flex;min-height:820px;background:#0C0A10}
+.gb-panel{position:relative;flex:1 1 0;min-width:0;overflow:hidden;text-decoration:none;color:#EFE7D8 !important;transition:flex-grow .9s cubic-bezier(.2,.7,.2,1)}
+.gb-panel:hover{flex-grow:1.55}
+.gb-panel img.gb-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.4s cubic-bezier(.2,.7,.2,1),filter .9s}
+.gb-panel:hover img.gb-bg{transform:scale(1.05)}
+.gb-left img.gb-bg{filter:brightness(.88) saturate(1.02)}
+.gb-left:hover img.gb-bg{filter:brightness(1) saturate(1.08)}
+.gb-right img.gb-bg{object-position:50% 66%;transform-origin:62% 40%;filter:brightness(.72)}
+.gb-right::before{content:"";position:absolute;left:0;top:0;bottom:0;width:1px;z-index:3;background:linear-gradient(180deg,rgba(201,163,94,0),rgba(201,163,94,.9) 30%,rgba(201,163,94,.9) 70%,rgba(201,163,94,0));pointer-events:none}
+.gb-right:hover img.gb-bg{filter:brightness(.94)}
+.gb-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,10,16,.82) 0%,rgba(12,10,16,0) 34%,rgba(12,10,16,0) 56%,rgba(12,10,16,.9) 100%)}
+.gb-left .gb-shade{background:linear-gradient(180deg,rgba(12,10,16,.62) 0%,rgba(12,10,16,0) 30%,rgba(12,10,16,0) 58%,rgba(12,10,16,.78) 100%)}
+.gb-slime{position:absolute;left:50%;bottom:196px;width:200px;transform:translateX(-50%);filter:drop-shadow(0 22px 26px rgba(40,20,50,.35));animation:gb-bob 4.8s ease-in-out infinite}
+@keyframes gb-bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-10px)}}
+.gb-label{position:absolute;left:48px;right:48px;bottom:52px}
+.gb-kicker{font-family:"Cinzel",serif;font-size:12px;letter-spacing:.32em;color:#E6C98A}
+.gb-kicker b{font-family:"Noto Serif KR",serif;font-weight:500;letter-spacing:.12em}
+.gb-title{margin:12px 0 0;font-size:clamp(34px,3.8vw,54px);font-weight:700;letter-spacing:-.01em;text-shadow:0 4px 24px rgba(0,0,0,.45)}
+.gb-enter{margin-top:14px;font-size:15px;font-weight:500;letter-spacing:.16em;color:#F0D9A4}
+.gb-crest{position:absolute;left:50%;top:112px;transform:translateX(-50%);text-align:center;pointer-events:none;z-index:4;width:min(92%,760px)}
+.gb-crest{transition:opacity .7s ease}
+.gb-stage:has(.gb-panel:hover) .gb-crest{opacity:.16}
+.gb-brand{margin:18px 0 0;font-family:"Cormorant Garamond",serif;font-weight:600;font-style:italic;font-size:clamp(52px,7vw,104px);line-height:1;letter-spacing:-.01em;color:#F6EEDD;text-shadow:0 6px 40px rgba(0,0,0,.6)}
+.gb-sub{margin-top:14px;font-family:"Cinzel",serif;font-size:14px;letter-spacing:.6em;padding-left:.6em;color:#E6C98A}
+.gb-tag{margin-top:24px;font-size:17px;color:#F1E8D8;text-shadow:0 2px 16px rgba(0,0,0,.85)}
+.gb-sec{padding:140px 0 0}
+.gb-eyebrow{font-family:"Cinzel",serif;font-size:13px;letter-spacing:.4em;color:#C9A35E;text-align:center}
+.gb-h2{margin:22px 0 0;text-align:center;font-size:clamp(30px,3.6vw,46px);font-weight:600}
+.gb-h2 em{font-style:normal;color:#F0D9A4}
+.gb-grid{margin-top:72px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:32px}
+.gb-card{display:flex;flex-direction:column;background:#141019;border:1px solid rgba(201,163,94,.22);border-radius:6px;overflow:hidden;transition:transform .6s cubic-bezier(.2,.7,.2,1),border-color .6s,box-shadow .6s}
+.gb-card:hover{transform:translateY(-6px);border-color:rgba(201,163,94,.55);box-shadow:0 30px 70px rgba(0,0,0,.55)}
+.gb-media{position:relative;display:block;aspect-ratio:4/3;overflow:hidden}
+.gb-media img{display:block;width:100%;height:100%;object-fit:cover;transition:transform 1.2s cubic-bezier(.2,.7,.2,1)}
+.gb-card:hover .gb-media img.gb-cover{transform:scale(1.05)}
+.gb-media::after{content:"";position:absolute;inset:12px;border:1px solid rgba(240,217,164,.45);pointer-events:none}
+.gb-media .gb-mini{position:absolute;left:50%;bottom:12%;width:34%;height:auto;transform:translateX(-50%);filter:drop-shadow(0 14px 18px rgba(40,20,50,.35))}
+.gb-body{padding:28px 30px 30px;display:flex;flex-direction:column;flex:1}
+.gb-body h3{margin:12px 0 0;font-size:30px;font-weight:700}
+.gb-body p{margin:12px 0 0;font-size:15px;line-height:1.85;color:#DCD2C1;flex:1}
+.gb-note{margin-top:10px;font-size:13px;line-height:1.7;color:#C9BFAE}
+.gb-actions{margin-top:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.gb-play{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 24px;background:#E6C98A;color:#0C0A10 !important;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:.12em;border-radius:2px}
+.gb-play:hover{background:#F6E3AE}
+.gb-small{font-size:13px;color:#C9BFAE}
+.gb-soon{border-style:dashed;border-color:rgba(201,163,94,.35);background:transparent;align-items:center;justify-content:center;text-align:center;padding:48px 32px;min-height:360px}
+.gb-soon:hover{transform:none;box-shadow:none}
+.gb-soon h3{margin:20px 0 0;font-size:22px;font-weight:600}
+.gb-soon p{margin:10px 0 0;font-size:14px;line-height:1.8;color:#B5AA9A}
+.gb-curtain{position:relative;margin:160px 0 0;padding:110px 40px;text-align:center;border-top:1px solid rgba(201,163,94,.35);border-bottom:1px solid rgba(201,163,94,.35);background:radial-gradient(60% 120% at 50% 0%,rgba(122,79,176,.28),rgba(12,10,16,0) 70%)}
+.gb-curtain p{margin:18px auto 0;max-width:520px;font-size:16px;line-height:1.9;color:#D8CDBB}
+.gb-btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 34px;margin-top:36px;border:1px solid #C9A35E;color:#F3E2B8 !important;text-decoration:none;font-size:15px;letter-spacing:.16em}
+.gb-btn:hover{background:#C9A35E;color:#0C0A10 !important}
+.gb-foot{padding:64px 0 72px;display:flex;justify-content:space-between;gap:28px;flex-wrap:wrap;font-size:13px;line-height:1.9;color:#A99E8E}
+.gb-foot strong{font-family:"Cinzel",serif;font-weight:500;letter-spacing:.3em;color:#EFE7D8;font-size:15px}
+@keyframes gb-rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.gb-rise{animation:gb-rise 1.2s cubic-bezier(.2,.7,.2,1) both}
+.gb-d1{animation-delay:.2s}.gb-d2{animation-delay:.4s}.gb-d3{animation-delay:.6s}
+@media (max-width:820px){
+.gb-nav{padding:18px 16px}
+.gb-navlinks{gap:18px}
+.gb-stage{flex-direction:column;min-height:0}
+.gb-crest{order:-1;position:relative;left:auto;top:auto;transform:none;width:auto;padding:104px 16px 40px;margin:0 auto}
+.gb-crest svg{width:72px;height:72px}
+.gb-brand{font-size:58px}
+.gb-tag{font-size:15px}
+.gb-panel{min-height:440px}
+.gb-panel:hover{flex-grow:1}
+.gb-right::before{display:none}
+.gb-label{left:20px;right:20px;bottom:26px}
+.gb-right .gb-label{text-align:left !important}
+.gb-slime{bottom:150px;width:150px}
+.gb-wrap{padding:0 16px}
+.gb-sec{padding-top:96px}
+.gb-grid{grid-template-columns:minmax(0,1fr);gap:24px;margin-top:48px}
+.gb-curtain{padding:72px 20px;margin-top:110px}
+}
+.gb-root a:focus-visible{outline:2px solid #E6C98A;outline-offset:4px}
 </style>
 </head>
 <body>
-  <header class="wrap">
-    <div class="brand">
-      <!-- 나란히 선 두 원: 남매 -->
-      <svg viewBox="0 0 40 40" aria-hidden="true">
-        <circle cx="15" cy="20" r="10" fill="none" stroke="currentColor" stroke-width="2.4"/>
-        <circle cx="25" cy="20" r="10" fill="none" stroke="var(--accent)" stroke-width="2.4"/>
-      </svg>
-      <span class="brand-name">Gracekin Games</span>
-    </div>
-    <p class="tagline">설치 없이, 누르면 바로 시작하는 게임들.</p>
-  </header>
+<div class="gb-root">
 
-  <main class="wrap">
-    <h2>게임</h2>
-    <ul class="games">
-      <li class="card slime">
-        <div class="card-art"><img src="assets/slime-line.png" alt="분홍 슬라임" width="384" height="384"></div>
-        <div class="card-body">
-          <h3>슬라임 라인<span class="badge">테스트 중</span></h3>
-          <p class="genre">선 그리기 퍼즐 · 모두</p>
-          <p class="desc">선을 그려 슬라임의 길을 만들어요. 사계절 모험, 우리 마을과 봄 산책 섬을 만나세요.</p>
-          <div class="actions">
-            <a class="play" data-game="slime" href="https://slimeline.gracekingames.com/">바로 플레이</a>
-            <a class="small" data-privacy="slime" href="https://slimeline.gracekingames.com/privacy.html">개인정보처리방침</a>
-          </div>
-        </div>
-      </li>
-      <li class="card gyeongguk">
-        <div class="card-art"><img src="assets/gyeongguk.png" alt="경국지계 로고, 금빛 원 안의 傾" width="384" height="384"></div>
-        <div class="card-body">
-          <h3>경국지계<span class="badge">테스트 중</span></h3>
-          <p class="genre">카드 대전 TCG</p>
-          <p class="desc">덮어 둔 카드 한 장이 판을 뒤집는다. 미인과 계략의 삼국 카드 대전.</p>
-          <p class="note">테스트 기간이라 전설을 포함한 모든 카드를 쓸 수 있어요. 기록은 정식 시즌 전에 초기화될 수 있어요.</p>
-          <div class="actions">
-            <a class="play" data-game="gyeongguk" href="https://gyeongguk.gracekingames.com/">바로 플레이</a>
-            <a class="small" data-privacy="gyeongguk" href="https://gyeongguk.gracekingames.com/privacy">개인정보처리방침</a>
-          </div>
-        </div>
-      </li>
-    </ul>
+<header class="gb-nav">
+<a class="gb-logo" href="#top" aria-label="Gracekin Games 처음으로">
+<svg width="40" height="40" viewBox="0 0 120 120" aria-hidden="true">
+<defs>
+<linearGradient id="gbGoldNav" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E2A27A"></stop><stop offset=".5" stop-color="#F2D497"></stop><stop offset="1" stop-color="#B9894A"></stop></linearGradient>
+<mask id="gbGNav"><rect width="120" height="120" fill="#fff"></rect><circle cx="66" cy="60" r="29" fill="#000"></circle><polygon points="60,62 121,70 121,10 84,0" fill="#000"></polygon></mask>
+</defs>
+<circle cx="58" cy="62" r="40" fill="url(#gbGoldNav)" mask="url(#gbGNav)"></circle>
+<path d="M84 52 L86.6 60.4 L104 63 L86.6 65.6 L84 74 L81.4 65.6 L64 63 L81.4 60.4Z" fill="url(#gbGoldNav)"></path>
+<path d="M92 22 L93.6 28.4 L100 30 L93.6 31.6 L92 38 L90.4 31.6 L84 30 L90.4 28.4Z" fill="url(#gbGoldNav)"></path>
+</svg>
+<span>GRACEKIN</span>
+</a>
+<nav class="gb-navlinks" aria-label="주 메뉴">
+<a href="#games">모든 게임</a>
+<a href="#letter">제보·의견</a>
+</nav>
+</header>
 
-    <section class="feedback" aria-labelledby="feedback-title">
-      <h2 id="feedback-title">버그 제보·의견</h2>
-      <p>아직 만들어 가는 게임들이에요. 해 보시고 이상한 점이나 하고 싶은 말이 있으면 알려 주세요. 로그인 없이 1분이면 보낼 수 있어요.</p>
-      <a class="play" href="https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform" target="_blank" rel="noopener">제보·의견 보내기</a>
-      <span class="small">경국지계는 게임 안 '문제 신고'와 '소감 남기기'로도 보낼 수 있어요.</span>
-    </section>
-  </main>
+<section class="gb-stage" id="top">
+<a class="gb-panel gb-left" href="https://slimeline.gracekingames.com/" aria-label="슬라임 라인 입장하기">
+<img class="gb-bg" src="assets/slime-bg.jpg" alt="">
+<div class="gb-shade"></div>
+<img class="gb-slime" src="assets/slime-front.png" alt="">
+<div class="gb-label">
+<div class="gb-kicker">STAGE I · <b>선 그리기 퍼즐</b></div>
+<div class="gb-title">슬라임 라인</div>
+<div class="gb-enter">입장하기 →</div>
+</div>
+</a>
+<a class="gb-panel gb-right" href="https://gyeongguk.gracekingames.com/" aria-label="경국지계 입장하기">
+<img class="gb-bg" src="assets/gyeongguk-key.jpg" alt="">
+<div class="gb-shade"></div>
+<div class="gb-label" style="text-align: right">
+<div class="gb-kicker">STAGE II · <b>카드 대전 TCG</b></div>
+<div class="gb-title">경국지계</div>
+<div class="gb-enter">입장하기 →</div>
+</div>
+</a>
+<div class="gb-crest">
+<svg class="gb-rise" width="96" height="96" viewBox="0 0 120 120" role="img" aria-label="Gracekin Games 문장">
+<defs>
+<linearGradient id="gbGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E2A27A"></stop><stop offset=".5" stop-color="#F2D497"></stop><stop offset="1" stop-color="#B9894A"></stop></linearGradient>
+<mask id="gbG"><rect width="120" height="120" fill="#fff"></rect><circle cx="66" cy="60" r="29" fill="#000"></circle><polygon points="60,62 121,70 121,10 84,0" fill="#000"></polygon></mask>
+</defs>
+<circle cx="60" cy="60" r="57" fill="none" stroke="url(#gbGold)" stroke-width="1.2"></circle>
+<circle cx="60" cy="60" r="52" fill="none" stroke="url(#gbGold)" stroke-width=".6" stroke-dasharray="1 5"></circle>
+<g transform="translate(9 7) scale(.85)">
+<circle cx="58" cy="62" r="40" fill="url(#gbGold)" mask="url(#gbG)"></circle>
+<path d="M84 52 L86.6 60.4 L104 63 L86.6 65.6 L84 74 L81.4 65.6 L64 63 L81.4 60.4Z" fill="url(#gbGold)"></path>
+<path d="M92 22 L93.6 28.4 L100 30 L93.6 31.6 L92 38 L90.4 31.6 L84 30 L90.4 28.4Z" fill="url(#gbGold)"></path>
+</g>
+</svg>
+<div class="gb-brand gb-rise gb-d1">Gracekin</div>
+<div class="gb-sub gb-rise gb-d2">GAMES</div>
+<div class="gb-tag gb-rise gb-d3">설치 없이, 누르면 바로 시작되는 두 개의 무대</div>
+</div>
+</section>
 
-  <footer class="wrap">
-    <p>© 2026 Gracekin Games (그레이스킨 게임즈)</p>
-    <!-- 사업자등록·통신판매업 신고가 끝나면 상호·대표자·사업자등록번호·통신판매업 신고번호·연락처를 여기에 넣는다 -->
-  </footer>
+<div class="gb-wrap">
+<section class="gb-sec" id="games">
+<div class="gb-eyebrow">ALL GAMES</div>
+<h2 class="gb-h2">누르면 바로, <em>막이 오릅니다</em></h2>
+<div class="gb-grid">
+
+<article class="gb-card">
+<a class="gb-media" href="https://slimeline.gracekingames.com/" aria-label="슬라임 라인 바로 플레이">
+<img class="gb-cover" src="assets/slime-bg.jpg" alt="슬라임 라인의 언덕 마을 풍경">
+<img class="gb-mini" src="assets/slime-front.png" alt="">
+</a>
+<div class="gb-body">
+<div class="gb-kicker"><b>선 그리기 퍼즐 · 전체 이용 · 테스트 중</b></div>
+<h3>슬라임 라인</h3>
+<p>선을 그려 슬라임의 길을 만들어요. 사계절 모험, 우리 마을과 봄 산책 섬을 만나세요.</p>
+<div class="gb-actions">
+<a class="gb-play" href="https://slimeline.gracekingames.com/">바로 플레이</a>
+<a class="gb-small" href="https://slimeline.gracekingames.com/privacy.html">개인정보처리방침</a>
+</div>
+</div>
+</article>
+
+<article class="gb-card">
+<a class="gb-media" href="https://gyeongguk.gracekingames.com/" aria-label="경국지계 바로 플레이">
+<img class="gb-cover" src="assets/gyeongguk-key.jpg" alt="달밤의 누각에서 마주 선 여포와 초선" style="object-position: 50% 40%">
+</a>
+<div class="gb-body">
+<div class="gb-kicker"><b>카드 대전 TCG · 실시간 대전 · 테스트 중</b></div>
+<h3>경국지계</h3>
+<p>덮어 둔 카드 한 장이 판을 뒤집는다. 미인과 계략의 삼국 카드 대전.</p>
+<div class="gb-note">테스트 기간이라 전설을 포함한 모든 카드를 쓸 수 있어요. 기록은 정식 시즌 전에 초기화될 수 있어요.</div>
+<div class="gb-actions">
+<a class="gb-play" href="https://gyeongguk.gracekingames.com/">바로 플레이</a>
+<a class="gb-small" href="https://gyeongguk.gracekingames.com/privacy">개인정보처리방침</a>
+</div>
+</div>
+</article>
+
+<article class="gb-card gb-soon">
+<svg width="56" height="56" viewBox="0 0 120 120" aria-hidden="true">
+<defs><mask id="gbGSoon"><rect width="120" height="120" fill="#fff"></rect><circle cx="66" cy="60" r="29" fill="#000"></circle><polygon points="60,62 121,70 121,10 84,0" fill="#000"></polygon></mask></defs>
+<circle cx="58" cy="62" r="40" fill="none" stroke="#C9A35E" stroke-width="2" stroke-dasharray="3 5" mask="url(#gbGSoon)"></circle>
+<path d="M92 22 L93.6 28.4 L100 30 L93.6 31.6 L92 38 L90.4 31.6 L84 30 L90.4 28.4Z" fill="#C9A35E"></path>
+</svg>
+<h3>다음 무대를 준비하고 있어요</h3>
+<p>새 게임이 열리면 이 자리에 가장 먼저 걸립니다.</p>
+</article>
+
+</div>
+</section>
+
+<section class="gb-curtain" id="letter">
+<div class="gb-eyebrow">CURTAIN CALL</div>
+<h2 class="gb-h2" style="margin-top: 18px">무대 뒤로 편지를 보내 주세요</h2>
+<p>버그를 만났거나 하고 싶은 말이 있다면 알려 주세요. 로그인 없이 1분이면 보낼 수 있어요. 경국지계는 게임 안 '문제 신고'와 '소감 남기기'로도 보낼 수 있어요.</p>
+<a class="gb-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform">제보·의견 보내기</a>
+</section>
+
+<footer class="gb-foot">
+<div>
+<strong>GRACEKIN GAMES</strong>
+<div>© 2026 Gracekin Games (그레이스킨 게임즈)</div>
+</div>
+<!-- 사업자등록·통신판매업 신고가 끝나면 상호·대표자·사업자등록번호·통신판매업 신고번호·연락처를 여기에 넣는다 -->
+</div>
+</footer>
+</div>
+
+</div>
 </body>
 </html>

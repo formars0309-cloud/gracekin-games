@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs><mask id="g"><rect width="120" height="120" fill="#fff"/><circle cx="66" cy="60" r="27" fill="#000"/><polygon points="60,62 121,70 121,10 84,0" fill="#000"/></mask></defs>
+  <circle cx="58" cy="62" r="42" fill="#C9A35E" mask="url(#g)"/>
+  <path d="M84 50 L87.5 59.5 L108 63 L87.5 66.5 L84 76 L80.5 66.5 L60 63 L80.5 59.5Z" fill="#C9A35E"/>
+</svg>
