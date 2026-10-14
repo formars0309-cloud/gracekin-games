@@ -41,6 +41,7 @@ Umami Cloud(무료 Hobby, 사이트 1개, 월 10만 이벤트, 6개월 보관)�
    - 루트: A 레코드 `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
    - `www`·`slimeline`: CNAME `formars0309-cloud.github.io.`
    - `gyeongguk`: CNAME `99yk63x.gyeongguk.fly.dev.`(`fly certs setup`이 알려 준 값)
+   - 메일(2026-10-15): MX `mx1.improvmx.com.` 10, `mx2.improvmx.com.` 20, TXT `v=spf1 include:spf.improvmx.com ~all`. support@gracekingames.com은 ImprovMX가 전달한다.
 3. ~~이 저장소를 GitHub에 올리고 Pages와 `CNAME`을 켠다.~~ 완료.
 4. 슬라임 라인 공개 저장소(squishy-parade)의 `CNAME`(slimeline.gracekingames.com)은 다시 배포할 때도 지우지 않는다. 개인정보처리방침 주소가 바뀌었으니 Play 등록정보의 방침 URL도 고친다(남음).
 5. ~~경국지계 연결~~ 완료. 운영 공개 주소는 `gyeongguk.gracekingames.com` 하나다(2026-10-15 경국지계 배포). 클라이언트 소스맵은 더 이상 공개되지 않는다.
