@@ -12,7 +12,7 @@
 | `slimeline.gracekingames.com` | 슬라임 라인 | GitHub Pages `squishy-parade` 저장소에 사용자 도메인 연결 |
 | `gyeongguk.gracekingames.com` | 경국지계 | fly.io `gyeongguk` 앱에 인증서 추가(`fly certs add`) |
 
-2026-10-14에 세 주소를 모두 연결했다. 옛 주소 `formars0309-cloud.github.io/squishy-parade`는 새 주소로 넘어가고, `gyeongguk.fly.dev`는 그대로 열린다.
+2026-10-14에 세 주소를 모두 연결했다. 옛 주소 `formars0309-cloud.github.io/squishy-parade`는 새 주소로 넘어가고, `gyeongguk.fly.dev`는 2026-10-15부터 웹 요청을 새 주소로 넘기고(301, 경로·쿼리 유지), WebSocket은 거절하며, 상태 확인 `/health`만 그대로 연다.
 
 ## 디자인 (2026-10-14 확정)
 
@@ -35,7 +35,7 @@
    - `gyeongguk`: CNAME `99yk63x.gyeongguk.fly.dev.`(`fly certs setup`이 알려 준 값)
 3. ~~이 저장소를 GitHub에 올리고 Pages와 `CNAME`을 켠다.~~ 완료.
 4. 슬라임 라인 공개 저장소(squishy-parade)의 `CNAME`(slimeline.gracekingames.com)은 다시 배포할 때도 지우지 않는다. 개인정보처리방침 주소가 바뀌었으니 Play 등록정보의 방침 URL도 고친다(남음).
-5. ~~경국지계 연결~~ 완료. 서버에는 접속 출처(Origin) 검사가 없다. 새 주소는 저장 공간이 따로라 기존 플레이어도 새 손님으로 시작한다.
+5. ~~경국지계 연결~~ 완료. 운영 공개 주소는 `gyeongguk.gracekingames.com` 하나다(2026-10-15 경국지계 배포). 클라이언트 소스맵은 더 이상 공개되지 않는다.
 6. 사업자등록과 통신판매업 신고가 끝나면 아래 사업자 정보를 채운다: 상호, 대표자, 사업자등록번호, 통신판매업 신고번호, 연락처.
 
 ## 미리 보기
