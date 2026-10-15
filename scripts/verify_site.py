@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-"""정적 사이트의 진입 흐름, 자산, 게임 분리와 비밀정보 노출을 검사한다."""
+"""공개 사이트의 자산·게임 분리·API 요청 경계와 비밀정보 노출을 검사한다.
+
+정적 검사는 브라우저·서버 보안 실험을 대신하지 않는다. 서버와 시험 자료는
+공개 파일 검사에 섞지 않으며, 회원 기능은 같은 출처의 /api 요청으로만 허용한다.
+"""
 from __future__ import annotations
 
+import argparse
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -13,17 +18,27 @@ GAME_URLS = {
     'slimeline': 'https://slimeline.gracekingames.com/',
     'gyeongguk': 'https://gyeongguk.gracekingames.com/',
 }
+GAME_HOSTS = {urlsplit(url).hostname for url in GAME_URLS.values()}
 UMAMI_ID = '262268ac-4e27-49fa-862a-c911f4d38993'
 VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'}
-failures: list[str] = []
-checks = 0
+SECRET_PATTERNS = [
+    re.compile(r'-----BEGIN (?:[A-Z ]+)?PRIVATE KEY-----'),
+    re.compile(r'\b(?:ghp_|github_pat_|sk_live_|sk-proj-)[A-Za-z0-9_\-]{12,}'),
+    re.compile(r'\bAKIA[A-Z0-9]{16}\b'),
+    re.compile(r'(?i)\b(?:password|secret|token|api[_-]?key)\s*[:=]\s*[\"\'][^\"\']{8,}[\"\']'),
+]
 
 
-def check(condition: bool, description: str) -> None:
-    global checks
-    checks += 1
-    if not condition:
-        failures.append(description)
+class Report:
+    def __init__(self):
+        self.failures: list[str] = []
+        self.checks = 0
+        self.pages = 0
+
+    def check(self, condition: bool, description: str) -> None:
+        self.checks += 1
+        if not condition:
+            self.failures.append(description)
 
 
 class Page(HTMLParser):
@@ -36,6 +51,8 @@ class Page(HTMLParser):
         self.stack: list[str] = []
         self.anchor = None
         self.errors: list[str] = []
+        self.inline_scripts: list[str] = []
+        self.inline_styles: list[str] = []
         self.feed(path.read_text())
         if self.stack:
             self.errors.append('닫히지 않은 태그: ' + ', '.join(self.stack))
@@ -52,6 +69,8 @@ class Page(HTMLParser):
             self.links.append(self.anchor)
         if tag not in VOID:
             self.stack.append(tag)
+        if attrs.get('style'):
+            self.inline_styles.append(attrs['style'])
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
@@ -73,107 +92,264 @@ class Page(HTMLParser):
     def handle_data(self, data):
         if self.anchor is not None:
             self.anchor['text'] += data
+        if self.stack and self.stack[-1] == 'script':
+            self.inline_scripts.append(data)
+        if self.stack and self.stack[-1] == 'style':
+            self.inline_styles.append(data)
 
 
-def local_target(page: Path, value: str) -> tuple[Path, str] | None:
+def local_target(root: Path, page: Path, value: str) -> tuple[Path, str] | None:
     parsed = urlsplit(value)
     if parsed.scheme or parsed.netloc:
-        if parsed.netloc not in {'gracekingames.com', 'www.gracekingames.com'}:
+        if parsed.scheme not in {'', 'https', 'http'} or parsed.hostname not in {'gracekingames.com', 'www.gracekingames.com'}:
             return None
     path = unquote(parsed.path)
-    target = (ROOT / path.lstrip('/')) if path.startswith('/') else (page.parent / path)
+    target = (root / path.lstrip('/')) if path.startswith('/') else (page.parent / path)
+    if not path and page.suffix == '.html':
+        target = page
     target = target.resolve()
-    if not target.is_relative_to(ROOT):
-        return None
+    if not target.is_relative_to(root):
+        raise ValueError('공개 루트 밖 경로')
     if target.is_dir() or path.endswith('/'):
         target /= 'index.html'
     return target, parsed.fragment
 
 
-required = [ROOT / 'index.html', ROOT / 'community/index.html'] + [ROOT / f'games/{game}/index.html' for game in GAME_URLS]
-for path in required:
-    check(path.is_file(), f'필수 페이지 없음: {path.relative_to(ROOT)}')
-paths = [ROOT / 'index.html'] + sorted((ROOT / 'games').glob('**/*.html')) + sorted((ROOT / 'community').glob('**/*.html'))
-pages = {path: Page(path) for path in paths if path.is_file()}
-for path, page in pages.items():
-    rel = path.relative_to(ROOT)
-    check(not page.errors, f'{rel}: HTML 구조 오류 ({"; ".join(page.errors)})')
-    scripts = [attrs for tag, attrs in page.tags if tag == 'script' and attrs.get('src') == 'https://cloud.umami.is/script.js']
-    check(len(scripts) == 1 and scripts[0].get('data-website-id') == UMAMI_ID and scripts[0].get('data-domains') == 'gracekingames.com' and scripts[0].get('data-do-not-track') == 'true', f'{rel}: 통계 설정 불일치')
-    for tag, attrs in page.tags:
-        check(tag not in {'iframe', 'embed', 'object'}, f'{rel}: 게임 사전 실행 가능 요소 {tag}')
-        for attr in ('src', 'href', 'poster', 'action'):
-            value = attrs.get(attr)
-            if not value:
-                continue
-            check(not value.startswith('javascript:'), f'{rel}: 실행형 링크 발견')
-            parsed = urlsplit(value)
-            game_origin = any(parsed.netloc == urlsplit(url).netloc for url in GAME_URLS.values())
-            check(not game_origin or (tag == 'a' and attr == 'href'), f'{rel}: START 전 게임 자원 요청 가능 ({tag}.{attr})')
-            target = local_target(path, value)
-            if not target:
-                continue
+def javascript_tokens(source: str) -> list[tuple[str, str]]:
+    """주석·문자열 속 예시를 실행 호출로 오인하지 않는 작은 토큰 판독기."""
+    def quoted_end(start: int) -> tuple[int, list[str]]:
+        quote = source[start]
+        cursor = start + 1
+        expressions = []
+        while cursor < len(source):
+            if source[cursor] == '\\':
+                cursor += 2
+            elif source[cursor] == quote:
+                return cursor + 1, expressions
+            elif quote == '`' and source.startswith('${', cursor):
+                expression_start = cursor + 2
+                cursor = expression_end(expression_start)
+                expressions.append(source[expression_start:cursor - 1])
+            else:
+                cursor += 1
+        return cursor, expressions
+
+    def expression_end(start: int) -> int:
+        cursor, depth = start, 1
+        while cursor < len(source):
+            if source.startswith('//', cursor):
+                end = source.find('\n', cursor + 2)
+                cursor = len(source) if end < 0 else end + 1
+            elif source.startswith('/*', cursor):
+                end = source.find('*/', cursor + 2)
+                cursor = len(source) if end < 0 else end + 2
+            elif source[cursor] in "'\"`":
+                cursor, _ = quoted_end(cursor)
+            elif source[cursor] == '{':
+                depth += 1
+                cursor += 1
+            elif source[cursor] == '}':
+                depth -= 1
+                cursor += 1
+                if depth == 0:
+                    return cursor
+            else:
+                cursor += 1
+        return cursor
+
+    result = []
+    index = 0
+    while index < len(source):
+        char = source[index]
+        if char.isspace():
+            index += 1
+        elif source.startswith('//', index):
+            end = source.find('\n', index + 2)
+            index = len(source) if end < 0 else end + 1
+        elif source.startswith('/*', index):
+            end = source.find('*/', index + 2)
+            index = len(source) if end < 0 else end + 2
+        elif char in "'\"`":
+            quote = char
+            end, expressions = quoted_end(index)
+            result.append(('template' if quote == '`' else 'string', source[index + 1:end - 1]))
+            for expression in expressions:
+                result.extend(javascript_tokens(expression))
+            index = end
+        elif char.isalpha() or char in '_$':
+            end = index + 1
+            while end < len(source) and (source[end].isalnum() or source[end] in '_$'):
+                end += 1
+            result.append(('identifier', source[index:end]))
+            index = end
+        else:
+            result.append(('punctuation', char))
+            index += 1
+    return result
+
+
+def api_argument_allowed(token: tuple[str, str]) -> bool:
+    kind, value = token
+    if kind not in {'string', 'template'} or '\\' in value or any(char in value for char in '\r\n\t'):
+        return False
+    prefix = value.split('${', 1)[0] if kind == 'template' else value
+    if any(segment in {'.', '..'} for segment in unquote(urlsplit(prefix).path).split('/')):
+        return False
+    if kind == 'template':
+        prefix = value.split('${', 1)[0]
+        # 공통 헬퍼 fetch(`/api${path}`)는 반드시 같은 출처에 머문다.
+        # 일반 호출은 /api/ 아래 정적 접두부가 있어야 한다.
+        return bool(re.match(r'^/api(?:/|[?#]|$)', prefix))
+    parsed = urlsplit(value)
+    return not parsed.scheme and not parsed.netloc and (parsed.path == '/api' or parsed.path.startswith('/api/'))
+
+
+def network_issues(source: str) -> list[str]:
+    tokens = javascript_tokens(source)
+    issues = []
+    forbidden = {'XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon', 'Worker', 'SharedWorker'}
+    for index, (kind, value) in enumerate(tokens):
+        if kind == 'identifier' and value in {'localStorage', 'sessionStorage'}:
+            issues.append('브라우저 저장소 기반 공유 데이터 또는 인증 보관 발견')
+        if kind == 'string' and value in {'localStorage', 'sessionStorage', 'fetch'} and index and tokens[index - 1][1] == '[':
+            issues.append('계산된 속성으로 저장소·네트워크에 접근: 수동 검토 필요')
+        if kind != 'identifier':
+            continue
+        following = tokens[index + 1:index + 3]
+        if value in forbidden and following and following[0][1] == '(':
+            issues.append('승인되지 않은 네트워크 전송 방식 발견')
+        if value != 'fetch':
+            continue
+        if len(following) != 2 or following[0][1] != '(' or not api_argument_allowed(following[1]):
+            issues.append('같은 출처 /api 이외의 fetch 또는 판별 불가 요청 발견')
+    return list(dict.fromkeys(issues))
+
+
+def css_references(source: str) -> list[str]:
+    clean = re.sub(r'/\*.*?\*/', '', source, flags=re.S)
+    urls = [match.group(2).strip() for match in re.finditer(r'url\(\s*([\"\']?)(.*?)\1\s*\)', clean, re.I | re.S)]
+    urls += [match.group(2) for match in re.finditer(r'@import\s+([\"\'])(.*?)\1', clean, re.I)]
+    return [url for url in urls if url and not url.startswith('#')]
+
+
+def production_files(root: Path, pages: dict[Path, Page]) -> list[Path]:
+    # 서버 소스·시험 fixture·설치 모듈·DB·로컬 인계 자료를 브라우저 코드로 읽지 않는다.
+    files = set(pages)
+    for folder in ('assets', 'games', 'community'):
+        for suffix in ('*.js', '*.css'):
+            files.update((root / folder).rglob(suffix))
+    if (root / 'README.md').is_file():
+        files.add(root / 'README.md')
+    return sorted(files)
+
+
+def verify(root: Path) -> Report:
+    root = root.resolve()
+    report = Report()
+    check = report.check
+    required = [root / 'index.html', root / 'community/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    for path in required:
+        check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
+    paths = [root / 'index.html'] + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html'))
+    pages = {path: Page(path) for path in paths if path.is_file()}
+    report.pages = len(pages)
+
+    def inspect_resource(path: Path, value: str, description: str, *, resource: bool = True) -> None:
+        parsed = urlsplit(value)
+        check(parsed.scheme not in {'javascript', 'vbscript', 'file'}, f'{description}: 실행형 또는 로컬 파일 경로 발견')
+        check(not resource or parsed.hostname not in GAME_HOSTS, f'{description}: START 전 게임 자원 요청 가능')
+        try:
+            target = local_target(root, path, value)
+        except ValueError:
+            check(False, f'{description}: 공개 루트 밖 자산 경로')
+            return
+        if target:
             destination, fragment = target
-            check(destination.is_file(), f'{rel}: 없는 내부 경로 ({tag}.{attr})')
+            check(destination.is_file(), f'{description}: 없는 내부 경로')
             if fragment and destination in pages:
-                check(fragment in pages[destination].ids, f'{rel}: 없는 문서 위치 ({tag}.{attr})')
-    for attrs in page.links:
-        check(bool(attrs.get('href')), f'{rel}: 이동하지 않는 링크 발견')
-    source = path.read_text()
-    check(not re.search(r'\b(?:localStorage|sessionStorage)\b', source), f'{rel}: 사용자 글을 오인할 수 있는 브라우저 저장소 사용')
+                check(fragment in pages[destination].ids, f'{description}: 없는 문서 위치')
 
-home = pages.get(ROOT / 'index.html')
-if home:
+    for path, page in pages.items():
+        rel = path.relative_to(root)
+        check(not page.errors, f'{rel}: HTML 구조 오류 ({"; ".join(page.errors)})')
+        scripts = [attrs for tag, attrs in page.tags if tag == 'script' and attrs.get('src') == 'https://cloud.umami.is/script.js']
+        check(len(scripts) == 1 and scripts[0].get('data-website-id') == UMAMI_ID and scripts[0].get('data-domains') == 'gracekingames.com' and scripts[0].get('data-do-not-track') == 'true', f'{rel}: 통계 설정 불일치')
+        for tag, attrs in page.tags:
+            check(tag not in {'iframe', 'embed', 'object'}, f'{rel}: 게임 사전 실행 가능 요소 {tag}')
+            for attr in ('src', 'href', 'poster', 'action', 'data-src'):
+                value = attrs.get(attr)
+                if value:
+                    inspect_resource(path, value, f'{rel} ({tag}.{attr})', resource=not (tag == 'a' and attr == 'href'))
+            if attrs.get('srcset'):
+                for candidate in attrs['srcset'].split(','):
+                    parts = candidate.strip().split()
+                    if parts:
+                        inspect_resource(path, parts[0], f'{rel} ({tag}.srcset)')
+            for attr, value in attrs.items():
+                if attr.startswith('on') and value:
+                    for issue in network_issues(value):
+                        check(False, f'{rel} ({tag}.{attr}): {issue}')
+        for attrs in page.links:
+            check(bool(attrs.get('href')), f'{rel}: 이동하지 않는 링크 발견')
+        for source in page.inline_scripts:
+            for issue in network_issues(source):
+                check(False, f'{rel}: {issue}')
+        for source in page.inline_styles:
+            for value in css_references(source):
+                inspect_resource(path, value, f'{rel} (인라인 CSS)')
+
+    home = pages.get(root / 'index.html')
+    if home:
+        for game, url in GAME_URLS.items():
+            links = [link for link in home.links if link.get('href') == f'/games/{game}/']
+            check(len(links) == 3, f'대문: {game} 진입 링크는 무대·그림·버튼 3개여야 함')
+            check(all(link.get('data-umami-event') == f'homepage-{game}' for link in links), f'대문: {game} 홈페이지 이동 이벤트 불일치')
+            check(not any(link.get('href') == url for link in home.links), f'대문: {game} 게임 직접 실행 링크 발견')
     for game, url in GAME_URLS.items():
-        links = [link for link in home.links if link.get('href') == f'/games/{game}/']
-        check(len(links) == 3, f'대문: {game} 진입 링크는 무대·그림·버튼 3개여야 함')
-        check(all(link.get('data-umami-event') == f'homepage-{game}' for link in links), f'대문: {game} 홈페이지 이동 이벤트 불일치')
-        check(not any(link.get('href') == url for link in home.links), f'대문: {game} 게임 직접 실행 링크 발견')
+        page = pages.get(root / f'games/{game}/index.html')
+        if not page:
+            continue
+        rel = page.path.relative_to(root)
+        starts = [link for link in page.links if link.get('href') == url]
+        check(len(starts) == 1, f'{rel}: 실제 게임 START 링크는 1개여야 함')
+        check(all('START' in link.get('text', '').upper() for link in starts), f'{rel}: START 이외의 게임 직접 진입 링크 발견')
+        check(all(link.get('data-umami-event') == f'play-{game}' and link.get('data-umami-event-from') == 'homepage-start' for link in starts), f'{rel}: START 이벤트 불일치')
+        other = next(item for item in GAME_URLS if item != game)
+        for link in page.links:
+            href = link.get('href', '')
+            check(f'game={other}' not in href and f'/games/{other}/' not in href and urlsplit(href).hostname != urlsplit(GAME_URLS[other]).hostname, f'{rel}: 다른 게임 링크 혼입')
+        check(any(f'game={game}' in link.get('href', '') and '/community/' in link.get('href', '') for link in page.links), f'{rel}: 게임별 커뮤니티 링크 없음')
 
-for game, url in GAME_URLS.items():
-    page = pages.get(ROOT / f'games/{game}/index.html')
-    if not page:
-        continue
-    rel = page.path.relative_to(ROOT)
-    starts = [link for link in page.links if link.get('href') == url]
-    check(bool(starts), f'{rel}: 실제 게임 START 링크 없음')
-    check(all('START' in link.get('text', '').upper() for link in starts), f'{rel}: START 이외의 게임 직접 진입 링크 발견')
-    check(all(link.get('data-umami-event') == f'play-{game}' for link in starts), f'{rel}: START 이벤트 불일치')
-    other = next(item for item in GAME_URLS if item != game)
-    for link in page.links:
-        href = link.get('href', '')
-        check(f'game={other}' not in href and f'/games/{other}/' not in href and urlsplit(href).netloc != urlsplit(GAME_URLS[other]).netloc, f'{rel}: 다른 게임 링크 혼입')
-    community = [link.get('href', '') for link in page.links if '/community/' in link.get('href', '')]
-    check(any(f'game={game}' in value for value in community), f'{rel}: 게임별 커뮤니티 링크 없음')
+    community_script = root / 'assets/community/community.js'
+    check(community_script.is_file(), '커뮤니티 동작 파일 없음')
+    # 공지 데이터의 보관 위치·개수·특정 JS 구현 문자열에 회원 기능을 결박하지 않는다.
+    # 게임별 글·댓글 접근 제어는 실제 API 독립 보안 실험에서 별도로 확인한다.
+    for path in production_files(root, pages):
+        content = path.read_text()
+        rel = path.relative_to(root)
+        check(not any(pattern.search(content) for pattern in SECRET_PATTERNS), f'{rel}: 민감정보 의심 패턴 발견 (원문 비노출)')
+        if path.suffix == '.js':
+            for issue in network_issues(content):
+                check(False, f'{rel}: {issue}')
+        if path.suffix == '.css':
+            for value in css_references(content):
+                inspect_resource(path, value, f'{rel} (CSS url)')
+    return report
 
-community_script = ROOT / 'assets/community/community.js'
-check(community_script.is_file(), '커뮤니티 동작 파일 없음')
-if community_script.is_file():
-    content = community_script.read_text()
-    check(content.count("id: 'welcome'") == 2 and content.count("id: 'play-guide'") == 2 and content.count("id: 'feedback'") == 2, '각 게임 공식 안내 3종 누락')
-    check(all(value in content for value in ["free:", "guide:", "gallery:", "notice:", "deck:", "strategy:"]), '게임별 게시판 분류 누락')
-    check("Object.prototype.hasOwnProperty.call(GAMES, gameId)" in content and "game.posts.find" in content and "game.posts.filter" in content, '게임별 콘텐츠 선택 경계 누락')
-    check('localStorage' not in content and 'sessionStorage' not in content, '커뮤니티에 브라우저 저장소 기반 글 작성 기능 발견')
-    check('support@gracekingames.com' in content, '커뮤니티 문의 메일 누락')
-    check('viewform' in content, '실제 의견 접수 링크 누락')
 
-# 검사 결과에는 발견된 값이나 원문을 출력하지 않는다.
-secret_patterns = [
-    re.compile(r'-----BEGIN (?:[A-Z ]+)?PRIVATE KEY-----'),
-    re.compile(r'\b(?:ghp_|github_pat_|sk_live_|sk-proj-)[A-Za-z0-9_\-]{12,}'),
-    re.compile(r'\bAKIA[A-Z0-9]{16}\b'),
-    re.compile(r'(?i)\b(?:password|secret|token|api[_-]?key)\s*[:=]\s*[\"\'][^\"\']{8,}[\"\']'),
-]
-production_files = list(pages) + sorted((ROOT / 'assets').rglob('*.js')) + sorted((ROOT / 'assets').rglob('*.css')) + [ROOT / 'README.md']
-for path in production_files:
-    content = path.read_text()
-    check(not any(pattern.search(content) for pattern in secret_patterns), f'{path.relative_to(ROOT)}: 민감정보 의심 패턴 발견 (원문 비노출)')
-    if path.suffix in {'.html', '.js'}:
-        check(not re.search(r'\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(', content), f'{path.relative_to(ROOT)}: 사전 네트워크 실행 코드 검토 필요')
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', type=Path, default=ROOT, help='읽기 검사할 사이트 루트 (기본: 이 저장소)')
+    args = parser.parse_args(argv)
+    report = verify(args.root)
+    if report.failures:
+        print(f'검증 실패: {len(report.failures)}개 / {report.checks}개 확인')
+        for failure in report.failures:
+            print(f'- {failure}')
+        return 1
+    print(f'검증 통과: {report.checks}개 확인, {report.pages}개 페이지')
+    return 0
 
-if failures:
-    print(f'검증 실패: {len(failures)}개 / {checks}개 확인')
-    for failure in failures:
-        print(f'- {failure}')
-    sys.exit(1)
-print(f'검증 통과: {checks}개 확인, {len(pages)}개 페이지')
+
+if __name__ == '__main__':
+    sys.exit(main())
