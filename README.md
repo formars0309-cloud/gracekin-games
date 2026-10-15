@@ -26,6 +26,7 @@
 - 색: 밤 #0C0A10, 자수정 #3B2552, 달빛 #E6C98A, 구리 #B0703F. 글꼴: Cormorant Garamond Italic, Cinzel, Noto Serif KR(Google Fonts).
 - 그림: 경국지계 대표 그림은 게임 타이틀 화면의 배경과 두 인물을 한 장으로 합쳤다. 슬라임은 투명 배경 정면 그림이다.
 - 공유 미리보기는 assets/og.jpg(1200×630), 아이콘은 assets/favicon.svg와 assets/apple-touch-icon.png다.
+- 사이트 화폐는 **그레인(Grain)**과 새싹 문양 황금 씨앗 아이콘으로 확정했다(2026-10-16). [이름·디자인 기록과 정본 자산](docs/기획/그레인-화폐-디자인.md)을 참고한다.
 
 ## 제보·의견 받기
 
