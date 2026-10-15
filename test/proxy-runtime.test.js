@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { startServer } from '../server/app.js';
+import { registerAndLogin } from './account-helpers.js';
 import { FLY_COMMUNITY_APP, normalizeClientIP } from '../server/security.js';
 
 function request(app, path, { method = 'GET', body, headers = {} } = {}) {
@@ -27,7 +28,7 @@ function request(app, path, { method = 'GET', body, headers = {} } = {}) {
 async function withServer(options, callback) {
   const folder = await mkdtemp(join(tmpdir(), 'gracekin-runtime-'));
   let app;
-  try { app = await startServer({ port: 0, dataDir: folder, ...options }); await callback(app, folder); }
+  try { const mailbox = []; app = await startServer({ port: 0, dataDir: folder, mailer: async message => mailbox.push(message), ...options }); await callback(app, folder, mailbox); }
   finally { await app?.close(); await rm(folder, { recursive: true, force: true }); }
 }
 
@@ -69,8 +70,8 @@ test('로컬 기본값·다른 앱·명시 해제에서는 Fly 헤더 위조로 
 
 test('Better Auth 세션에도 서버가 정한 동일 IP만 저장', async () => {
   for (const onFly of [false, true]) {
-    await withServer({ trustFlyProxy: onFly, flyAppName: FLY_COMMUNITY_APP }, async (app, folder) => {
-      const signup = await request(app, '/api/auth/sign-up/email', { method: 'POST', headers: { 'fly-client-ip': '198.51.100.60', 'x-forwarded-for': '198.51.100.61', 'x-real-ip': '198.51.100.62', 'x-community-client-ip': '198.51.100.63' }, body: { ageConfirmed: true, name: '접속확인', email: `proxy-${onFly}@example.test`, password: '테스트전용-공유하지않는값-1234' } });
+    await withServer({ trustFlyProxy: onFly, flyAppName: FLY_COMMUNITY_APP }, async (app, folder, mailbox) => {
+      const signup = await registerAndLogin(app, mailbox, { ageBand: '14plus', name: '접속확인', email: `proxy-${onFly}@example.test`, password: '테스트전용-공유하지않는값-1234' }, { 'fly-client-ip': '198.51.100.60', 'x-forwarded-for': '198.51.100.61', 'x-real-ip': '198.51.100.62', 'x-community-client-ip': '198.51.100.63' });
       assert.equal(signup.status, 200);
       const db = new DatabaseSync(join(folder, 'community.sqlite'));
       try { assert.equal(db.prepare('SELECT ipAddress FROM session LIMIT 1').get().ipAddress, onFly ? '198.51.100.60' : '127.0.0.1'); }
@@ -109,7 +110,7 @@ test('/health는 Host를 검사하고 DB·인증·API 제한과 분리된 최소
   });
 });
 
-test('가입은 14세 이상 자기확인의 엄격한 true만 허용하고 연령 정보는 저장하지 않음', async () => {
+test('가입은 연령 구분을 필수로 받고 기존 자기확인 우회·생년월일 수집을 거부', async () => {
   await withServer({}, async (app, folder) => {
     const signup = { name: '가입확인', email: 'age-confirm@example.test', password: '테스트전용-자기확인-1234' };
     for (const value of [undefined, false, 'true', 1]) {
@@ -120,7 +121,7 @@ test('가입은 14세 이상 자기확인의 엄격한 true만 허용하고 연�
     const db = new DatabaseSync(join(folder, 'community.sqlite'));
     try { assert.equal(db.prepare('SELECT COUNT(*) AS n FROM user').get().n, 0); }
     finally { db.close(); }
-    const accepted = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { ...signup, ageConfirmed: true } });
+    const accepted = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { ...signup, ageBand: '14plus' } });
     assert.equal(accepted.status, 200);
     assert.doesNotMatch(JSON.stringify(accepted.body), /ageConfirmed|birthDate|birthday/);
     const verified = new DatabaseSync(join(folder, 'community.sqlite'));

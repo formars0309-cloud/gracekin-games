@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { canWriteCommunity, activeAccountUser } from './account.js';
 import { fail, json, readJson, text } from './security.js';
 
 const BOARDS = { slimeline: ['free', 'guide', 'gallery'], gyeongguk: ['free', 'deck', 'strategy'] };
@@ -40,10 +41,11 @@ export function createCommunity(db, auth) {
   return async function handle(request, url) {
     const path = url.pathname;
     const session = await auth.api.getSession({ headers: request.headers });
-    const user = session?.user || null;
-    if (path === '/api/community/session' && request.method === 'GET') return json({ user: user ? { id: user.id, name: user.name } : null });
+    const user = activeAccountUser(db, session?.user);
+    if (path === '/api/community/session' && request.method === 'GET') return json({ user: user ? { id: user.id, name: user.name, canWriteCommunity: canWriteCommunity(user) } : null });
     const isWrite = ['POST', 'PATCH', 'DELETE'].includes(request.method);
     if (isWrite && !user) fail(401, 'AUTH_REQUIRED', '로그인 후 이용해 주세요.');
+    if (isWrite && !canWriteCommunity(user)) fail(403, 'COMMUNITY_WRITE_RESTRICTED', '현재 이 계정은 게시판 읽기만 이용할 수 있습니다.');
     const expectedGame = url.searchParams.has('game') ? game(url.searchParams.get('game')) : null;
 
     if (path === '/api/community/posts') {

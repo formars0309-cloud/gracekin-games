@@ -3,11 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.15.0 <25" },
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
   "scripts": {
     "start": "node --env-file-if-exists=.env server/index.js",
     "test": "node --test test/*.test.js",
     "verify": "npm test"
   },
-  "dependencies": { "better-auth": "1.7.10" }
+  "dependencies": {
+    "better-auth": "1.7.10",
+    "mailparser": "3.9.39",
+    "nodemailer": "10.1.1"
+  }
 }
