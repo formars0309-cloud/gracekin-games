@@ -1,0 +1,52 @@
+# 새 전용 앱의 검토용 설정이다. 기존 경국지계 앱에는 적용하지 않는다.
+app = "gracekin-games-community"
+primary_region = "nrt"
+kill_signal = "SIGTERM"
+kill_timeout = "15s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  strategy = "rolling"
+  max_unavailable = 1
+
+[env]
+  NODE_ENV = "production"
+  HOST = "0.0.0.0"
+  PORT = "8766"
+  DATA_DIR = "/data"
+  # 1단계 검증 주소. 정식 도메인 전환 때 아래 health check Host도 함께 바꾼다.
+  BETTER_AUTH_URL = "https://gracekin-games-community.fly.dev"
+
+[http_service]
+  internal_port = 8766
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 10
+    hard_limit = 20
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/api/community/session"
+    protocol = "http"
+    [http_service.checks.headers]
+      Host = "gracekin-games-community.fly.dev"
+
+[mounts]
+  source = "community_data"
+  destination = "/data"
+  scheduled_snapshots = true
+  snapshot_retention = 5
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
