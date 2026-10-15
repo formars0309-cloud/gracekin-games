@@ -1,14 +1,18 @@
 # Gracekin Games 사이트
 
-`gracekingames.com`에 올리는 게임 모음 페이지다. 카드의 "바로 플레이"를 누르면 게임별 주소에서 설치 없이 바로 실행된다.
+`gracekingames.com`의 게임 모음과 게임별 홈페이지, 커뮤니티를 관리한다. 대문에서 게임 홈페이지로 이동해 소개와 안내를 확인하고, **START**를 누르면 실제 게임이 열린다. 게임을 시작하기 전에 게임 화면이나 게임 자원을 불러오지 않는다.
 
 - 사업체: Gracekin Games(그레이스킨 게임즈)
 
-## 주소 계획 (2026-10-14, 게임 주소는 장르 대신 게임 이름으로 정함)
+## 사이트 주소와 게임 진입 흐름
 
 | 주소 | 내용 | 연결 방법 |
 | --- | --- | --- |
-| `gracekingames.com`, `www` | 이 모음 페이지 | GitHub Pages (이 저장소, `CNAME`) |
+| `gracekingames.com`, `www` | 게임 모음 대문 | GitHub Pages (이 저장소, `CNAME`) |
+| `gracekingames.com/games/slimeline/` | 슬라임 라인 홈페이지 | 이 저장소 |
+| `gracekingames.com/games/gyeongguk/` | 경국지계 홈페이지 | 이 저장소 |
+| `gracekingames.com/community/?game=slimeline` | 슬라임 라인 커뮤니티 | 이 저장소 |
+| `gracekingames.com/community/?game=gyeongguk` | 경국지계 커뮤니티 | 이 저장소 |
 | `slimeline.gracekingames.com` | 슬라임 라인 | GitHub Pages `squishy-parade` 저장소에 사용자 도메인 연결 |
 | `gyeongguk.gracekingames.com` | 경국지계 | fly.io `gyeongguk` 앱에 인증서 추가(`fly certs add`) |
 
@@ -26,12 +30,23 @@
 
 누구나 로그인 없이 보낼 수 있는 구글 설문지로 받는다(2026-10-14). 사업자 구글 계정의 드라이브에 설문지와 응답 스프레드시트 「Gracekin Games 버그 제보·의견(응답)」이 있다. 이메일은 수집하지 않는다. 경국지계는 게임 안의 '문제 신고'·'소감 남기기'로도 받는다.
 
+## 커뮤니티
+
+게임마다 게시판과 공식 안내를 분리한다. 슬라임 라인은 자유게시판(`free`)·공략과 팁(`guide`)·갤러리(`gallery`)·공지사항(`notice`), 경국지계는 자유게시판(`free`)·덱 연구(`deck`)·전략과 공략(`strategy`)·공지사항(`notice`)을 제공한다. `board`가 없으면 공지사항을 연다.
+
+현재는 게시판 분류 이동, 제목·내용 검색, 공식 안내 읽기와 목록 복귀를 이용할 수 있다. 공식 안내는 게임별로 환영 안내(`post=welcome`), 시작 안내(`post=play-guide`), 제보 안내(`post=feedback`) 3개다. 예: `/community/?game=slimeline&board=notice&post=welcome`.
+
+회원가입·로그인·사용자 글쓰기·댓글은 제공하지 않는다. 사용자 게시판에는 실제 공개된 글이 없다는 안내를 표시한다. 제보와 의견은 기존 구글 설문지로 보낸다. 게임별 개인정보처리방침과 문의 메일 `support@gracekingames.com`도 연결한다.
+
 ## 방문 통계 (2026-10-15)
 
 Umami Cloud(무료 Hobby, 사이트 1개, 월 10만 이벤트, 6개월 보관)로 센다. 쿠키를 쓰지 않고 개인정보를 모으지 않는다. `data-domains`로 실제 도메인에서만 보내고, 브라우저의 추적 거부(Do Not Track) 설정은 따른다. 그래서 로컬 미리 보기에서는 기록이 남지 않는다.
 
 - 방문: 주소 꼬리표까지 남는다. 채널별 링크에 `?ref=blog`, `?ref=threads`, `?ref=youtube`, `?ref=kakao`, `?ref=reddit`처럼 붙인다.
-- 클릭 이벤트: `play-slimeline`, `play-gyeongguk`(속성 `from` = `stage` 첫 화면 무대, `card-image`, `card-button`), `feedback-form`.
+- 대문 → 게임 홈페이지: `homepage-slimeline`, `homepage-gyeongguk`(속성 `from` = `stage` 첫 화면 무대, `card-image`, `card-button`). 게임 실행 횟수와 구분한다.
+- 게임 홈페이지 START → 실제 게임: `play-slimeline`, `play-gyeongguk`. 클릭 의도를 세며 실제 로딩 완료나 플레이 시간은 뜻하지 않는다.
+- 제보 설문지 이동: `feedback-form`. 제출 완료 횟수는 뜻하지 않는다.
+- 대문·게임별 홈페이지·커뮤니티에 같은 사이트 ID와 실제 도메인 제한, 추적 거부 설정을 적용한다.
 - 바닥글에 "방문 통계는 쿠키 없이, 누구인지 알 수 없는 형태로만 셉니다." 한 줄을 넣었다. 디자인 캔버스 HomeB에는 없는 줄이다.
 
 ## 남은 일
@@ -51,4 +66,10 @@ Umami Cloud(무료 Hobby, 사이트 1개, 월 10만 이벤트, 6개월 보관)�
 
 ```sh
 python3 -m http.server 8765 --bind 127.0.0.1
+```
+
+게임별 페이지를 통합한 뒤 내부 링크·자산, START 이동, 게임 사전 실행 여부, 게임별 안내 분리와 민감정보 패턴을 확인한다.
+
+```sh
+python3 scripts/verify_site.py
 ```
