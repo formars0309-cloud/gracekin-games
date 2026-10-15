@@ -5,7 +5,7 @@
   const entry = window.gracekinAccountEntry || { view: 'signin', token: '', params: new URLSearchParams() };
   delete window.gracekinAccountEntry;
   const byId = id => document.getElementById(id);
-  const state = { config: null, user: null, ageBand: null, view: 'signin', resetToken: entry.view === 'reset' ? entry.token : '', verifyToken: entry.view === 'verify' ? entry.token : '', guardianRequest: null, busy: false };
+  const state = { config: null, user: null, ageBand: null, view: 'signin', resetToken: entry.view === 'reset' ? entry.token : '', verifyToken: entry.view === 'verify' ? entry.token : '', guardianRequest: null, busy: false, ready: false, pendingLink: null };
   entry.token = '';
   const game = ['slimeline', 'gyeongguk'].includes(entry.params.get('game')) ? entry.params.get('game') : null;
   const boards = game === 'gyeongguk' ? ['notice', 'free', 'deck', 'strategy'] : ['notice', 'free', 'guide', 'gallery'];
@@ -94,6 +94,25 @@
     else if (!config.registrationAvailable || !config.emailAvailable) message('service-notice', '새 회원가입과 이메일 인증·비밀번호 찾기를 준비하고 있어요. 기존 계정의 로그인은 계속 이용할 수 있어요.');
     else message('service-notice', '');
   }
+  function applyPendingLink() {
+    if (!state.ready || state.busy || !state.pendingLink) return;
+    const incoming = state.pendingLink;
+    state.pendingLink = null;
+    state.verifyToken = incoming.view === 'verify' ? incoming.token : '';
+    state.resetToken = incoming.view === 'reset' ? incoming.token : '';
+    navigate(incoming.view);
+    applyAvailability();
+  }
+  window.addEventListener('gracekin-account-link', () => {
+    const incoming = window.gracekinAccountEntry;
+    delete window.gracekinAccountEntry;
+    if (!incoming?.token || !['verify', 'reset'].includes(incoming.view)) return;
+    // 이미 처리 중인 링크를 다시 열어도 확인 요청을 중복 예약하지 않는다.
+    if ((incoming.view === 'verify' && incoming.token === state.verifyToken) || (incoming.view === 'reset' && incoming.token === state.resetToken)) return;
+    state.pendingLink = { view: incoming.view, token: incoming.token };
+    incoming.token = '';
+    applyPendingLink();
+  });
   async function withBusy(formId, errorId, action) {
     if (state.busy) return;
     const form = byId(formId);
@@ -104,7 +123,7 @@
     form.setAttribute('aria-busy', 'true'); message(errorId, '');
     try { await action(); }
     catch (error) { message(errorId, error.message, true); }
-    finally { state.busy = false; controls.forEach(control => { control.disabled = false; }); form.setAttribute('aria-busy', 'false'); applyAvailability(); }
+    finally { state.busy = false; controls.forEach(control => { control.disabled = false; }); form.setAttribute('aria-busy', 'false'); applyAvailability(); applyPendingLink(); }
   }
   function showMember() {
     byId('member-title').textContent = `${state.user.name}님, 반가워요`;
@@ -236,6 +255,7 @@
     for (const input of document.querySelectorAll('input[type="password"]')) input.value = '';
     state.resetToken = '';
     state.verifyToken = '';
+    state.pendingLink = null;
   });
   window.addEventListener('pageshow', event => {
     if (event.persisted) { navigate(state.view, false); applyAvailability(); }
@@ -249,6 +269,8 @@
     if (state.user && ['signin', 'signup'].includes(entry.view)) showMember();
     else navigate(entry.view, false);
     if (entry.params.get('error') === 'INVALID_TOKEN') message('verify-error', errors.INVALID_TOKEN);
+    state.ready = true;
+    applyPendingLink();
   }
   start();
 })();
