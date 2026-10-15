@@ -7,7 +7,7 @@ import { betterAuth } from 'better-auth';
 import { toNodeHandler } from 'better-auth/node';
 import { getMigrations } from 'better-auth/db/migration';
 import { createCommunity } from './community.js';
-import { createLimiter, errorResponse, fail, json, loadSecret, readJson, safePath, text } from './security.js';
+import { CLIENT_IP_HEADER, FLY_COMMUNITY_APP, createLimiter, errorResponse, fail, json, loadSecret, readJson, safePath, text, trustedClientIP } from './security.js';
 
 const DEFAULT_ROOT = fileURLToPath(new URL('../', import.meta.url));
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff' };
@@ -52,6 +52,9 @@ export async function startServer(options = {}) {
   const root = await realpath(options.rootDir ?? DEFAULT_ROOT);
   const dataDir = resolve(options.dataDir ?? process.env.DATA_DIR ?? resolve(DEFAULT_ROOT, '.data'));
   const production = (options.nodeEnv ?? process.env.NODE_ENV) === 'production';
+  // 옵션은 프로세스 내부 설정이며 HTTP 헤더·쿼리로 활성화할 수 없습니다.
+  const flyAppName = options.flyAppName ?? process.env.FLY_APP_NAME;
+  const trustFlyProxy = (options.trustFlyProxy ?? (process.env.TRUST_FLY_PROXY === 'true')) === true && flyAppName === FLY_COMMUNITY_APP;
   const configuredURL = options.baseURL ?? process.env.BETTER_AUTH_URL;
   if (production && !configuredURL) throw new Error('운영 환경에는 BETTER_AUTH_URL 설정이 필요합니다.');
   if (configuredURL) {
@@ -67,7 +70,10 @@ export async function startServer(options = {}) {
     try {
       safePath(req.url || '/');
       if (!handler) { res.writeHead(503); res.end(); return; }
-      req.headers['x-community-client-ip'] = req.socket.remoteAddress || 'unknown';
+      const clientIP = trustedClientIP(req.socket.remoteAddress, req.headers, trustFlyProxy);
+      // 외부에서 보낸 내부 헤더와 다른 IP 전달 헤더는 인증 라이브러리에 넘기지 않습니다.
+      for (const name of ['x-forwarded-for', 'x-real-ip', 'forwarded', 'cf-connecting-ip', 'true-client-ip', 'fly-client-ip', CLIENT_IP_HEADER]) delete req.headers[name];
+      req.headers[CLIENT_IP_HEADER] = clientIP;
       void handler(req, res).catch(() => { if (!res.headersSent) { res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' }); res.end(JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: '요청을 처리하지 못했습니다.' } })); } else res.end(); });
     } catch (error) {
       const response = errorResponse(error);
@@ -97,7 +103,11 @@ export async function startServer(options = {}) {
         '/sign-up/email': { window: 60, max: 12 },
         '/sign-in/email': { window: 60, max: 12 },
       } },
-      advanced: { cookiePrefix: 'gracekin', useSecureCookies: production, defaultCookieAttributes: { httpOnly: true, sameSite: 'lax', secure: production } },
+      advanced: {
+        cookiePrefix: 'gracekin', useSecureCookies: production,
+        defaultCookieAttributes: { httpOnly: true, sameSite: 'lax', secure: production },
+        ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER], ipv6Subnet: 128 },
+      },
       databaseHooks: { user: {
         create: { before: async data => ({ data: { ...data, name: text(data.name, 2, 24, '닉네임') } }) },
         update: { before: async data => ({ data: { ...data, ...(Object.hasOwn(data, 'name') ? { name: text(data.name, 2, 24, '닉네임') } : {}) } }) },
@@ -111,8 +121,13 @@ export async function startServer(options = {}) {
       try {
         const url = new URL(request.url), path = url.pathname;
         if (request.headers.get('host') !== allowedHost) fail(403, 'INVALID_HOST', '허용되지 않은 접속 주소입니다.');
+        // 초기화 완료 여부만 확인하며 회원 DB 조회와 속도 제한 횟수를 소모하지 않습니다.
+        if (path === '/health') {
+          if (request.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
+          return hardened(json({ ok: true }));
+        }
         if (!path.startsWith('/api/')) return hardened(await serveStatic(request, safePath(path), root));
-        limit(request.headers.get('x-community-client-ip'), path, request.method);
+        limit(request.headers.get(CLIENT_IP_HEADER), path, request.method);
         if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(request.method)) {
           if (request.headers.get('origin') !== origin || request.headers.get('sec-fetch-site') === 'cross-site') fail(403, 'ORIGIN_FORBIDDEN', '같은 홈페이지에서 다시 요청해 주세요.');
           if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') || '')) fail(415, 'JSON_REQUIRED', 'JSON 형식으로 요청해 주세요.');
@@ -122,7 +137,12 @@ export async function startServer(options = {}) {
         if (path.startsWith('/api/auth/')) {
           if (!AUTH_PATHS.has(path) || request.method !== 'POST') fail(404, 'NOT_FOUND', '인증 요청을 찾을 수 없습니다.');
           const body = await readJson(request);
-          if (path === '/api/auth/sign-up/email') body.name = text(body.name, 2, 24, '닉네임');
+          if (path === '/api/auth/sign-up/email') {
+            if (body.ageConfirmed !== true) fail(422, 'AGE_CONFIRMATION_REQUIRED', '만 14세 이상인 경우에만 가입할 수 있습니다. 확인란을 선택해 주세요.');
+            body.name = text(body.name, 2, 24, '닉네임');
+            // 자기확인 응답은 가입 조건으로만 사용하며 나이·생년월일로 저장하지 않습니다.
+            delete body.ageConfirmed;
+          }
           // 본문 크기 검사를 마친 Request를 공식 Fetch 핸들러에 전달합니다.
           const response = await auth.handler(new Request(`${origin}${path}`, { method: 'POST', headers: request.headers, body: JSON.stringify(body) }));
           if (response.ok) return hardened(response);

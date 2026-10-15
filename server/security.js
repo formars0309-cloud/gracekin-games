@@ -1,6 +1,33 @@
 import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, writeFile, chmod } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { isIP } from 'node:net';
+
+export const CLIENT_IP_HEADER = 'x-community-client-ip';
+export const FLY_COMMUNITY_APP = 'gracekin-games-community';
+
+export function normalizeClientIP(value) {
+  if (typeof value !== 'string') return null;
+  const ip = value.trim();
+  const version = isIP(ip);
+  if (version === 4) return ip;
+  if (version !== 6 || ip.includes('%')) return null;
+  try {
+    // 같은 IPv6 주소의 축약·대소문자·IPv4 매핑 표기를 한 가지로 맞춥니다.
+    const normalized = new URL(`http://[${ip}]/`).hostname.slice(1, -1);
+    const mapped = normalized.match(/^::ffff:([0-9a-f]+):([0-9a-f]+)$/);
+    if (!mapped) return normalized;
+    const high = parseInt(mapped[1], 16), low = parseInt(mapped[2], 16);
+    return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+  } catch { return null; }
+}
+
+export function trustedClientIP(socketIP, headers, trustFlyProxy) {
+  // Fly HTTP 서비스가 추가하는 단일 IP만 사용하며 X-Forwarded-For는 파싱하지 않습니다.
+  // 이 신뢰는 Fly Proxy를 통하는 전용 앱에서만 켭니다. 다른 CDN을 앞에 추가하면 재검토해야 합니다.
+  const forwarded = trustFlyProxy ? normalizeClientIP(headers['fly-client-ip']) : null;
+  return forwarded || normalizeClientIP(socketIP) || 'unknown';
+}
 
 export class HttpError extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
@@ -53,7 +80,7 @@ export async function readJson(request, limit = 65536) {
   } catch { fail(400, 'INVALID_JSON', 'JSON 요청 내용을 확인해 주세요.'); }
 }
 
-// 전달된 프록시 헤더는 신뢰하지 않고 실제 접속 IP별로 제한합니다.
+// 서버가 신뢰 경계를 확인하고 덮어쓴 접속 IP별로 제한합니다.
 export function createLimiter({ windowMs = 60000, authMax = 12, writeMax = 60, readMax = 240, maxKeys = 10000 } = {}) {
   const buckets = new Map();
   return (ip, path, method) => {

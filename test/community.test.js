@@ -60,21 +60,21 @@ test('비회원 읽기와 쓰기 인증 제한', async () => {
 
 test('닉네임 우회·잘못된 입력을 서버에서 거부', async () => {
   for (const name of [' ', '가', '가'.repeat(25)]) {
-    const res = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { name, email: 'invalid@example.test', password } });
+    const res = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { ageConfirmed: true, name, email: 'invalid@example.test', password } });
     assert.equal(res.status, 422); assert.equal(typeof res.body.error.message, 'string');
   }
-  const tooShort = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '확인용', email: 'invalid@example.test', password: '짧음' } });
+  const tooShort = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { ageConfirmed: true, name: '확인용', email: 'invalid@example.test', password: '짧음' } });
   assert.ok(tooShort.status >= 400); noSecrets(tooShort.body);
   const updateBypass = await request(app, '/api/auth/update-user', { method: 'POST', body: { name: '가' } });
   assert.equal(updateBypass.status, 404);
 });
 
 test('두 계정 가입 직후 세션·쿠키·암호 비노출', async () => {
-  const a = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '  달빛산책  ', email: 'alice@example.test', password } });
+  const a = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { ageConfirmed: true, name: '  달빛산책  ', email: 'alice@example.test', password } });
   assert.equal(a.status, 200); noSecrets(a.body); alice = cookieFrom(a); assert.ok(alice);
   assert.equal(a.body.user.name, '달빛산책');
   for (const cookie of a.headers['set-cookie']) { assert.match(cookie, /HttpOnly/i); assert.match(cookie, /SameSite=Lax/i); }
-  const b = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '별빛독서', email: 'bob@example.test', password } });
+  const b = await request(app, '/api/auth/sign-up/email', { method: 'POST', body: { ageConfirmed: true, name: '별빛독서', email: 'bob@example.test', password } });
   assert.equal(b.status, 200); noSecrets(b.body); bob = cookieFrom(b);
   const session = await request(app, '/api/community/session', { cookie: alice });
   assert.equal(session.body.user.name, '달빛산책'); publicResponse(session.body);
@@ -221,7 +221,7 @@ test('인증과 일반 API 속도 제한·운영 비밀키 필수·Secure 쿠키
   try {
     await assert.rejects(startServer({ port: 0, dataDir: prodDir, nodeEnv: 'production', baseURL: 'https://community.example.test' }), /BETTER_AUTH_SECRET/);
     production = await startServer({ port: 0, dataDir: prodDir, nodeEnv: 'production', baseURL: 'https://community.example.test', secret: randomBytes(48).toString('base64url') });
-    const signup = await request(production, '/api/auth/sign-up/email', { method: 'POST', body: { name: '운영확인', email: 'secure@example.test', password } });
+    const signup = await request(production, '/api/auth/sign-up/email', { method: 'POST', body: { ageConfirmed: true, name: '운영확인', email: 'secure@example.test', password } });
     assert.equal(signup.status, 200);
     assert.ok(signup.headers['set-cookie'].every(cookie => /; Secure/i.test(cookie)));
     noSecrets(signup.body);
