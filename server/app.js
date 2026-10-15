@@ -1,4 +1,6 @@
 import { createServer } from 'node:http';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { APIError } from 'better-auth/api';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdir, chmod, readFile, realpath, stat } from 'node:fs/promises';
 import { resolve, relative, extname } from 'node:path';
@@ -7,20 +9,24 @@ import { betterAuth } from 'better-auth';
 import { toNodeHandler } from 'better-auth/node';
 import { getMigrations } from 'better-auth/db/migration';
 import { createCommunity } from './community.js';
+import { createMailer } from './mailer.js';
+import { createAccountService } from './account.js';
+import { createGuardianService, guardianIsActive } from './guardian.js';
+import { cleanupGuardianEvidence } from './guardian-review.js';
 import { CLIENT_IP_HEADER, FLY_COMMUNITY_APP, createLimiter, errorResponse, fail, json, loadSecret, readJson, safePath, text, trustedClientIP } from './security.js';
 
 const DEFAULT_ROOT = fileURLToPath(new URL('../', import.meta.url));
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff' };
-const AUTH_PATHS = new Set(['/api/auth/sign-up/email', '/api/auth/sign-in/email', '/api/auth/sign-out', '/api/auth/change-password']);
+const AUTH_PATHS = new Set(['/api/auth/sign-up/email', '/api/auth/sign-in/email', '/api/auth/sign-out', '/api/auth/change-password', '/api/auth/send-verification-email', '/api/auth/request-password-reset', '/api/auth/reset-password']);
 
 function staticAllowed(path) {
-  return path === '/index.html' || (/^\/(games|community|assets)\//.test(path) && Boolean(TYPES[extname(path)]));
+  return path === '/index.html' || (/^\/(games|community|account|assets)\//.test(path) && Boolean(TYPES[extname(path)]));
 }
 
 async function serveStatic(request, path, root) {
   if (!['GET', 'HEAD'].includes(request.method)) fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
   if (path === '/') path = '/index.html';
-  if (path.endsWith('/') && /^\/(games|community)\//.test(path)) path += 'index.html';
+  if (path.endsWith('/') && /^\/(games|community|account)\//.test(path)) path += 'index.html';
   if (!staticAllowed(path)) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
   let target;
   try {
@@ -29,7 +35,7 @@ async function serveStatic(request, path, root) {
     if (rel.startsWith('../') || rel.startsWith('/') || !staticAllowed(safePath(`/${rel}`))) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
     if (!(await stat(target)).isFile()) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
     const content = request.method === 'HEAD' ? null : await readFile(target);
-    return new Response(content, { headers: { 'content-type': TYPES[extname(target)], 'cache-control': extname(target) === '.html' ? 'no-cache' : 'public, max-age=3600' } });
+    return new Response(content, { headers: { 'content-type': TYPES[extname(target)], 'cache-control': path.startsWith('/account/') ? 'no-store' : extname(target) === '.html' ? 'no-cache' : 'public, max-age=3600' } });
   } catch (error) {
     if (['ENOENT', 'ENOTDIR', 'EACCES', 'ELOOP'].includes(error.code)) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
     throw error;
@@ -37,8 +43,9 @@ async function serveStatic(request, path, root) {
 }
 
 function hardened(response) {
+  if ((response.headers.get('content-type') || '').includes('application/json')) response.headers.set('cache-control', 'no-store');
   response.headers.set('x-content-type-options', 'nosniff');
-  response.headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+  response.headers.set('referrer-policy', 'no-referrer');
   response.headers.set('x-frame-options', 'SAMEORIGIN');
   response.headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
   response.headers.set('cross-origin-resource-policy', 'same-origin');
@@ -63,6 +70,9 @@ export async function startServer(options = {}) {
   }
   await mkdir(dataDir, { recursive: true, mode: 0o700 });
   await chmod(dataDir, 0o700);
+  const mailer = createMailer(options);
+  const signupContext = new AsyncLocalStorage();
+  let accounts, guardian, cleanupTimer;
   const secret = await loadSecret(dataDir, production, options.secret ?? process.env.BETTER_AUTH_SECRET);
   let db, handler;
   const server = createServer((req, res) => {
@@ -97,7 +107,10 @@ export async function startServer(options = {}) {
     const auth = betterAuth({
       appName: '그레이스킨게임즈', baseURL: origin, basePath: '/api/auth', secret, database: db,
       trustedOrigins: [origin], telemetry: { enabled: false }, logger: { disabled: true },
-      emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128, autoSignIn: true, requireEmailVerification: false },
+      emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128, autoSignIn: false, requireEmailVerification: false, revokeSessionsOnPasswordReset: true, resetPasswordTokenExpiresIn: 3600, sendResetPassword: data => accounts.sendReset(data) },
+      emailVerification: { sendOnSignUp: true, sendOnSignIn: false, autoSignInAfterVerification: false, sendVerificationEmail: ({ user }) => accounts.sendVerification(user) },
+      verification: { storeIdentifier: 'hashed' },
+      user: { additionalFields: { ageBand: { type: 'string', required: false, input: false } } },
       session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24, cookieCache: { enabled: false } },
       rateLimit: { enabled: true, window: 60, max: 30, customRules: {
         '/sign-up/email': { window: 60, max: 12 },
@@ -109,12 +122,26 @@ export async function startServer(options = {}) {
         ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER], ipv6Subnet: 128 },
       },
       databaseHooks: { user: {
-        create: { before: async data => ({ data: { ...data, name: text(data.name, 2, 24, '닉네임') } }) },
+        create: { before: async data => {
+          const context = signupContext.getStore();
+          if (!context || !['14plus','under14'].includes(context.ageBand)) throw new APIError('FORBIDDEN', { code: 'AGE_CONFIRMATION_REQUIRED', message: '가입 절차를 다시 진행해 주세요.' });
+          return { data: { ...data, ...(context.claim ? { id: context.claim.userId } : {}), name: text(data.name, 2, 24, '닉네임'), ageBand: context.ageBand } };
+        } },
         update: { before: async data => ({ data: { ...data, ...(Object.hasOwn(data, 'name') ? { name: text(data.name, 2, 24, '닉네임') } : {}) } }) },
-      } },
+      }, session: { create: { before: async data => {
+        const user = db.prepare('SELECT emailVerified,ageBand FROM user WHERE id=?').get(data.userId);
+        if (user?.ageBand && !user.emailVerified) throw new APIError('FORBIDDEN', { code: 'EMAIL_NOT_VERIFIED', message: '이메일 확인 후 로그인해 주세요.' });
+        if (user?.ageBand === 'under14' && !guardianIsActive(db, data.userId)) throw new APIError('FORBIDDEN', { code: 'GUARDIAN_APPROVAL_REQUIRED', message: '보호자 동의 상태를 확인해 주세요.' });
+        return { data };
+      } } } },
     });
     const migrations = await getMigrations(auth.options);
     await migrations.runMigrations();
+    guardian = createGuardianService(db, { origin, production, mailer, replyTo: options.guardianReplyTo ?? process.env.GUARDIAN_REPLY_TO, now: options.now });
+    await cleanupGuardianEvidence(db, dataDir);
+    cleanupTimer = setInterval(() => { void cleanupGuardianEvidence(db, dataDir).catch(() => {}); }, 60 * 60 * 1000);
+    cleanupTimer.unref();
+    accounts = createAccountService(db, auth, { origin, mailer, guardian, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
     const community = createCommunity(db, auth);
     const limit = createLimiter(options.rateLimit);
     handler = toNodeHandler(async request => {
@@ -137,20 +164,34 @@ export async function startServer(options = {}) {
         if (path.startsWith('/api/auth/')) {
           if (!AUTH_PATHS.has(path) || request.method !== 'POST') fail(404, 'NOT_FOUND', '인증 요청을 찾을 수 없습니다.');
           const body = await readJson(request);
+          let context = {};
           if (path === '/api/auth/sign-up/email') {
-            if (body.ageConfirmed !== true) fail(422, 'AGE_CONFIRMATION_REQUIRED', '만 14세 이상인 경우에만 가입할 수 있습니다. 확인란을 선택해 주세요.');
+            accounts.requireEmail();
+            if (Object.hasOwn(body, 'ageConfirmed') || !['14plus', 'under14'].includes(body.ageBand)) fail(422, 'AGE_CONFIRMATION_REQUIRED', '가입 연령 구분을 선택해 주세요.');
+            if (Object.keys(body).some(key => !['name', 'email', 'password', 'ageBand', 'callbackURL'].includes(key))) fail(422, 'INVALID_INPUT', '가입 항목을 확인해 주세요.');
             body.name = text(body.name, 2, 24, '닉네임');
-            // 자기확인 응답은 가입 조건으로만 사용하며 나이·생년월일로 저장하지 않습니다.
-            delete body.ageConfirmed;
+            if (body.ageBand === '14plus' && guardian.hasCurrent(request)) fail(403, 'GUARDIAN_APPROVAL_REQUIRED', '보호자 동의 신청을 진행 중입니다. 어린이 가입 절차를 이어서 진행해 주세요.');
+            context = { ageBand: body.ageBand, claim: body.ageBand === 'under14' ? guardian.claim(request) : null };
+            delete body.ageBand;
           }
-          // 본문 크기 검사를 마친 Request를 공식 Fetch 핸들러에 전달합니다.
-          const response = await auth.handler(new Request(`${origin}${path}`, { method: 'POST', headers: request.headers, body: JSON.stringify(body) }));
+          if (['/api/auth/send-verification-email', '/api/auth/request-password-reset'].includes(path)) accounts.requireEmail();
+          // 콜백은 서버가 고정합니다. 다른 주소·추가 필드는 인증 라이브러리에 넘기지 않습니다.
+          if (Object.hasOwn(body, 'callbackURL')) body.callbackURL = `${origin}/account/`;
+          if (path === '/api/auth/request-password-reset') body.redirectTo = `${origin}/account/?view=reset`;
+          if (path === '/api/auth/sign-up/email') body.callbackURL = `${origin}/account/?view=signin`;
+          let response;
+          try {
+            response = await signupContext.run(context, () => auth.handler(new Request(`${origin}${path}`, { method: 'POST', headers: request.headers, body: JSON.stringify(body) })));
+          } finally { guardian.release(context?.claim); }
+          if (context.deliveryFailed) fail(503, 'EMAIL_DELIVERY_FAILED', '메일을 보내지 못했습니다. 가입을 신청했다면 이메일 확인 메일을 다시 요청해 주세요.');
+          if (response.ok && ['/api/auth/sign-up/email', '/api/auth/send-verification-email', '/api/auth/request-password-reset', '/api/auth/reset-password'].includes(path)) return hardened(json({ status: true }));
           if (response.ok) return hardened(response);
           let code = 'AUTH_FAILED';
           try { const data = await response.json(); if (typeof data.code === 'string') code = data.code; } catch {}
-          const messages = { INVALID_EMAIL_OR_PASSWORD: '이메일 또는 비밀번호를 확인해 주세요.', USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: '사용할 수 없는 이메일입니다.', PASSWORD_TOO_SHORT: '비밀번호는 8자 이상 입력해 주세요.', PASSWORD_TOO_LONG: '비밀번호는 128자 이하로 입력해 주세요.', INVALID_PASSWORD: '현재 비밀번호를 확인해 주세요.' };
+          const messages = { INVALID_EMAIL_OR_PASSWORD: '이메일 또는 비밀번호를 확인해 주세요.', USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: '사용할 수 없는 이메일입니다.', PASSWORD_TOO_SHORT: '비밀번호는 8자 이상 입력해 주세요.', PASSWORD_TOO_LONG: '비밀번호는 128자 이하로 입력해 주세요.', INVALID_PASSWORD: '현재 비밀번호를 확인해 주세요.', EMAIL_NOT_VERIFIED: '이메일 확인을 마친 뒤 로그인해 주세요.', GUARDIAN_APPROVAL_REQUIRED: '보호자 동의 상태를 확인해 주세요.', INVALID_TOKEN: '링크가 만료되었거나 이미 사용되었습니다.', EMAIL_DELIVERY_FAILED: '메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.' };
           return hardened(json({ error: { code, message: messages[code] || '인증 요청을 처리하지 못했습니다. 입력 내용을 확인해 주세요.' } }, response.status, response.status === 429 ? { 'retry-after': '60' } : {}));
         }
+        if (path.startsWith('/api/account/')) return hardened(await accounts.handle(request, url));
         if (path.startsWith('/api/community/')) return hardened(await community(request, url));
         fail(404, 'NOT_FOUND', '요청한 내용을 찾을 수 없습니다.');
       } catch (error) { return hardened(errorResponse(error)); }
@@ -158,11 +199,13 @@ export async function startServer(options = {}) {
     return {
       server, origin, port: address.port,
       async close() {
+        clearInterval(cleanupTimer);
         await new Promise((resolve, reject) => { server.close(error => error ? reject(error) : resolve()); server.closeIdleConnections(); });
         db.close();
       },
     };
   } catch (error) {
+    clearInterval(cleanupTimer);
     await new Promise(resolve => server.close(() => resolve()));
     db?.close();
     throw error;

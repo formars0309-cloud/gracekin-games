@@ -84,7 +84,7 @@ export async function readJson(request, limit = 65536) {
 export function createLimiter({ windowMs = 60000, authMax = 12, writeMax = 60, readMax = 240, maxKeys = 10000 } = {}) {
   const buckets = new Map();
   return (ip, path, method) => {
-    const group = path.startsWith('/api/auth/') ? 'auth' : (method === 'GET' ? 'read' : 'write');
+    const group = (path.startsWith('/api/auth/') || path.startsWith('/api/account/') && method !== 'GET') ? 'auth' : (method === 'GET' ? 'read' : 'write');
     const max = group === 'auth' ? authMax : group === 'read' ? readMax : writeMax;
     const now = Date.now();
     if (buckets.size >= maxKeys) {

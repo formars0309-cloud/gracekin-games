@@ -54,3 +54,20 @@ assets/gyeongguk/**
 !assets/gyeongguk/card-lubu.webp
 !assets/gyeongguk/card-diaochan.webp
 !assets/gyeongguk/card-zhugeliang.webp
+
+# 공통 계정 화면·동의 관리에 필요한 파일만 포함
+!server/account.js
+!server/guardian.js
+!server/guardian-review.js
+!server/mailer.js
+!account/
+account/**
+!account/index.html
+!assets/account/
+assets/account/**
+!assets/account/account.js
+!assets/account/account.css
+!scripts/
+scripts/**
+!scripts/guardian-review.mjs
+!assets/account/entry.js
