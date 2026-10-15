@@ -262,10 +262,10 @@ def verify(root: Path) -> Report:
     root = root.resolve()
     report = Report()
     check = report.check
-    required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'account/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
-    paths = [root / 'index.html'] + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html'))
+    paths = [root / 'index.html'] + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
     pages = {path: Page(path) for path in paths if path.is_file()}
     report.pages = len(pages)
 
@@ -288,7 +288,13 @@ def verify(root: Path) -> Report:
         rel = path.relative_to(root)
         check(not page.errors, f'{rel}: HTML 구조 오류 ({"; ".join(page.errors)})')
         scripts = [attrs for tag, attrs in page.tags if tag == 'script' and attrs.get('src') == 'https://cloud.umami.is/script.js']
-        check(len(scripts) == 1 and scripts[0].get('data-website-id') == UMAMI_ID and scripts[0].get('data-domains') == 'gracekingames.com' and scripts[0].get('data-do-not-track') == 'true', f'{rel}: 통계 설정 불일치')
+        if path.is_relative_to(root / 'account'):
+            check(not scripts, f'{rel}: 계정 화면에 외부 통계 스크립트가 있음')
+            external_scripts = [attrs for tag, attrs in page.tags if tag == 'script' and urlsplit(attrs.get('src', '')).netloc]
+            check(not external_scripts, f'{rel}: 계정 화면에 외부 스크립트가 있음')
+            check(any(tag == 'meta' and attrs.get('name') == 'referrer' and attrs.get('content') == 'no-referrer' for tag, attrs in page.tags), f'{rel}: 인증 링크의 참조 주소 전송 차단 없음')
+        else:
+            check(len(scripts) == 1 and scripts[0].get('data-website-id') == UMAMI_ID and scripts[0].get('data-domains') == 'gracekingames.com' and scripts[0].get('data-do-not-track') == 'true', f'{rel}: 통계 설정 불일치')
         for tag, attrs in page.tags:
             check(tag not in {'iframe', 'embed', 'object'}, f'{rel}: 게임 사전 실행 가능 요소 {tag}')
             for attr in ('src', 'href', 'poster', 'action', 'data-src'):
@@ -342,6 +348,16 @@ def verify(root: Path) -> Report:
 
     community_script = root / 'assets/community/community.js'
     check(community_script.is_file(), '커뮤니티 동작 파일 없음')
+    account_script = root / 'assets/account/account.js'
+    account_entry = root / 'assets/account/entry.js'
+    check(account_script.is_file() and account_entry.is_file(), '공통 계정 동작 파일 없음')
+    if account_entry.is_file():
+        entry = account_entry.read_text()
+        tokens = javascript_tokens(entry)
+        origins = [value for kind, value in tokens if kind in {'string', 'template'} and value.startswith(('http:', 'https:', '//'))]
+        check(origins == ['https://gracekin-games-community.fly.dev'], '계정 진입: 고정 계정 출처 이외의 이동 목적지 발견')
+        check('history.replaceState' in entry and entry.index('history.replaceState') < entry.index('location.replace'), '계정 진입: 이동 전에 인증값을 주소에서 제거해야 함')
+        check('destination.hash' in entry and 'destination.search = clean.toString()' in entry, '계정 진입: 인증값은 이동 URL의 해시에만 전달해야 함')
     # 공지 데이터의 보관 위치·개수·특정 JS 구현 문자열에 회원 기능을 결박하지 않는다.
     # 게임별 글·댓글 접근 제어는 실제 API 독립 보안 실험에서 별도로 확인한다.
     for path in production_files(root, pages):

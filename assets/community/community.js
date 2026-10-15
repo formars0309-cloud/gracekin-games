@@ -15,7 +15,7 @@
         { id: 'welcome', title: '슬라임 라인에 오신 것을 환영해요', excerpt: '선을 그려, 작은 슬라임의 다음 걸음을 이어 주세요.', sections: [
           ['작은 선에서 시작되는 모험', '슬라임 라인은 선을 그려 슬라임의 길을 만드는 퍼즐 게임이에요. 사계절 모험, 우리 마을과 봄 산책 섬을 만나 보세요.'],
           ['모험을 시작하려면', '슬라임 라인 홈페이지의 START를 누르면 게임으로 이동해요. 게임을 시작하기 전에 홈페이지에서 소개와 이용 안내를 살펴볼 수 있어요.'],
-          ['이곳에서 만나요', '커뮤니티에서는 공식 소식과 이용 안내를 읽을 수 있어요. 로그인하면 자유게시판과 공략·팁, 갤러리에서 글과 댓글을 남길 수 있어요. 버그 제보와 문의는 제보·의견 보내기를 이용해 주세요.']
+          ['이곳에서 만나요', '커뮤니티에서는 공식 소식과 이용 안내를 읽을 수 있어요. 글·댓글 작성이 가능한 계정으로 로그인하면 자유게시판과 공략·팁, 갤러리에서 이야기를 나눌 수 있어요. 버그 제보와 문의는 제보·의견 보내기를 이용해 주세요.']
         ] },
         { id: 'play-guide', title: '슬라임 라인, 처음 시작하는 분께', excerpt: '게임을 여는 방법과 문제가 생겼을 때 확인할 곳을 모았어요.', sections: [
           ['게임 홈페이지에서 START', '게임 홈페이지의 START를 누르면 슬라임 라인이 열려요. 설치 없이 브라우저에서 즐기는 게임이며, 현재 테스트 중이에요.'],
@@ -38,7 +38,7 @@
         { id: 'welcome', title: '경국지계에 오신 것을 환영합니다', excerpt: '덮어 둔 카드 한 장이 판을 뒤집는 삼국 카드 대전.', sections: [
           ['미인과 계략의 삼국 카드 대전', '경국지계는 실시간 카드 대전 게임입니다. 게임 홈페이지에서 소개를 살펴보고 START를 눌러 대전에 들어가세요.'],
           ['현재는 테스트 기간입니다', '테스트 기간에는 전설을 포함한 모든 카드를 사용할 수 있습니다. 플레이 기록은 정식 시즌 전에 초기화될 수 있습니다.'],
-          ['공식 소식과 이용 안내', '이곳에서는 공식 소식과 이용 안내를 읽을 수 있습니다. 로그인하면 자유게시판, 덱 연구, 전략·공략에서 글과 댓글을 남길 수 있습니다. 버그 제보와 문의는 제보·의견 보내기를 이용해 주세요.']
+          ['공식 소식과 이용 안내', '이곳에서는 공식 소식과 이용 안내를 읽을 수 있습니다. 글·댓글 작성이 가능한 계정으로 로그인하면 자유게시판, 덱 연구, 전략·공략에서 이야기를 나눌 수 있습니다. 버그 제보와 문의는 제보·의견 보내기를 이용해 주세요.']
         ] },
         { id: 'play-guide', title: '경국지계, 대전에 들어가기 전에', excerpt: '게임 시작 방법과 테스트 기간의 이용 안내입니다.', sections: [
           ['게임 홈페이지에서 START', '경국지계 홈페이지의 START를 누르면 게임으로 이동합니다. 브라우저에서 설치 없이 시작할 수 있습니다.'],
@@ -69,7 +69,7 @@
   const query = (params.get('q') || '').slice(0, 80).trim();
   const pageNumber = Math.min(10000, Math.max(1, Number.parseInt(params.get('page'), 10) || 1));
   const requestedPost = params.get('post');
-  const state = { user: null, draftOwnerId: null, authMode: 'signin', authBusy: false, postBusy: false, commentBusy: false, confirmBusy: false, currentPost: null, editorKey: null, editorOriginal: { title: '', body: '' }, deleteAction: null, loadVersion: 0, commentDrafts: new Map() };
+  const state = { user: null, draftOwnerId: null, postBusy: false, commentBusy: false, confirmBusy: false, currentPost: null, editorKey: null, editorOriginal: { title: '', body: '' }, deleteAction: null, loadVersion: 0, commentDrafts: new Map() };
   const url = (board, post, search = query, page = 1) => { const next = new URLSearchParams({ game: gameId, board }); if (post) next.set('post', post); if (search) next.set('q', search); if (page > 1) next.set('page', page); return `/community/?${next}`; };
   const message = (id, text) => { byId(id).textContent = text || ''; byId(id).hidden = !text; };
   const errorText = error => error && error.message ? error.message : '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.';
@@ -109,16 +109,19 @@
   function busy(form, value) { for (const control of form.querySelectorAll('button,input,textarea')) control.disabled = value; form.setAttribute('aria-busy', String(value)); }
   function openDialog(id) { const dialog = byId(id); if (!dialog.open) dialog.showModal(); }
   function renderSession() {
-    byId('session-label').textContent = state.user ? `${state.user.name}님, 반가워요.` : '누구나 읽고, 로그인하면 함께 쓸 수 있어요.';
+    byId('session-label').textContent = state.user ? `${state.user.name}님, 반가워요.` : '누구나 게임 이야기와 공식 안내를 읽을 수 있어요.';
     byId('open-signin').hidden = !!state.user;
     byId('open-signup').hidden = !!state.user;
     byId('signout-button').hidden = !state.user;
-    byId('comment-form').hidden = !state.user;
+    byId('comment-form').hidden = !state.user?.canWriteCommunity;
+    byId('comment-restricted').hidden = !state.user || !!state.user.canWriteCommunity;
+    byId('account-permission').hidden = !state.user || !!state.user.canWriteCommunity;
+    byId('write-post').hidden = boardId === 'notice' || !!(state.user && !state.user.canWriteCommunity);
     byId('comment-login').hidden = !!state.user;
   }
   function clearDrafts() {
     state.editorKey = null; state.editorOriginal = { title: '', body: '' }; state.commentDrafts.clear();
-    byId('post-title').value = ''; byId('post-body').value = ''; byId('comment-body').value = ''; byId('auth-age-confirmed').checked = false;
+    byId('post-title').value = ''; byId('post-body').value = ''; byId('comment-body').value = '';
     message('editor-error', ''); message('comment-error', '');
     if (byId('editor-dialog').open) byId('editor-dialog').close();
     if (byId('confirm-dialog').open) byId('confirm-dialog').close();
@@ -138,54 +141,14 @@
     catch (_) { state.user = null; renderSession(); byId('session-label').textContent = '로그인 상태를 확인할 수 없어요.'; }
   }
   function showAuth(mode = 'signin') {
-    state.authMode = mode;
-    const signup = mode === 'signup';
-    byId('name-field').hidden = !signup;
-    byId('auth-name').required = signup;
-    byId('signup-note').hidden = !signup;
-    byId('age-field').hidden = !signup;
-    byId('auth-age-confirmed').required = signup;
-    if (!signup) byId('auth-age-confirmed').checked = false;
-    byId('auth-title').textContent = signup ? '커뮤니티 회원가입' : '커뮤니티 로그인';
-    byId('auth-submit').textContent = signup ? '회원가입' : '로그인';
-    byId('auth-switch').textContent = signup ? '이미 계정이 있나요? 로그인' : '처음 오셨나요? 회원가입';
-    byId('auth-password').autocomplete = signup ? 'new-password' : 'current-password';
-    byId('auth-close').setAttribute('aria-label', signup ? '회원가입 창 닫기' : '로그인 창 닫기');
-    message('auth-error', '');
-    openDialog('auth-dialog');
-    (signup ? byId('auth-name') : byId('auth-email')).focus();
+    location.href = `/account/?${new URLSearchParams({ view: mode, game: gameId, board: boardId })}`;
   }
   byId('open-signin').addEventListener('click', () => showAuth());
   byId('open-signup').addEventListener('click', () => showAuth('signup'));
   byId('comment-open-signin').addEventListener('click', () => showAuth());
-  byId('auth-switch').addEventListener('click', () => showAuth(state.authMode === 'signin' ? 'signup' : 'signin'));
-  byId('auth-close').addEventListener('click', () => byId('auth-dialog').close());
-  byId('auth-dialog').addEventListener('close', () => { byId('auth-password').value = ''; byId('auth-age-confirmed').checked = false; });
-  byId('auth-dialog').addEventListener('cancel', event => { if (state.authBusy) event.preventDefault(); });
-  byId('auth-age-confirmed').addEventListener('invalid', event => { event.preventDefault(); message('auth-error', '커뮤니티 계정은 만 14세 이상만 만들 수 있어요. 확인 항목을 체크해 주세요.'); byId('auth-age-confirmed').focus(); });
-  byId('auth-form').addEventListener('submit', async event => {
-    event.preventDefault();
-    if (state.authBusy) return;
-    const signup = state.authMode === 'signup';
-    const name = byId('auth-name').value.trim();
-    if (signup && (name.length < 2 || name.length > 24)) { message('auth-error', '닉네임은 2~24자로 입력해 주세요.'); return; }
-    if (signup && !byId('auth-age-confirmed').checked) { message('auth-error', '커뮤니티 계정은 만 14세 이상만 만들 수 있어요. 확인 항목을 체크해 주세요.'); byId('auth-age-confirmed').focus(); return; }
-    if (!byId('auth-form').reportValidity()) return;
-    state.authBusy = true; busy(byId('auth-form'), true); message('auth-error', '');
-    try {
-      const data = { email: byId('auth-email').value.trim(), password: byId('auth-password').value };
-      if (signup) { data.name = name; data.ageConfirmed = true; }
-      await send(signup ? '/auth/sign-up/email' : '/auth/sign-in/email', 'POST', data);
-      await loadSession();
-      if (!state.user) throw new Error('로그인 상태를 확인하지 못했어요. 다시 로그인해 주세요.');
-      byId('auth-dialog').close();
-      await loadCurrent();
-    } catch (error) { message('auth-error', errorText(error)); }
-    finally { state.authBusy = false; busy(byId('auth-form'), false); }
-  });
   byId('signout-button').addEventListener('click', async () => {
     const button = byId('signout-button'); if (button.disabled) return; button.disabled = true;
-    try { await send('/auth/sign-out', 'POST'); state.user = null; state.draftOwnerId = null; clearDrafts(); byId('auth-email').value = ''; byId('auth-name').value = ''; byId('auth-password').value = ''; renderSession(); await loadCurrent(); }
+    try { await send('/auth/sign-out', 'POST'); state.user = null; state.draftOwnerId = null; clearDrafts(); renderSession(); await loadCurrent(); }
     catch (error) { showConnection(); byId('connection-message').textContent = errorText(error); }
     finally { button.disabled = false; }
   });
@@ -278,7 +241,7 @@
         for (const item of data.posts) { validatePost(item); byId('post-list').append(row(item)); }
         byId('result-count').textContent = query ? `검색 결과 ${data.total}개` : `글 ${data.total}개`;
         pagination(data);
-        if (!data.posts.length) empty(query ? '검색 결과가 없어요' : '아직 올라온 이야기가 없어요', query ? '다른 검색어를 입력하거나 게시판 목록을 확인해 보세요.' : '이 게임의 첫 이야기를 남겨 보세요. 로그인하면 글과 댓글을 쓸 수 있어요.', url(boardId, null, ''), '게시판 새로 보기 →');
+        if (!data.posts.length) empty(query ? '검색 결과가 없어요' : '아직 올라온 이야기가 없어요', query ? '다른 검색어를 입력하거나 게시판 목록을 확인해 보세요.' : '이곳에 게임 이야기가 모일 거예요. 공식 소식은 공지사항에서 읽을 수 있어요.', url(boardId, null, ''), '게시판 새로 보기 →');
       }
     } catch (error) {
       if (version !== state.loadVersion) return;
@@ -293,7 +256,7 @@
     byId('article-title').textContent = post.title; byId('article-badge').textContent = boardTitle;
     byId('article-author').textContent = `${post.author.name} · ${formatDate(post.createdAt)}${post.updatedAt !== post.createdAt ? ' · 수정됨' : ''}`;
     byId('article-body').append(make('p', post.body, 'member-body'));
-    byId('post-owner-actions').hidden = !(state.user && post.canEdit);
+    byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && post.canEdit);
     byId('comments-section').hidden = false;
     byId('comments-title').textContent = `댓글 ${comments.length}`;
     renderComments(comments); renderSession();
@@ -305,7 +268,7 @@
       const card = make('article', null, 'comment-card');
       const meta = make('p', null, 'comment-meta'); meta.append(make('strong', comment.author.name), make('span', `${formatDate(comment.createdAt)}${comment.updatedAt !== comment.createdAt ? ' · 수정됨' : ''}`)); card.append(meta);
       const draft = state.commentDrafts.get(comment.id);
-      if (draft && draft.editing && state.user && comment.canEdit) {
+      if (draft && draft.editing && state.user?.canWriteCommunity && comment.canEdit) {
         const form = make('form', null, 'comment-edit-form');
         const label = make('label', '댓글 수정'); label.htmlFor = `comment-edit-${index}`;
         const textarea = make('textarea'); textarea.id = label.htmlFor; textarea.value = draft.body; textarea.maxLength = 1000; textarea.required = true; textarea.rows = 4; textarea.addEventListener('input', () => { draft.body = textarea.value; });
@@ -324,7 +287,7 @@
         });
       } else {
         card.append(make('p', comment.body, 'comment-body'));
-        if (state.user && comment.canEdit) {
+        if (state.user?.canWriteCommunity && comment.canEdit) {
           const controls = make('div', null, 'owner-actions');
           const edit = make('button', '수정', 'quiet-button'); edit.type = 'button'; edit.addEventListener('click', () => { state.commentDrafts.set(comment.id, { body: draft ? draft.body : comment.body, editing: true, original: comment.body }); renderComments(state.comments); const active = byId(`comment-edit-${index}`); if (active) active.focus(); });
           const remove = make('button', '삭제', 'quiet-button danger-button'); remove.type = 'button'; remove.addEventListener('click', () => confirmDelete('댓글을 삭제할까요?', async () => { await send(`/community/comments/${encodeURIComponent(comment.id)}`, 'DELETE'); state.commentDrafts.delete(comment.id); await loadCurrent(); }));
@@ -336,6 +299,7 @@
   }
   function openEditor(post = null) {
     if (!state.user) { showAuth(); return; }
+    if (!state.user.canWriteCommunity) return;
     const key = post ? `post:${post.id}` : `new:${boardId}`;
     if (state.editorKey !== key) {
       state.editorKey = key;
@@ -356,6 +320,7 @@
     const title = byId('post-title').value.trim(); const body = byId('post-body').value.trim();
     if (title.length < 2 || title.length > 100 || !body || body.length > 10000) { message('editor-error', '제목은 2~100자, 내용은 1~10,000자로 입력해 주세요.'); return; }
     if (!state.user) { message('editor-error', '로그인이 필요해요. 입력한 내용은 남아 있어요.'); showAuth(); return; }
+    if (!state.user.canWriteCommunity) { message('editor-error', '이 계정은 커뮤니티를 읽기만 이용할 수 있어요.'); return; }
     state.postBusy = true; busy(byId('post-form'), true); message('editor-error', '');
     try {
       const editing = state.editorKey.startsWith('post:');
@@ -390,6 +355,7 @@
     const body = byId('comment-body').value.trim();
     if (!body || body.length > 1000) { message('comment-error', '댓글은 1~1,000자로 입력해 주세요.'); return; }
     if (!state.user) { showAuth(); return; }
+    if (!state.user.canWriteCommunity) return;
     state.commentBusy = true; busy(byId('comment-form'), true); message('comment-error', '');
     try { await send(`/community/posts/${encodeURIComponent(state.currentPost.id)}/comments`, 'POST', { body }); byId('comment-body').value = ''; await loadCurrent(); }
     catch (error) { message('comment-error', errorText(error)); }
@@ -400,6 +366,6 @@
     const dirtyComment = byId('comment-body').value.trim() || [...state.commentDrafts.values()].some(item => item.body !== item.original);
     if (dirtyPost || dirtyComment) { event.preventDefault(); event.returnValue = ''; }
   });
-  async function start() { await Promise.all([loadSession(), loadCurrent()]); if (state.currentPost) { byId('post-owner-actions').hidden = !(state.user && state.currentPost.canEdit); renderComments(state.comments); } }
+  async function start() { await Promise.all([loadSession(), loadCurrent()]); if (state.currentPost) { byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && state.currentPost.canEdit); renderComments(state.comments); } }
   start();
 })();
