@@ -1,6 +1,9 @@
 /* 게임별 공식 안내와 게시판 주소를 한곳에서 관리한다. */
 (() => {
   'use strict';
+  if (window.gracekinCommunityRedirecting || location.hostname === 'gracekingames.com' || location.hostname === 'www.gracekingames.com') return;
+  const studioPath = path => location.hostname === 'gracekin-games-community.fly.dev' ? `https://gracekingames.com${path}` : path;
+  for (const link of document.querySelectorAll('.studio-home-link')) link.href = studioPath('/');
   const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform';
   const GAMES = {
     slimeline: {
@@ -54,11 +57,12 @@
   const gameId = params.get('game');
   const game = Object.prototype.hasOwnProperty.call(GAMES, gameId) ? GAMES[gameId] : null;
   const byId = id => document.getElementById(id);
+  byId('home-link').href = studioPath('/');
   const make = (tag, text, className) => { const element = document.createElement(tag); if (text !== undefined && text !== null) element.textContent = text; if (className) element.className = className; return element; };
   if (!game) {
     byId('game-picker').hidden = false;
     byId('community-content').hidden = true;
-    byId('privacy-link').hidden = true;
+    byId('game-privacy-link').hidden = true;
     return;
   }
   const boardId = Object.prototype.hasOwnProperty.call(game.boards, params.get('board')) ? params.get('board') : 'notice';
@@ -114,7 +118,7 @@
   }
   function clearDrafts() {
     state.editorKey = null; state.editorOriginal = { title: '', body: '' }; state.commentDrafts.clear();
-    byId('post-title').value = ''; byId('post-body').value = ''; byId('comment-body').value = '';
+    byId('post-title').value = ''; byId('post-body').value = ''; byId('comment-body').value = ''; byId('auth-age-confirmed').checked = false;
     message('editor-error', ''); message('comment-error', '');
     if (byId('editor-dialog').open) byId('editor-dialog').close();
     if (byId('confirm-dialog').open) byId('confirm-dialog').close();
@@ -139,6 +143,9 @@
     byId('name-field').hidden = !signup;
     byId('auth-name').required = signup;
     byId('signup-note').hidden = !signup;
+    byId('age-field').hidden = !signup;
+    byId('auth-age-confirmed').required = signup;
+    if (!signup) byId('auth-age-confirmed').checked = false;
     byId('auth-title').textContent = signup ? '커뮤니티 회원가입' : '커뮤니티 로그인';
     byId('auth-submit').textContent = signup ? '회원가입' : '로그인';
     byId('auth-switch').textContent = signup ? '이미 계정이 있나요? 로그인' : '처음 오셨나요? 회원가입';
@@ -153,19 +160,21 @@
   byId('comment-open-signin').addEventListener('click', () => showAuth());
   byId('auth-switch').addEventListener('click', () => showAuth(state.authMode === 'signin' ? 'signup' : 'signin'));
   byId('auth-close').addEventListener('click', () => byId('auth-dialog').close());
-  byId('auth-dialog').addEventListener('close', () => { byId('auth-password').value = ''; });
+  byId('auth-dialog').addEventListener('close', () => { byId('auth-password').value = ''; byId('auth-age-confirmed').checked = false; });
   byId('auth-dialog').addEventListener('cancel', event => { if (state.authBusy) event.preventDefault(); });
+  byId('auth-age-confirmed').addEventListener('invalid', event => { event.preventDefault(); message('auth-error', '커뮤니티 계정은 만 14세 이상만 만들 수 있어요. 확인 항목을 체크해 주세요.'); byId('auth-age-confirmed').focus(); });
   byId('auth-form').addEventListener('submit', async event => {
     event.preventDefault();
     if (state.authBusy) return;
     const signup = state.authMode === 'signup';
     const name = byId('auth-name').value.trim();
     if (signup && (name.length < 2 || name.length > 24)) { message('auth-error', '닉네임은 2~24자로 입력해 주세요.'); return; }
+    if (signup && !byId('auth-age-confirmed').checked) { message('auth-error', '커뮤니티 계정은 만 14세 이상만 만들 수 있어요. 확인 항목을 체크해 주세요.'); byId('auth-age-confirmed').focus(); return; }
     if (!byId('auth-form').reportValidity()) return;
     state.authBusy = true; busy(byId('auth-form'), true); message('auth-error', '');
     try {
       const data = { email: byId('auth-email').value.trim(), password: byId('auth-password').value };
-      if (signup) data.name = name;
+      if (signup) { data.name = name; data.ageConfirmed = true; }
       await send(signup ? '/auth/sign-up/email' : '/auth/sign-in/email', 'POST', data);
       await loadSession();
       if (!state.user) throw new Error('로그인 상태를 확인하지 못했어요. 다시 로그인해 주세요.');
@@ -185,9 +194,11 @@
   byId('game-eyebrow').textContent = game.english;
   byId('hero-description').textContent = game.description;
   byId('aside-description').textContent = game.aside;
-  byId('home-link').href = game.home;
-  byId('privacy-link').href = game.privacy;
-  byId('article-home').href = game.home;
+  byId('home-link').href = studioPath(game.home);
+  byId('privacy-link').href = '/community/privacy/';
+  byId('game-privacy-link').href = game.privacy;
+  byId('game-privacy-link').hidden = false;
+  byId('article-home').href = studioPath(game.home);
   byId('article-feedback').href = FEEDBACK_URL;
   byId('connection-notice').href = url('notice', null, '');
   for (const [id, [label]] of Object.entries(game.boards)) {
