@@ -1,3 +1,15 @@
 # 파이썬 검사기 실행 중 생성되는 캐시
 __pycache__/
 *.py[cod]
+
+# 회원·세션·게시글 데이터와 개발용 비밀키는 로컬에만 보관
+node_modules/
+.data/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+coverage/
