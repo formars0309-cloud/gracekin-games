@@ -225,6 +225,21 @@ def network_issues(source: str) -> list[str]:
     return list(dict.fromkeys(issues))
 
 
+def host_router_issues(source: str) -> list[str]:
+    """고정된 커뮤니티 호스트 이동 파일에는 API 호출이나 외부 목적지 추가를 허용하지 않는다."""
+    issues = network_issues(source)
+    tokens = javascript_tokens(source)
+    if any(kind == 'identifier' and value == 'fetch' for kind, value in tokens):
+        issues.append('호스트 이동 파일의 네트워크 요청 발견')
+    origins = [value for kind, value in tokens if kind in {'string', 'template'} and value.startswith(('http:', 'https:', '//'))]
+    if origins != ['https://gracekin-games-community.fly.dev']:
+        issues.append('고정 커뮤니티 출처 이외의 이동 목적지 발견')
+    required = ["location.hostname === 'gracekingames.com'", "location.hostname === 'www.gracekingames.com'", 'new URL(COMMUNITY_ORIGIN)', 'destination.pathname = location.pathname', 'destination.search = location.search', 'destination.hash = location.hash', 'location.replace(destination.href)']
+    if not all(value in source for value in required):
+        issues.append('고정 출처·경로 보존을 위한 호스트 이동 경계 확인 필요')
+    return list(dict.fromkeys(issues))
+
+
 def css_references(source: str) -> list[str]:
     clean = re.sub(r'/\*.*?\*/', '', source, flags=re.S)
     urls = [match.group(2).strip() for match in re.finditer(r'url\(\s*([\"\']?)(.*?)\1\s*\)', clean, re.I | re.S)]
@@ -247,7 +262,7 @@ def verify(root: Path) -> Report:
     root = root.resolve()
     report = Report()
     check = report.check
-    required = [root / 'index.html', root / 'community/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
     paths = [root / 'index.html'] + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html'))
@@ -319,6 +334,11 @@ def verify(root: Path) -> Report:
             href = link.get('href', '')
             check(f'game={other}' not in href and f'/games/{other}/' not in href and urlsplit(href).hostname != urlsplit(GAME_URLS[other]).hostname, f'{rel}: 다른 게임 링크 혼입')
         check(any(f'game={game}' in link.get('href', '') and '/community/' in link.get('href', '') for link in page.links), f'{rel}: 게임별 커뮤니티 링크 없음')
+
+    host_script = root / 'assets/community/host.js'
+    if host_script.is_file():
+        for issue in host_router_issues(host_script.read_text()):
+            check(False, f'assets/community/host.js: {issue}')
 
     community_script = root / 'assets/community/community.js'
     check(community_script.is_file(), '커뮤니티 동작 파일 없음')

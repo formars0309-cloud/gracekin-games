@@ -62,6 +62,29 @@ class NetworkBoundaryTests(unittest.TestCase):
                 self.assertTrue(SITE.network_issues(source))
 
 
+class HostRouterTests(unittest.TestCase):
+    ROUTER = """const COMMUNITY_ORIGIN = 'https://gracekin-games-community.fly.dev';
+    const isPages = location.hostname === 'gracekingames.com' || location.hostname === 'www.gracekingames.com';
+    if (isPages) {
+      const destination = new URL(COMMUNITY_ORIGIN);
+      destination.pathname = location.pathname;
+      destination.search = location.search;
+      destination.hash = location.hash;
+      location.replace(destination.href);
+    }"""
+
+    def test_only_fixed_host_navigation_is_allowed(self):
+        self.assertEqual(SITE.host_router_issues(self.ROUTER), [])
+        for source in [
+            self.ROUTER.replace('https://gracekin-games-community.fly.dev', 'https://other.invalid'),
+            self.ROUTER.replace('new URL(COMMUNITY_ORIGIN)', 'new URL(location.search.slice(1))'),
+            self.ROUTER + " fetch('/api/session');",
+            self.ROUTER + " fetch('https://other.invalid');",
+        ]:
+            with self.subTest(source=source):
+                self.assertTrue(SITE.host_router_issues(source))
+
+
 class PublicAssetTests(unittest.TestCase):
     def test_css_assets_and_imports_are_collected(self):
         source = '''/* url('/missing-commented.png') */

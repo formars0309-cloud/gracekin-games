@@ -38,11 +38,15 @@ function call(server, path, { method = 'GET', body, cookie, origin = server.orig
 try {
   app = await startServer({ port: 0, dataDir: join(directory, 'db'), rateLimit: { authMax: 80, writeMax: 120 } });
   status(await call(app, '/api/community/session'), 200, '비회원 세션');
-  const signA = await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '검수회원하나', email: emailA, password } });
+  for (const ageConfirmed of [undefined, false, 'true']) {
+    status(await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '연령확인검수', email: `${randomBytes(8).toString('hex')}@review.invalid`, password, ...(ageConfirmed === undefined ? {} : { ageConfirmed }) } }), 422, '가입 연령 자기확인 필수값 검증');
+  }
+
+  const signA = await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '검수회원하나', email: emailA, password, ageConfirmed: true } });
   status(signA, 200, '실제 회원가입 A');
   const cookieA = cookieFrom(signA); assert.ok(cookieA, 'A 세션 쿠키 설정');
   assert.ok(signA.headers['set-cookie'].every(value => /HttpOnly/i.test(value) && /SameSite=Lax/i.test(value)), '쿠키 보호 속성'); checks += 1;
-  const signB = await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '검수회원둘', email: emailB, password } });
+  const signB = await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '검수회원둘', email: emailB, password, ageConfirmed: true } });
   status(signB, 200, '실제 회원가입 B'); const cookieB = cookieFrom(signB); assert.ok(cookieB, 'B 세션 쿠키 설정');
   const session = await call(app, '/api/community/session', { cookie: cookieA }); status(session, 200, '가입 후 실제 세션'); publicBody(session); assert.equal(session.body.user.name, '검수회원하나');
   const input = { game: 'slimeline', board: 'free', title: '독립 검수 글', body: '<img src=x onerror=alert(1)><script>window.__review=1</script>', authorId: signB.body.user.id };
@@ -66,7 +70,7 @@ try {
   status(await call(app, '/api/community/session', { headers: { host: 'other.invalid' } }), 403, 'Host 위조 차단');
   status(await call(app, '/api/community/posts', { method: 'POST', cookie: cookieA, headers: { 'content-type': 'text/plain' }, body: input }), 415, '본문 형식 제한');
   status(await call(app, '/api/community/posts', { method: 'POST', cookie: cookieA, body: JSON.stringify({ body: 'a'.repeat(70000) }), chunked: true }), 413, '길이 헤더 없는 대형 본문 차단');
-  status(await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: ' ', email: `${randomBytes(8).toString('hex')}@review.invalid`, password } }), 422, '서버 닉네임 검증');
+  status(await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: ' ', email: `${randomBytes(8).toString('hex')}@review.invalid`, password, ageConfirmed: true } }), 422, '서버 닉네임 검증');
   status(await call(app, '/api/community/posts', { method: 'POST', cookie: cookieA, body: { ...input, board: 'notice' } }), 422, '회원 공지 위조 차단');
   for (const path of ['/.env', '/.data/community.sqlite', '/server/app.js', '/test/community.test.js', '/node_modules/better-auth/package.json', '/package-lock.json', '/README.md', '/.handoff/private.md', '/assets/%2e%2e/server/app.js', '/assets/%252e%252e/server/app.js']) status(await call(app, path), 404, '정적 비공개 경로 차단');
   const db = new DatabaseSync(join(directory, 'db/community.sqlite'), { readOnly: true });
