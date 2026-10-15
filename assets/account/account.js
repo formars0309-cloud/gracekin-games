@@ -184,7 +184,7 @@
       byId('verify-email').value = email; byId('signin-email').value = email;
       state.busy = false; navigate('verify');
       if (mailFailed) message('verify-error', '계정이 만들어졌을 수 있지만 메일을 보내지 못했어요. 다시 가입하지 않고 아래에서 인증 메일을 요청해 주세요.', true);
-      else message('global-message', '가입 확인 메일을 보냈어요. 메일의 링크를 열고 이메일 확인을 마친 뒤 로그인해 주세요.', true);
+      else message('global-message', '가입 확인 요청을 접수했어요. 메일함을 확인해 주세요. 이미 가입한 주소라면 로그인이나 비밀번호 찾기를 이용해 주세요.', true);
     });
   });
   for (const [name, endpoint, success] of [
