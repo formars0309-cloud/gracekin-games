@@ -68,18 +68,32 @@ export async function startServer(options = {}) {
     const url = new URL(configuredURL);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash || (production && url.protocol !== 'https:')) throw new Error('인증 서버 주소를 확인해 주세요. 운영 환경에는 HTTPS가 필요합니다.');
   }
+  // 이전 주소는 명시적으로 지정한 호스트만 허용하며 포트·URL·와일드카드는 받지 않습니다.
+  const legacyHostsValue = options.legacyHosts ?? process.env.LEGACY_HOSTS ?? [];
+  const legacyHostsList = typeof legacyHostsValue === 'string' ? legacyHostsValue.split(',').map(value => value.trim()).filter(Boolean) : legacyHostsValue;
+  if (!Array.isArray(legacyHostsList) || legacyHostsList.some(value => typeof value !== 'string' || value.length > 253 || !value.split('.').every(label => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)))) throw new Error('이전 접속 주소에는 정확한 호스트 이름을 지정해 주세요.');
+  const legacyHosts = new Set(legacyHostsList);
   await mkdir(dataDir, { recursive: true, mode: 0o700 });
   await chmod(dataDir, 0o700);
   const mailer = createMailer(options);
   const signupContext = new AsyncLocalStorage();
   let accounts, guardian, cleanupTimer;
   const secret = await loadSecret(dataDir, production, options.secret ?? process.env.BETTER_AUTH_SECRET);
-  let db, handler;
+  let db, handler, origin, allowedHost;
   const server = createServer((req, res) => {
     // URL 정규화 전에 원시 경로를 검사해 이중 인코딩과 경로 탈출을 막습니다.
     try {
-      safePath(req.url || '/');
+      const path = safePath(req.url || '/');
       if (!handler) { res.writeHead(503); res.end(); return; }
+      // Fetch 어댑터의 URL 정규화 전에 실제 Host로 판정합니다. 전달 헤더는 이 경계에 관여하지 않습니다.
+      if (req.headers.host !== allowedHost) {
+        if (!legacyHosts.has(req.headers.host) || !['GET', 'HEAD'].includes(req.method) || path === '/api' || path.startsWith('/api/')) fail(403, 'INVALID_HOST', '허용되지 않은 접속 주소입니다.');
+        // 출처는 서버 설정으로 고정하고 검증한 원시 경로·쿼리를 그대로 붙여 보존합니다.
+        const response = hardened(new Response(null, { status: 301, headers: { location: `${origin}${req.url || '/'}` } }));
+        res.writeHead(response.status, Object.fromEntries(response.headers));
+        res.end();
+        return;
+      }
       const clientIP = trustedClientIP(req.socket.remoteAddress, req.headers, trustFlyProxy);
       // 외부에서 보낸 내부 헤더와 다른 IP 전달 헤더는 인증 라이브러리에 넘기지 않습니다.
       for (const name of ['x-forwarded-for', 'x-real-ip', 'forwarded', 'cf-connecting-ip', 'true-client-ip', 'fly-client-ip', CLIENT_IP_HEADER]) delete req.headers[name];
@@ -99,8 +113,8 @@ export async function startServer(options = {}) {
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, resolve); });
     const address = server.address();
     const localHost = host.includes(':') ? `[${host}]` : host;
-    const origin = new URL(configuredURL || `http://${localHost}:${address.port}`).origin;
-    const allowedHost = new URL(origin).host;
+    origin = new URL(configuredURL || `http://${localHost}:${address.port}`).origin;
+    allowedHost = new URL(origin).host;
     db = new DatabaseSync(resolve(dataDir, 'community.sqlite'));
     db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
     await chmod(resolve(dataDir, 'community.sqlite'), 0o600);

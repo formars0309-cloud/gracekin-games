@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   if (window.gracekinCommunityRedirecting || location.hostname === 'gracekingames.com' || location.hostname === 'www.gracekingames.com') return;
-  const studioPath = path => location.hostname === 'gracekin-games-community.fly.dev' ? `https://gracekingames.com${path}` : path;
+  const studioPath = path => location.hostname === 'community.gracekingames.com' ? `https://gracekingames.com${path}` : path;
   for (const link of document.querySelectorAll('.studio-home-link')) link.href = studioPath('/');
   const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform';
   const GAMES = {

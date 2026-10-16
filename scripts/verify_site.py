@@ -232,7 +232,7 @@ def host_router_issues(source: str) -> list[str]:
     if any(kind == 'identifier' and value == 'fetch' for kind, value in tokens):
         issues.append('호스트 이동 파일의 네트워크 요청 발견')
     origins = [value for kind, value in tokens if kind in {'string', 'template'} and value.startswith(('http:', 'https:', '//'))]
-    if origins != ['https://gracekin-games-community.fly.dev']:
+    if origins != ['https://community.gracekingames.com']:
         issues.append('고정 커뮤니티 출처 이외의 이동 목적지 발견')
     required = ["location.hostname === 'gracekingames.com'", "location.hostname === 'www.gracekingames.com'", 'new URL(COMMUNITY_ORIGIN)', 'destination.pathname = location.pathname', 'destination.search = location.search', 'destination.hash = location.hash', 'location.replace(destination.href)']
     if not all(value in source for value in required):
