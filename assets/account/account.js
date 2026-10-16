@@ -231,7 +231,7 @@
     const userId = state.user?.id;
     if (!userId) return;
     byId('grain-wallet').setAttribute('aria-busy', 'true');
-    message('grain-status', '잔액과 지급 내역을 불러오고 있어요.');
+    message('grain-status', '잔액과 이용 내역을 불러오고 있어요.');
     try {
       const data = await request('/account/grain');
       if (requestId !== walletRequest || state.user?.id !== userId) return;
