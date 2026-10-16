@@ -115,3 +115,58 @@ test('경주 요청 속도 제한은 CORS 오류에도 유지', async () => scen
   const limited = await request(app, '/api/slime-race/state', { headers });
   assert.equal(limited.status, 429); assert.equal(limited.headers['access-control-allow-origin'], headers.origin);
 }, { rateLimit: { readMax: 1 } }));
+
+
+const economySnapshot = db => JSON.stringify({
+  wallets: db.prepare('SELECT * FROM grain_wallets ORDER BY userId').all(),
+  ledger: db.prepare('SELECT * FROM grain_ledger ORDER BY id').all(),
+  tickets: db.prepare('SELECT * FROM slime_race_tickets ORDER BY userId,roundId,slimeId').all(),
+  revisions: db.prepare('SELECT * FROM slime_race_revisions ORDER BY userId,roundId').all(),
+  requests: db.prepare('SELECT * FROM slime_race_requests ORDER BY userId,requestId').all(),
+  users: db.prepare('SELECT id,emailVerified,ageBand FROM user ORDER BY id').all(),
+});
+
+test('무료 그레인 정책은 공개되며 현금·유료재화·상품 교환·양도 경로와 임의 티켓 필드를 받지 않음', async () => scenario(async ({ app, mailbox, db }) => {
+  const login = await signup(app, mailbox), cookie = cookieFrom(login);
+  const current = await state(app);
+  assert.deepEqual(current.economy, { mode: 'free-only', purchasable: false, cashRedeemable: false, itemExchangeAllowed: false, transferable: false, paidCurrencyConvertible: false });
+  const before = economySnapshot(db);
+  for (const path of [
+    '/api/account/grain/purchase', '/api/account/grain/charge', '/api/account/grain/redeem',
+    '/api/account/grain/exchange', '/api/account/grain/transfer', '/api/grain/convert',
+    '/api/slime-race/purchase', '/api/slime-race/redeem', '/api/slime-race/exchange', '/api/slime-race/transfer',
+  ]) {
+    const result = await request(app, path, { method: 'POST', cookie, body: { amount: 1000, userId: login.body.user.id, currency: 'KRW', recipientId: 'other', itemId: 'coupon' } });
+    assert.equal(result.status, 404, path);
+  }
+  assert.equal((await request(app, '/api/account/grain', { method: 'POST', cookie, body: { amount: 1000, payment: 'cash' } })).status, 405);
+  for (const [key, value] of Object.entries({
+    userId: 'other', recipientId: 'other', price: 100, payment: 'cash', currency: 'KRW',
+    exchangeTo: 'paid-currency', itemId: 'coupon', economy: { mode: 'paid' },
+    cashRedeemable: true, balance: 1000000, oddsCents: 9500, payout: 95000,
+    adultVerified: true, eligibility: { canBet: true },
+  })) {
+    const response = await ticket(app, cookie, `extra-field-${key.padEnd(16, '0')}`, 100, { [key]: value });
+    assert.equal(response.status, 422, key);
+    assert.equal(response.body.error.code, 'INVALID_INPUT', key);
+  }
+  for (const query of ['economy=paid', 'cashRedeemable=true', 'adultVerified=true']) {
+    assert.equal((await request(app, `/api/slime-race/state?${query}`, { cookie })).status, 422);
+    assert.equal((await request(app, `/api/account/grain?${query}`, { cookie })).status, 422);
+  }
+  assert.equal(economySnapshot(db), before);
+}, { slimeRaceAdultVerifier: () => true }));
+
+test('무료 그레인·요청 본문·헤더의 성인 자격 주장은 기본 구매 잠금을 해제하지 않음', async () => scenario(async ({ app, mailbox, db }) => {
+  const login = await signup(app, mailbox), cookie = cookieFrom(login);
+  const current = await state(app), before = economySnapshot(db);
+  const result = await request(app, '/api/slime-race/tickets', {
+    method: 'POST', cookie, headers: { 'x-adult-verified': 'true', 'x-grain-mode': 'free-only' },
+    body: { roundId: current.round.id, slimeId: current.round.entrants[0].slimeId,
+      amount: 100, expectedRevision: 0, requestId: 'forged-adult-00000001', adultVerified: true, canBet: true },
+  });
+  assert.equal(result.status, 403);
+  assert.equal(result.body.error.code, 'ADULT_VERIFICATION_UNAVAILABLE');
+  assert.equal((await me(app, cookie)).body.eligibility.canBet, false);
+  assert.equal(economySnapshot(db), before);
+}));

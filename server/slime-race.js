@@ -1,5 +1,6 @@
 import { randomInt, randomBytes, randomUUID } from 'node:crypto';
 import { fail } from './security.js';
+import { GRAIN_ECONOMY } from './grain.js';
 
 export const ROUND_MS = 600000;
 const PROBABILITY_UNITS = 1000000;
@@ -140,7 +141,7 @@ export function createSlimeRace(db, { now = Date.now, random = randomInt, startT
   function state() {
     return transaction(() => {
       const serverNow = now(), round = advance(serverNow), phase = phaseAt(round.startsAt, serverNow);
-      return { serverNow, round: {
+      return { serverNow, economy: GRAIN_ECONOMY, round: {
         id: round.id, startsAt: round.startsAt, salesCloseAt: round.startsAt + 500000, raceStartsAt: round.startsAt + 510000,
         resultsAt: round.startsAt + 570000, endsAt: round.startsAt + ROUND_MS, phase,
         entrants: round.entrants.map(({ probabilityUnits, ...row }) => ({ ...row, probability: probabilityUnits / PROBABILITY_UNITS, recentRanks: recentRanks(row.slimeId) })),

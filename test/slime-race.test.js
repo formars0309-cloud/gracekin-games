@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { createGrainService } from '../server/grain.js';
+import { createGrainService, GRAIN_ECONOMY } from '../server/grain.js';
 import { createSlimeRace, ticketPayout, SLIME_ROSTER, raceProgress } from '../server/slime-race.js';
 
 function setup(balance = 30000) {
@@ -152,4 +152,19 @@ test('모든 성향·256개 시드·순위의 1분 위치는 단조 증가하고
     assert.equal(raceProgress(style, seed, rank, 0), 0);
     assert.ok(Math.abs(previous - (1 - rank * .025)) < 1e-12);
   }
+});
+
+
+test('공용 그레인의 무료 전용 정책은 불변이며 공개 상태에서도 동일 계약을 제공', () => {
+  const s = setup();
+  try {
+    assert.deepEqual(GRAIN_ECONOMY, {
+      mode: 'free-only', purchasable: false, cashRedeemable: false,
+      itemExchangeAllowed: false, transferable: false, paidCurrencyConvertible: false,
+    });
+    assert.ok(Object.isFrozen(GRAIN_ECONOMY));
+    assert.throws(() => { GRAIN_ECONOMY.purchasable = true; }, TypeError);
+    assert.equal(s.race.state().economy, GRAIN_ECONOMY);
+    assert.equal(s.race.me(s.user).wallet.balance, 30000);
+  } finally { s.close(); }
 });

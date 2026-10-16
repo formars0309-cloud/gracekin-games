@@ -1,5 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
+// 그레인은 사이트 공용 무료 게임 화폐입니다. 티켓 사용·정산은 현금 구매나 환전이 아닙니다.
+// 정책은 서버가 고정하며 요청 본문·쿼리·회원 속성으로 바꿀 수 없습니다.
+export const GRAIN_ECONOMY = Object.freeze({
+  mode: 'free-only',
+  purchasable: false,
+  cashRedeemable: false,
+  itemExchangeAllowed: false,
+  transferable: false,
+  paidCurrencyConvertible: false,
+});
+
 export const SIGNUP_GRAIN_EVENT = 'signup-email-verified-v1';
 export const SIGNUP_GRAIN_AMOUNT = 30000;
 
