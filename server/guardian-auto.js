@@ -143,8 +143,10 @@ function requestCandidate(db, email) {
 async function inspectEnvelope(email, event, replyTo, now, earliest = 0) {
   const headers = normalizedHeaders(email?.headers);
   const receivedAt = timestamp(email?.created_at), eventReceivedAt = timestamp(event.data?.created_at), eventAt = timestamp(event.created_at);
+  // 상위 이벤트 시각과 API 수신 시각의 선후 관계는 공급자가 보장하지 않습니다.
+  // 신청 이후 수신 여부는 API와 data.created_at의 일치값으로 확인하고, 재전송 신선도는 Svix 서명 시각으로 검사합니다.
   if (email?.id !== event.data.email_id || !headers || !Number.isFinite(receivedAt) || !Number.isFinite(eventReceivedAt) || !Number.isFinite(eventAt)
-      || receivedAt < earliest || receivedAt > now || eventReceivedAt !== receivedAt || eventAt < receivedAt || eventAt > now
+      || receivedAt < earliest || receivedAt > now || eventReceivedAt !== receivedAt || eventAt > now
       || typeof email.message_id !== 'string' || !email.message_id || email.message_id.length > 1000 || email.message_id !== event.data.message_id
       || typeof email.subject !== 'string' || email.subject.length > 1000 || email.subject !== event.data.subject
       || /^(?:\s*(?:re|답장)\s*:)*\s*(?:fw|fwd|전달)\s*:/i.test(email.subject)) return { reason: 'message_metadata' };

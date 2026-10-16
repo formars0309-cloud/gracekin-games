@@ -101,6 +101,26 @@ test('공급자의 24바이트 서명키와 32바이트 키를 수용하고 비�
   }
 });
 
+test('실제 수신에서 이벤트 상위시각이 수신시각보다 빨라도 API 수신시각 경계로 검증', async () => {
+  let instant = Date.parse('2026-10-16T07:11:26.000Z');
+  await scenario(async ({ db, inbox, apply, received, webhook }) => {
+    const application = await apply();
+    const event = received(application, { created_at: '2026-10-16T07:11:29.106Z' });
+    event.created_at = '2026-10-16T07:11:27.000Z'; instant = Date.parse('2026-10-16T07:11:30.000Z');
+    assert.equal((await webhook(event)).status, 200);
+    assert.equal(db.prepare('SELECT status FROM guardian_requests WHERE id=?').get(application.id).status, 'approved');
+    for (const invalid of ['before-request', 'future-received', 'mismatch', 'future-event']) {
+      const target = await apply(), incoming = received(target, { created_at: '2026-10-16T07:11:30.000Z' });
+      if (invalid === 'before-request') incoming.data.created_at = inbox.get(incoming.data.email_id).created_at = '2026-10-16T07:11:29.999Z';
+      if (invalid === 'future-received') incoming.data.created_at = inbox.get(incoming.data.email_id).created_at = '2026-10-16T07:11:31.000Z';
+      if (invalid === 'mismatch') incoming.data.created_at = '2026-10-16T07:11:29.999Z';
+      if (invalid === 'future-event') incoming.created_at = '2026-10-16T07:11:31.000Z';
+      assert.equal((await webhook(incoming)).status, 200);
+      assert.equal(db.prepare('SELECT status FROM guardian_requests WHERE id=?').get(target.id).status, 'pending');
+    }
+  }, { now: () => instant });
+});
+
 test('자동 설정이 빠지거나 준비 플래그가 없으면 수동 모드로 조용히 열리지 않음', async () => {
   for (const override of [{ guardianAutoApprovalReady: false }, { resendReceivingApiKey: '' }, { resendWebhookSecret: '' }, { guardianReplyTo: '' }, { guardianConsentMode: '알수없음' }]) {
     await scenario(async ({ app, db, webhook }) => {
