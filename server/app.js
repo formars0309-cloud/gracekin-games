@@ -17,6 +17,8 @@ import { createGrainService } from './grain.js';
 import { createGuardianService, guardianIsActive } from './guardian.js';
 import { automaticGuardianSettings, createAutomaticGuardianReview, GUARDIAN_WEBHOOK_PATH } from './guardian-auto.js';
 import { cleanupGuardianEvidence } from './guardian-review.js';
+import { socialSettings, createSocialRoutes } from './social.js';
+import { OIDC_DISCOVERY_PATH, oidcSettings, parseOidcClients, createOidcRoutes } from './oidc.js';
 import { CLIENT_IP_HEADER, FLY_COMMUNITY_APP, createLimiter, errorResponse, fail, json, loadSecret, readJson, safePath, text, trustedClientIP } from './security.js';
 
 const DEFAULT_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -87,7 +89,8 @@ export async function startServer(options = {}) {
   const server = createServer((req, res) => {
     // URL 정규화 전에 원시 경로를 검사해 이중 인코딩과 경로 탈출을 막습니다.
     try {
-      const path = safePath(req.url || '/');
+      // OIDC 발견 문서는 표준 경로가 점으로 시작하므로 이 한 경로만 정확히 일치할 때 허용합니다.
+      const path = (req.url || '/').split('?')[0] === OIDC_DISCOVERY_PATH ? OIDC_DISCOVERY_PATH : safePath(req.url || '/');
       if (!handler) { res.writeHead(503); res.end(); return; }
       // Fetch 어댑터의 URL 정규화 전에 실제 Host로 판정합니다. 전달 헤더는 이 경계에 관여하지 않습니다.
       if (req.headers.host !== allowedHost) {
@@ -122,7 +125,12 @@ export async function startServer(options = {}) {
     db = new DatabaseSync(resolve(dataDir, 'community.sqlite'));
     db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
     await chmod(resolve(dataDir, 'community.sqlite'), 0o600);
+    // 소셜 로그인·OIDC 제공자 설정은 별도 모듈이 만든다. 키·클라이언트가 없으면 해당 기능은 꺼진다.
+    const social = socialSettings({ env: options.env ?? process.env, signupContext });
+    const oidcClients = parseOidcClients(options.oidcClients ?? process.env.OIDC_CLIENTS, { production });
+    const oidc = oidcSettings({ db, origin });
     const auth = betterAuth({
+      ...social.authOptions, ...oidc.authOptions,
       appName: '그레이스킨게임즈', baseURL: origin, basePath: '/api/auth', secret, database: db,
       trustedOrigins: [origin], telemetry: { enabled: false }, logger: { disabled: true },
       emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128, autoSignIn: false, requireEmailVerification: false, revokeSessionsOnPasswordReset: true, resetPasswordTokenExpiresIn: 3600, sendResetPassword: data => accounts.sendReset(data) },
@@ -173,10 +181,13 @@ export async function startServer(options = {}) {
     cleanupTimer = setInterval(() => { void cleanupGuardianEvidence(db, dataDir).catch(() => {}); }, 60 * 60 * 1000);
     cleanupTimer.unref();
     grain = createGrainService(db, { now: options.now });
-    accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
+    accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, socialProviders: social.providers, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
     const community = createCommunity(db, auth);
     const accountSummary = createAccountSummary(db, auth, { origin });
     const limit = createLimiter(options.rateLimit);
+    const oidcRoutes = createOidcRoutes({ auth, db, origin, secret, clients: oidcClients, limit });
+    await oidcRoutes.seedClients();
+    const socialRoutes = createSocialRoutes({ auth, db, origin, production, secret, grain, guardian, signupContext, limit, providers: social.providers, signupAvailable: Boolean(mailer) });
     handler = toNodeHandler(async request => {
       try {
         const url = new URL(request.url), path = url.pathname;
@@ -186,6 +197,8 @@ export async function startServer(options = {}) {
           if (request.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
           return hardened(json({ ok: true }));
         }
+        const extended = await oidcRoutes.handle(request, url) ?? await socialRoutes.handle(request, url);
+        if (extended) return hardened(extended);
         if (!path.startsWith('/api/')) return hardened(await serveStatic(request, safePath(path), root));
         if (path === '/api/account/summary') return hardened(await accountSummary(request, url, () => limit(request.headers.get(CLIENT_IP_HEADER), path, request.method)));
         limit(request.headers.get(CLIENT_IP_HEADER), path, request.method);

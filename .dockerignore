@@ -65,6 +65,8 @@ assets/gyeongguk/**
 !server/guardian-auto.js
 !server/guardian-review.js
 !server/mailer.js
+!server/social.js
+!server/oidc.js
 !account/
 account/**
 !account/index.html

@@ -12,6 +12,7 @@
     "verify": "npm test"
   },
   "dependencies": {
+    "@better-auth/oauth-provider": "1.7.10",
     "better-auth": "1.7.10",
     "htmlparser2": "12.0.0",
     "mailparser": "3.9.39",
