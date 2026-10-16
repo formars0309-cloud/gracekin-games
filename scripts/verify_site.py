@@ -258,10 +258,20 @@ def production_files(root: Path, pages: dict[Path, Page]) -> list[Path]:
     return sorted(files)
 
 
+def docker_allows(path: Path, allowed: set[str]) -> bool:
+    """운영 패키지의 명시 허용 목록에는 파일과 상위 폴더가 모두 있어야 한다."""
+    return path.as_posix() in allowed and all(parent.as_posix() + '/' in allowed for parent in path.parents if parent != Path('.'))
+
+
 def verify(root: Path) -> Report:
     root = root.resolve()
     report = Report()
     check = report.check
+    dockerignore = root / '.dockerignore'
+    check(dockerignore.is_file(), '운영 패키지 허용 목록 없음')
+    docker_allowed = {line.strip()[1:] for line in dockerignore.read_text().splitlines() if line.strip().startswith('!')} if dockerignore.is_file() else set()
+    for path in sorted((root / 'server').glob('*.js')):
+        check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 운영 패키지에서 서버 파일 누락')
     required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'account/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
@@ -281,6 +291,7 @@ def verify(root: Path) -> Report:
         if target:
             destination, fragment = target
             check(destination.is_file(), f'{description}: 없는 내부 경로')
+            check(docker_allows(destination.relative_to(root), docker_allowed), f'{description}: 운영 패키지에서 내부 자산 누락')
             if fragment and destination in pages:
                 check(fragment in pages[destination].ids, f'{description}: 없는 문서 위치')
 

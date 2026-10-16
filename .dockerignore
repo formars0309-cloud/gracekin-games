@@ -9,6 +9,7 @@
 server/**
 !server/app.js
 !server/community.js
+!server/grain.js
 !server/index.js
 !server/security.js
 !community/
@@ -36,6 +37,9 @@ assets/**
 !assets/slime-front.png
 !assets/slime-bg.jpg
 !assets/gyeongguk-key.jpg
+!assets/currency/
+assets/currency/**
+!assets/currency/grain.png
 !assets/community/
 assets/community/**
 !assets/community/community.js

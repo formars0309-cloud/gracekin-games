@@ -86,6 +86,22 @@ class HostRouterTests(unittest.TestCase):
 
 
 class PublicAssetTests(unittest.TestCase):
+    def test_docker_requires_server_module_and_asset_parent_allowances(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'server').mkdir()
+            (root / 'server/grain.js').write_text('')
+            (root / 'assets/currency').mkdir(parents=True)
+            (root / 'assets/currency/grain.png').write_bytes(b'')
+            (root / 'index.html').write_text('<img src="/assets/currency/grain.png">')
+            manifest = root / '.dockerignore'
+            manifest.write_text('**\n!index.html\n!server/\n!assets/\n!assets/currency/grain.png\n')
+            failures = SITE.verify(root).failures
+            self.assertIn('server/grain.js: 운영 패키지에서 서버 파일 누락', failures)
+            self.assertIn('index.html (img.src): 운영 패키지에서 내부 자산 누락', failures)
+            manifest.write_text(manifest.read_text() + '!server/grain.js\n!assets/currency/\n')
+            self.assertFalse(any('운영 패키지' in failure for failure in SITE.verify(root).failures))
+
     def test_css_assets_and_imports_are_collected(self):
         source = '''/* url('/missing-commented.png') */
         @import "base.css";
