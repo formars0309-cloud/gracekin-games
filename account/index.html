@@ -40,7 +40,7 @@
 </section>
 <section id="signup-panel" class="panel" aria-labelledby="signup-title" hidden>
 <p id="signup-step" class="step-label">회원가입 · 2단계</p><h2 id="signup-title" tabindex="-1">계정을 만들어요</h2><p id="signup-description" class="description">계정을 만들고 이메일을 확인하면 로그인할 수 있어요.</p>
-<p class="notice">이메일 확인 완료 후 <strong>30,000 그레인</strong>을 지급해요. 그레인은 사이트 게임에서 사용할 화폐이며, 게임별 사용 기능은 준비 중이에요.</p>
+<p class="notice">이메일 확인 완료 후 <strong>30,000 그레인</strong>을 지급해요. 그레인은 무료로 지급되는 사이트 공용 게임 화폐예요. 현금 구매·충전·환전, 상품·쿠폰·유료 아이템 교환, 회원 간 양도, 유료 재화 전환은 제공하지 않아요.</p>
 <form id="signup-form">
 <div class="field"><label for="signup-name">닉네임</label><input id="signup-name" name="name" autocomplete="nickname" minlength="2" maxlength="24" required><small>2~24자. 글과 댓글에 표시되는 이름이에요.</small></div>
 <div class="field"><label for="signup-email">로그인용 이메일</label><input id="signup-email" name="email" type="email" autocomplete="email" maxlength="254" required><small id="signup-email-help">가입 확인 메일을 받을 수 있는 주소를 입력해 주세요.</small></div>
@@ -85,7 +85,7 @@
 <p class="step-label">내 계정</p><h2 id="member-title" tabindex="-1">반가워요</h2><p id="member-email" class="description"></p><p id="member-permission" class="notice"></p><section class="grain-wallet" aria-labelledby="grain-title" aria-busy="false" id="grain-wallet">
 <div class="grain-heading"><img src="/assets/currency/grain.png" width="48" height="48" alt=""><h3 id="grain-title">내 그레인</h3></div>
 <p id="grain-status" class="description" role="status">잔액을 불러오고 있어요.</p>
-<div id="grain-content" hidden><p class="grain-balance"><strong id="grain-balance"></strong> <span>그레인</span></p><p class="description small">사이트 게임에서 사용할 화폐예요. 게임별 사용 기능은 준비 중이에요.</p><h4>지급 내역</h4><ul id="grain-entries" class="grain-entries"></ul><p id="grain-empty" class="description" hidden>아직 지급 내역이 없어요.</p></div>
+<div id="grain-content" hidden><p class="grain-balance"><strong id="grain-balance"></strong> <span>그레인</span></p><p class="description small">무료로 지급되는 사이트 공용 게임 화폐예요. 현금 구매·충전·환전, 상품·쿠폰·유료 아이템 교환, 회원 간 양도, 유료 재화 전환은 제공하지 않아요.</p><h4>지급 내역</h4><ul id="grain-entries" class="grain-entries"></ul><p id="grain-empty" class="description" hidden>아직 지급 내역이 없어요.</p></div>
 <p id="grain-error" class="form-message" role="alert" hidden></p><button id="grain-retry" class="text-button" type="button" hidden>그레인 다시 불러오기</button>
 </section><section id="login-methods" class="login-methods" aria-labelledby="login-methods-title" aria-busy="false" hidden>
 <h3 id="login-methods-title">로그인 수단</h3><p class="description small">로그인한 상태에서만 연결하거나 해제할 수 있어요. 마지막 하나는 해제할 수 없어요.</p>

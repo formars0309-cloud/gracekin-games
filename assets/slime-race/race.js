@@ -38,7 +38,13 @@
     return round.phase;
   };
   const ownBet = id => state.me && currentRound() && state.me.roundId === currentRound().id ? state.me.bets.find(bet => bet.slimeId === id)?.amount || 0 : 0;
-  const salesOpen = () => state.publicStatus === 'ready' && performance.now() - state.publicAt < 12000 && currentRound()?.phase === 'sales' && now() < currentRound().salesCloseAt;
+  // 이전 서버의 필드 누락은 무료 기본 안내를 유지하되, 명시된 다른 정책은 구매에 사용하지 않는다.
+  function freeEconomyCompatible() {
+    if (!state.public || !Object.hasOwn(state.public, 'economy')) return true;
+    const economy = state.public.economy;
+    return economy?.mode === 'free-only' && ['purchasable', 'cashRedeemable', 'itemExchangeAllowed', 'transferable', 'paidCurrencyConvertible'].every(key => economy[key] === false);
+  }
+  const salesOpen = () => freeEconomyCompatible() && state.publicStatus === 'ready' && performance.now() - state.publicAt < 12000 && currentRound()?.phase === 'sales' && now() < currentRound().salesCloseAt;
   const eligible = () => state.meStatus === 'ready' && state.me?.user && state.me.eligibility.canBet === true && state.me.roundId === currentRound()?.id;
   function message(text) { $('[data-purchase-message]').textContent = text; }
   function spectator(text) { const target = $('[data-spectator-message]'); target.textContent = text; target.hidden = !text; }
@@ -161,8 +167,9 @@
     for (const slime of state.public.roster) { const item = node('div'); const image = node('img'); image.src = portraits.get(slime.name) || '/assets/slime-race/art/slime'+names.indexOf(slime.name)+'.png'; image.alt = ''; const text = node('span',null,slime.name+' · '+slime.grade); text.append(node('small',null,slime.style)); item.append(image,text); all.append(item); }
   }
   function renderGate() {
-    const gate = $('[data-gate]'); gate.replaceChildren(); gate.hidden=Boolean(state.meStatus==='ready'&&state.me?.user&&state.me.eligibility.canBet);
-    if (state.meStatus === 'loading') gate.textContent = '계정과 구매 자격을 확인하고 있어요.';
+    const gate = $('[data-gate]'); gate.replaceChildren(); gate.hidden=Boolean(freeEconomyCompatible()&&state.meStatus==='ready'&&state.me?.user&&state.me.eligibility.canBet);
+    if (!freeEconomyCompatible()) gate.textContent = '그레인 이용 정책을 확인하지 못했어요. 티켓 구매를 잠시 중지했어요.';
+    else if (state.meStatus === 'loading') gate.textContent = '계정과 구매 자격을 확인하고 있어요.';
     else if (state.meStatus === 'error') gate.textContent = '내 정보를 확인하지 못했어요. 새로고침 후 다시 확인해 주세요.';
     else if (!state.me?.user) { gate.append(document.createTextNode('로그인과 성인 확인을 마친 회원만 티켓을 구매할 수 있어요.')); const link = node('a',null,'로그인'); link.href = '/account/'; gate.append(link); }
     else if (!state.me.eligibility.canBet) gate.textContent = state.me.eligibility.message || '성인 확인을 마친 회원만 티켓을 구매할 수 있어요.';
@@ -173,7 +180,8 @@
     const roundLabel = round ? '제 '+round.id+'회' : '경기 확인 중';
     $('[data-round-label]').textContent = roundLabel; $('[data-dialog-round]').textContent = roundLabel;
     $('[data-phase]').textContent = PHASES[stage] || '경기 확인 중';
-    $('[data-ticket-hint]').textContent = stage === 'sales' && salesOpen() ? '24시간, 10분마다 · 티켓 접수 중' : stage ? '구매 마감 · 출전 정보와 내 티켓 확인' : '24시간, 10분마다';
+    $('[data-economy-note]').textContent = freeEconomyCompatible() ? '무료 그레인 · 현금 구매·환전·경품 교환 불가' : '정책 확인 중 · 티켓 구매 일시 중지';
+    $('[data-ticket-hint]').textContent = !freeEconomyCompatible() ? '정책 확인 중 · 출전 정보와 내 티켓 확인' : stage === 'sales' && salesOpen() ? '24시간, 10분마다 · 티켓 접수 중' : stage ? '구매 마감 · 출전 정보와 내 티켓 확인' : '24시간, 10분마다';
     $('[data-arena-label]').textContent = stage === 'racing' ? '함께 응원해 주세요!' : stage === 'results' ? '작은 챔피언에게 박수를' : stage === 'countdown' ? '출발 준비!' : '곧, 다섯 개의 작은 도약';
     if (state.publicStatus === 'error') $('[data-arena-label]').textContent = '경기 연결을 다시 확인해 주세요';
     $('[data-selected]').textContent = slime ? slime.name+' 티켓' : '선수를 선택해 주세요'; $('[data-selected-style]').textContent = slime ? slime.grade+' · '+slime.style : '';
@@ -187,7 +195,7 @@
     const locked = !salesOpen() || !eligible() || state.busy || Boolean(state.pending);
     amountInput.disabled = locked; root.querySelectorAll('[data-add]').forEach(button => { button.disabled = locked; });
     $('[data-action="buy"]').disabled = locked || !slime || !validAmount; $('[data-action="buy"]').textContent = state.busy ? '확인 중' : bet ? '금액 변경' : '티켓 구매'; $('[data-action="cancel"]').disabled = locked || !bet;
-    $('[data-action="retry-purchase"]').hidden = !state.pending || state.busy || !state.personalActive || state.meStatus !== 'ready' || !state.me?.user || state.pending.userId !== state.me.user.id; $('[data-action="retry-purchase"]').disabled = state.meStatus !== 'ready' || !state.me?.user || state.pending?.userId !== state.me.user.id;
+    $('[data-action="retry-purchase"]').hidden = !freeEconomyCompatible() || !state.pending || state.busy || !state.personalActive || state.meStatus !== 'ready' || !state.me?.user || state.pending.userId !== state.me.user.id; $('[data-action="retry-purchase"]').disabled = !freeEconomyCompatible() || state.meStatus !== 'ready' || !state.me?.user || state.pending?.userId !== state.me.user.id;
     root.querySelectorAll('[data-select]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.select === state.selectedId)));
     renderGate(); renderResult(); updateClock(); draw();
   }
@@ -212,6 +220,7 @@
   function requestId() { if (crypto.randomUUID) return crypto.randomUUID(); const bytes = crypto.getRandomValues(new Uint8Array(16)); bytes[6] = bytes[6]&15|64; bytes[8] = bytes[8]&63|128; const hex = [...bytes].map(b => b.toString(16).padStart(2,'0')).join(''); return [hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-'); }
   async function buy(cancel = false, retry = false) {
     if (state.busy) return;
+    if (!freeEconomyCompatible()) { message('그레인 이용 정책을 다시 확인해 주세요. 티켓 구매를 잠시 중지했어요.'); return; }
     if (!retry) {
       if (!salesOpen() || !eligible() || state.pending || !selected()) { message('현재 구매 자격과 경기 마감을 다시 확인해 주세요.'); return; }
       const amount = cancel ? 0 : Number(amountInput.value), old = ownBet(state.selectedId);

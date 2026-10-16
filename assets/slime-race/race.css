@@ -21,6 +21,8 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.sr-ticket[open],.sr-ticket.sr-closing{transform:none}}
 /* 닫힌 안내는 도구 버튼으로 열고, 작은 화면에서는 선수 비교 영역을 먼저 확보한다. */
 .sr-ticket details:not([open]){display:none}
+.sr-tickethead .sr-economy-note{font-size:12px;line-height:1.55}
+.sr-bethead h3{flex-shrink:0}.sr-bethead>[data-dialog-balance]{text-align:right;overflow-wrap:anywhere}
 @media(max-width:700px){
  .sr-bet{gap:9px;padding-top:10px;padding-bottom:10px}
  .sr-bet>div:first-child>.sr-betamount:not(.sr-prize){display:none}
