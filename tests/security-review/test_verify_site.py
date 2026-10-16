@@ -40,6 +40,21 @@ class NetworkBoundaryTests(unittest.TestCase):
             with self.subTest(source=source):
                 self.assertTrue(SITE.network_issues(source))
 
+    def test_only_fixed_account_summary_is_allowed_in_header_context(self):
+        allowed = "fetch('https://community.gracekingames.com/api/account/summary', {credentials: 'include'})"
+        self.assertTrue(SITE.network_issues(allowed))
+        self.assertEqual(SITE.network_issues(allowed, allow_summary=True), [])
+        for url in [
+            'https://community.gracekingames.com/api/account/session',
+            'https://community.gracekingames.com/api/account/summary?userId=other',
+            'https://community.gracekingames.com/api/account/summary/',
+            'https://community.gracekingames.com:444/api/account/summary',
+            'http://community.gracekingames.com/api/account/summary',
+            'https://community.gracekingames.com.evil.test/api/account/summary',
+        ]:
+            with self.subTest(url=url):
+                self.assertTrue(SITE.network_issues(f"fetch('{url}')", allow_summary=True))
+
     def test_comments_and_user_facing_text_are_not_executed(self):
         source = '''// fetch('https://example.invalid')
         /* localStorage.setItem('posts', data); */
@@ -101,6 +116,17 @@ class PublicAssetTests(unittest.TestCase):
             self.assertIn('index.html (img.src): 운영 패키지에서 내부 자산 누락', failures)
             manifest.write_text(manifest.read_text() + '!server/grain.js\n!assets/currency/\n')
             self.assertFalse(any('운영 패키지' in failure for failure in SITE.verify(root).failures))
+
+    def test_summary_exception_is_limited_to_the_shared_header_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'assets/shared').mkdir(parents=True)
+            source = "fetch('https://community.gracekingames.com/api/account/summary', {credentials: 'include'})"
+            (root / 'assets/shared/account-header.js').write_text(source)
+            (root / 'assets/other.js').write_text(source)
+            failures = SITE.verify(root).failures
+            self.assertFalse(any('assets/shared/account-header.js: 같은 출처' in failure for failure in failures))
+            self.assertTrue(any('assets/other.js: 같은 출처' in failure for failure in failures))
 
     def test_css_assets_and_imports_are_collected(self):
         source = '''/* url('/missing-commented.png') */

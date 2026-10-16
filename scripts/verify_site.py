@@ -3,6 +3,7 @@
 
 정적 검사는 브라우저·서버 보안 실험을 대신하지 않는다. 서버와 시험 자료는
 공개 파일 검사에 섞지 않으며, 회원 기능은 같은 출처의 /api 요청으로만 허용한다.
+상단 표시 파일은 고정된 계정 요약 GET 출처만 별도 허용한다.
 """
 from __future__ import annotations
 
@@ -188,7 +189,7 @@ def javascript_tokens(source: str) -> list[tuple[str, str]]:
     return result
 
 
-def api_argument_allowed(token: tuple[str, str]) -> bool:
+def api_argument_allowed(token: tuple[str, str], *, allow_summary: bool = False) -> bool:
     kind, value = token
     if kind not in {'string', 'template'} or '\\' in value or any(char in value for char in '\r\n\t'):
         return False
@@ -200,11 +201,13 @@ def api_argument_allowed(token: tuple[str, str]) -> bool:
         # 공통 헬퍼 fetch(`/api${path}`)는 반드시 같은 출처에 머문다.
         # 일반 호출은 /api/ 아래 정적 접두부가 있어야 한다.
         return bool(re.match(r'^/api(?:/|[?#]|$)', prefix))
+    if allow_summary and kind == 'string' and value == 'https://community.gracekingames.com/api/account/summary':
+        return True
     parsed = urlsplit(value)
     return not parsed.scheme and not parsed.netloc and (parsed.path == '/api' or parsed.path.startswith('/api/'))
 
 
-def network_issues(source: str) -> list[str]:
+def network_issues(source: str, *, allow_summary: bool = False) -> list[str]:
     tokens = javascript_tokens(source)
     issues = []
     forbidden = {'XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon', 'Worker', 'SharedWorker'}
@@ -220,7 +223,7 @@ def network_issues(source: str) -> list[str]:
             issues.append('승인되지 않은 네트워크 전송 방식 발견')
         if value != 'fetch':
             continue
-        if len(following) != 2 or following[0][1] != '(' or not api_argument_allowed(following[1]):
+        if len(following) != 2 or following[0][1] != '(' or not api_argument_allowed(following[1], allow_summary=allow_summary):
             issues.append('같은 출처 /api 이외의 fetch 또는 판별 불가 요청 발견')
     return list(dict.fromkeys(issues))
 
@@ -376,7 +379,7 @@ def verify(root: Path) -> Report:
         rel = path.relative_to(root)
         check(not any(pattern.search(content) for pattern in SECRET_PATTERNS), f'{rel}: 민감정보 의심 패턴 발견 (원문 비노출)')
         if path.suffix == '.js':
-            for issue in network_issues(content):
+            for issue in network_issues(content, allow_summary=rel.as_posix() == 'assets/shared/account-header.js'):
                 check(False, f'{rel}: {issue}')
         if path.suffix == '.css':
             for value in css_references(content):

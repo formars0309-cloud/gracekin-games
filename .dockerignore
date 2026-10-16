@@ -76,3 +76,9 @@ assets/account/**
 scripts/**
 !scripts/guardian-review.mjs
 !assets/account/entry.js
+
+!server/account-summary.js
+!assets/shared/
+assets/shared/**
+!assets/shared/account-header.js
+!assets/shared/account-header.css

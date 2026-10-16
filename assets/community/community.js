@@ -148,9 +148,10 @@
   byId('comment-open-signin').addEventListener('click', () => showAuth());
   byId('signout-button').addEventListener('click', async () => {
     const button = byId('signout-button'); if (button.disabled) return; button.disabled = true;
+    window.dispatchEvent(new CustomEvent('gracekin-account-change', { detail: { phase: 'clear' } }));
     try { await send('/auth/sign-out', 'POST'); state.user = null; state.draftOwnerId = null; clearDrafts(); renderSession(); await loadCurrent(); }
     catch (error) { showConnection(); byId('connection-message').textContent = errorText(error); }
-    finally { button.disabled = false; }
+    finally { button.disabled = false; window.dispatchEvent(new CustomEvent('gracekin-account-change', { detail: { phase: 'refresh' } })); }
   });
   document.body.dataset.game = gameId;
   document.querySelector('meta[name="theme-color"]').content = gameId === 'slimeline' ? '#21172e' : '#f3efe6';

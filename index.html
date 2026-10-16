@@ -111,6 +111,8 @@ a{color:#E6C98A}a:hover{color:#FFF1CF}
 }
 .gb-root a:focus-visible{outline:2px solid #E6C98A;outline-offset:4px}
 </style>
+<link rel="stylesheet" href="/assets/shared/account-header.css">
+<script defer src="/assets/shared/account-header.js"></script>
 </head>
 <body>
 <div class="gb-root">
@@ -131,8 +133,9 @@ a{color:#E6C98A}a:hover{color:#FFF1CF}
 <nav class="gb-navlinks" aria-label="주 메뉴">
 <a href="#games">모든 게임</a>
 <a href="#letter">제보·의견</a>
-<a href="/account/">로그인</a>
+
 </nav>
+<div class="account-header" data-account-header aria-busy="false"><a class="account-header-link" data-account-link href="/account/"><span class="account-header-name" data-account-label>로그인</span><span class="account-header-grain" data-account-grain hidden><img src="/assets/currency/grain.png" width="24" height="24" alt=""><span data-account-balance></span></span></a><button class="account-header-retry" data-account-retry type="button" hidden>다시 확인</button></div>
 </header>
 
 <section class="gb-stage" id="top">

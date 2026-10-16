@@ -12,6 +12,7 @@ import { getMigrations } from 'better-auth/db/migration';
 import { createCommunity } from './community.js';
 import { createMailer } from './mailer.js';
 import { createAccountService } from './account.js';
+import { createAccountSummary } from './account-summary.js';
 import { createGrainService } from './grain.js';
 import { createGuardianService, guardianIsActive } from './guardian.js';
 import { automaticGuardianSettings, createAutomaticGuardianReview, GUARDIAN_WEBHOOK_PATH } from './guardian-auto.js';
@@ -174,6 +175,7 @@ export async function startServer(options = {}) {
     grain = createGrainService(db, { now: options.now });
     accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
     const community = createCommunity(db, auth);
+    const accountSummary = createAccountSummary(db, auth, { origin });
     const limit = createLimiter(options.rateLimit);
     handler = toNodeHandler(async request => {
       try {
@@ -185,6 +187,7 @@ export async function startServer(options = {}) {
           return hardened(json({ ok: true }));
         }
         if (!path.startsWith('/api/')) return hardened(await serveStatic(request, safePath(path), root));
+        if (path === '/api/account/summary') return hardened(await accountSummary(request, url, () => limit(request.headers.get(CLIENT_IP_HEADER), path, request.method)));
         limit(request.headers.get(CLIENT_IP_HEADER), path, request.method);
         if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(request.method)) {
           const signedWebhook = path === GUARDIAN_WEBHOOK_PATH && request.method === 'POST' && !url.search;
