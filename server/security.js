@@ -53,7 +53,7 @@ export function text(value, min, max, label) {
   return normalized;
 }
 
-export async function readJson(request, limit = 65536) {
+export async function readBody(request, limit = 65536) {
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') || '')) fail(415, 'JSON_REQUIRED', 'JSON 형식으로 요청해 주세요.');
   const declared = Number(request.headers.get('content-length') || 0);
   if (!Number.isFinite(declared) || declared > limit) fail(413, 'PAYLOAD_TOO_LARGE', '요청 내용이 너무 큽니다.');
@@ -73,8 +73,13 @@ export async function readJson(request, limit = 65536) {
       parts.push(value);
     }
   } finally { reader.releaseLock(); }
+  return Buffer.concat(parts);
+}
+
+export async function readJson(request, limit = 65536) {
+  const body = await readBody(request, limit);
   try {
-    const value = JSON.parse(Buffer.concat(parts).toString('utf8'));
+    const value = JSON.parse(body.toString('utf8'));
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error();
     return value;
   } catch { fail(400, 'INVALID_JSON', 'JSON 요청 내용을 확인해 주세요.'); }

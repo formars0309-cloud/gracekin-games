@@ -12,6 +12,7 @@ import { createCommunity } from './community.js';
 import { createMailer } from './mailer.js';
 import { createAccountService } from './account.js';
 import { createGuardianService, guardianIsActive } from './guardian.js';
+import { automaticGuardianSettings, createAutomaticGuardianReview, GUARDIAN_WEBHOOK_PATH } from './guardian-auto.js';
 import { cleanupGuardianEvidence } from './guardian-review.js';
 import { CLIENT_IP_HEADER, FLY_COMMUNITY_APP, createLimiter, errorResponse, fail, json, loadSecret, readJson, safePath, text, trustedClientIP } from './security.js';
 
@@ -151,7 +152,16 @@ export async function startServer(options = {}) {
     });
     const migrations = await getMigrations(auth.options);
     await migrations.runMigrations();
-    guardian = createGuardianService(db, { origin, production, mailer, replyTo: options.guardianReplyTo ?? process.env.GUARDIAN_REPLY_TO, now: options.now });
+    const automaticSettings = automaticGuardianSettings(options);
+    const replyTo = options.guardianReplyTo ?? process.env.GUARDIAN_REPLY_TO;
+    guardian = createGuardianService(db, { origin, production, mailer, replyTo, mode: automaticSettings.mode, autoReady: automaticSettings.autoReady, now: options.now });
+    const guardianWebhook = createAutomaticGuardianReview(db, {
+      enabled: Boolean(automaticSettings.autoConfigured && replyTo), approvalReady: guardian.enabled && guardian.method === 'email-reply-auto',
+      apiKey: automaticSettings.apiKey, webhookSecret: automaticSettings.webhookSecret,
+      replyTo: replyTo?.trim().toLowerCase(), dataDir, now: options.now,
+      // 대체 조회 함수는 테스트의 내부 옵션으로만 전달하며 환경 변수·HTTP 입력으로 받지 않습니다.
+      fetchImpl: options.guardianReceivingFetch,
+    });
     await cleanupGuardianEvidence(db, dataDir);
     cleanupTimer = setInterval(() => { void cleanupGuardianEvidence(db, dataDir).catch(() => {}); }, 60 * 60 * 1000);
     cleanupTimer.unref();
@@ -170,11 +180,13 @@ export async function startServer(options = {}) {
         if (!path.startsWith('/api/')) return hardened(await serveStatic(request, safePath(path), root));
         limit(request.headers.get(CLIENT_IP_HEADER), path, request.method);
         if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(request.method)) {
-          if (request.headers.get('origin') !== origin || request.headers.get('sec-fetch-site') === 'cross-site') fail(403, 'ORIGIN_FORBIDDEN', '같은 홈페이지에서 다시 요청해 주세요.');
+          const signedWebhook = path === GUARDIAN_WEBHOOK_PATH && request.method === 'POST' && !url.search;
+          if (!signedWebhook && (request.headers.get('origin') !== origin || request.headers.get('sec-fetch-site') === 'cross-site')) fail(403, 'ORIGIN_FORBIDDEN', '같은 홈페이지에서 다시 요청해 주세요.');
           if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') || '')) fail(415, 'JSON_REQUIRED', 'JSON 형식으로 요청해 주세요.');
           const length = Number(request.headers.get('content-length') || 0);
           if (!Number.isFinite(length) || length > 65536) fail(413, 'PAYLOAD_TOO_LARGE', '요청 내용이 너무 큽니다.');
         }
+        if (path === GUARDIAN_WEBHOOK_PATH && !url.search) return hardened(await guardianWebhook(request));
         if (path.startsWith('/api/auth/')) {
           if (!AUTH_PATHS.has(path) || request.method !== 'POST') fail(404, 'NOT_FOUND', '인증 요청을 찾을 수 없습니다.');
           const body = await readJson(request);
