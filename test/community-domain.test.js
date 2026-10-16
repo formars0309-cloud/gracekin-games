@@ -156,12 +156,20 @@ test('BETTER_AUTH_URL의 새 출처가 가입·인증 재발송·복구·보호�
       assert.equal((await post('/api/account/guardian-requests', { guardianName: '보호자확인', guardianEmail: 'domain-guardian@example.test' })).status, 200);
       assert.equal(mailbox.length, 4);
       for (const [index, message] of mailbox.entries()) {
-        const link = new URL(message.text.match(/https?:\/\/[^\s]+/)[0]);
+        // 동의문에는 업체 문의·공개 방침 링크도 포함하므로 계정 절차 링크를 구분합니다.
+        const links = [...message.text.matchAll(/https?:\/\/[^\s)]+/g)].map(match => new URL(match[0]));
+        const accountLinks = links.filter(link => link.pathname === '/account/');
+        assert.equal(accountLinks.length, 1);
+        const [link] = accountLinks;
         assert.equal(link.origin, ORIGIN);
         assert.equal(link.pathname, '/account/');
         assert.equal(link.searchParams.get('view'), ['verify', 'verify', 'reset', 'guardian'][index]);
         assert.equal(link.searchParams.has('token'), false);
         assert.equal(link.hash.startsWith('#token='), index < 3);
+        for (const other of links.filter(candidate => candidate !== link)) {
+          assert.equal(other.hash.includes('token='), false);
+          assert.equal(other.searchParams.has('token'), false);
+        }
         assert.doesNotMatch(message.text, /outside\.example/);
       }
     });
