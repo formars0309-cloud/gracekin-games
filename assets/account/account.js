@@ -90,6 +90,9 @@
     byId('guardian-submit').disabled = !config?.guardianConsentAvailable;
     byId('guardian-unavailable').hidden = !!config?.guardianConsentAvailable;
     byId('guardian-content').hidden = !config?.guardianConsentAvailable;
+    byId('guardian-method-description').textContent = config?.guardianConsentMethod === 'email-reply-auto'
+      ? '보호자 이메일로 개인정보 처리와 어린이 가입에 관한 동의 내용을 보내 드려요. 내용을 읽고 같은 주소에서 메일의 7줄 회신 양식만 보내 주세요. 인용문·서명·첨부파일은 빼 주세요. 회신의 발신 정보와 동의 내용을 자동 확인하고, 조건이 맞으면 승인해요. 확인하기 어려운 회신은 승인하지 않고 다시 안내해요. 메일을 열거나 링크를 누르는 것만으로 동의 처리하지 않아요.'
+      : '보호자 이메일로 개인정보 처리와 어린이 가입에 관한 동의 내용을 보내 드려요. 내용을 읽고 회신해 주시면 운영자가 확인해요. 메일을 열거나 링크를 누르는 것만으로 동의 처리하지 않아요.';
     if (!config) message('service-notice', '계정 서비스 상태를 확인하지 못했어요. 새 가입과 이메일 기능은 잠시 이용할 수 없지만 기존 계정으로 로그인을 시도할 수 있어요.');
     else if (!config.registrationAvailable || !config.emailAvailable) message('service-notice', '새 회원가입과 이메일 인증·비밀번호 찾기를 준비하고 있어요. 기존 계정의 로그인은 계속 이용할 수 있어요.');
     else message('service-notice', '');
@@ -152,8 +155,23 @@
     const info = state.guardianRequest;
     byId('guardian-form').hidden = !!info;
     byId('guardian-status').hidden = !info;
+    message('guardian-review-message', '');
     if (!info) return;
-    byId('guardian-status-message').textContent = guardianMessages[info.status] || '동의 상태를 확인할 수 없어요. 잠시 후 다시 확인해 주세요.';
+    const automatic = state.config?.guardianConsentMethod === 'email-reply-auto';
+    let statusMessage = guardianMessages[info.status] || '동의 상태를 확인할 수 없어요. 잠시 후 다시 확인해 주세요.';
+    if (automatic && info.status === 'pending') {
+      statusMessage = info.reviewStatus === 'held'
+        ? '회신을 자동으로 확인하지 못해 가입 승인을 보류했어요. 아래 안내를 확인해 주세요.'
+        : '보호자의 회신을 기다리고 있어요. 동의 내용을 읽고 안내 메일의 7줄 회신 양식만 같은 이메일 주소에서 보내 주세요. 인용문·서명·첨부파일은 빼 주세요. 회신을 보낸 뒤 상태를 새로고침하면 확인 결과를 볼 수 있어요.';
+      if (info.reviewStatus === 'held') {
+        const explanation = typeof info.reviewMessage === 'string' && info.reviewMessage.trim()
+          ? info.reviewMessage.trim().slice(0, 500)
+          : '보호자에게 보낸 메일에서 회신 양식을 다시 확인해 주세요. 같은 문제가 계속되면 문의하기로 알려 주세요.';
+        // 서버가 제공한 안내도 HTML로 해석하지 않으며 회신 코드·원문을 화면에 표시하지 않습니다.
+        message('guardian-review-message', explanation);
+      }
+    }
+    byId('guardian-status-message').textContent = statusMessage;
     const expiry = new Date(info.expiresAt);
     const expiryText = Number.isNaN(expiry.getTime()) ? '' : ` · 유효기간 ${new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(expiry)}까지`;
     byId('guardian-request-number').textContent = info.requestNumber ? `신청 번호 ${info.requestNumber}${expiryText}` : '';
