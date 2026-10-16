@@ -1,0 +1,21 @@
+# GitHub Pages에는 공개 화면과 정적 자산만 배포합니다.
+# 서버·운영 자료는 저장소에 보존하고 사이트 출력에서 제외합니다.
+exclude:
+  - server
+  - scripts
+  - test
+  - tests
+  - docs
+  - README.md
+  - AGENTS.md
+  - Dockerfile
+  - fly.toml
+  - "package*.json"
+  # Jekyll 3에서는 exclude가 기본 목록을 대체하므로 의존성과 캐시도 제외합니다.
+  - node_modules
+  - vendor
+  - gemfiles
+  - Gemfile
+  - Gemfile.lock
+  - .sass-cache
+  - .jekyll-cache
