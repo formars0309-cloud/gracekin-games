@@ -64,23 +64,26 @@ export function oidcSettings({ db, origin }) {
         jwt({ jwt: { issuer: origin } }),
         oauthProvider({
           loginPage: `${origin}/account/`, consentPage: `${origin}/account/`,
-          scopes: ['openid'], grantTypes: ['authorization_code'],
+          // profile: 게임 첫 화면 '○○님으로 계속' 카드에 커뮤니티 닉네임(name)만 보여 준다(경국지계 기획 35 결정 7). 이메일 범위는 열지 않는다.
+          scopes: ['openid', 'profile'], grantTypes: ['authorization_code'],
           codeExpiresIn: 600, idTokenExpiresIn: 600, accessTokenExpiresIn: 600,
           allowDynamicClientRegistration: false, allowUnauthenticatedClientRegistration: false,
           // 등록한 복귀 주소와 글자 그대로 같아야 한다(루프백 포트 완화도 쓰지 않는다).
           validateRedirectUri: (uri, registered) => registered.includes(uri),
-          advertisedMetadata: { claims_supported: ['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'acr', 'age_band'] },
+          advertisedMetadata: { claims_supported: ['iss', 'sub', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'acr', 'age_band', 'name'] },
           // 연령 기록이 없는 기존 회원은 코드를 발급하기 전에 계정 화면에서 연령을 고른다(기획 34 결정 13).
           postLogin: {
             page: `${origin}/account/`,
             shouldRedirect: ({ user }) => !oidcAgeBand(db, user.id),
             consentReferenceId: () => undefined,
           },
-          customIdTokenClaims: ({ user }) => {
+          customIdTokenClaims: ({ user, scopes }) => {
             const band = oidcAgeBand(db, user.id);
             if (!band) throw new APIError('BAD_REQUEST', { error: 'invalid_grant', error_description: 'age confirmation required' });
             if (band === 'under14' && !guardianIsActive(db, user.id)) throw new APIError('BAD_REQUEST', { error: 'invalid_grant', error_description: 'account unavailable' });
-            return { age_band: band };
+            // 플러그인은 profile 클레임을 사용자 정보 주소로만 보내는데, 게임 서버는 ID 토큰만 본다. profile을 요청했을 때만 닉네임을 싣는다.
+            const name = Array.isArray(scopes) && scopes.includes('profile') && typeof user.name === 'string' && user.name.trim() ? user.name.trim().slice(0, 40) : undefined;
+            return name ? { age_band: band, name } : { age_band: band };
           },
           rateLimit: { token: { window: 60, max: 120 }, authorize: { window: 60, max: 60 } },
         }),
@@ -105,7 +108,7 @@ export function createOidcRoutes({ auth, db, origin, secret, clients, limit, tok
     for (const client of clients) {
       const data = {
         clientSecret: client.secretHash, disabled: false, skipConsent: true, requirePKCE: true,
-        scopes: ['openid'], grantTypes: ['authorization_code'], responseTypes: ['code'],
+        scopes: ['openid', 'profile'], grantTypes: ['authorization_code'], responseTypes: ['code'],
         tokenEndpointAuthMethod: 'client_secret_basic', applicationType: 'web', subjectType: 'public',
         redirectUris: client.redirectUris, name: client.name, updatedAt: now,
       };
