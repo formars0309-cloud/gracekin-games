@@ -95,7 +95,8 @@ test('발견 문서는 루트 경로·계약 값만 광고하고 클라이언트
   assert.deepEqual(doc.code_challenge_methods_supported, ['S256']);
   assert.ok(doc.token_endpoint_auth_methods_supported.includes('client_secret_basic'));
   assert.ok(doc.claims_supported.includes('age_band'));
-  assert.deepEqual(doc.scopes_supported, ['openid']);
+  assert.deepEqual(doc.scopes_supported, ['openid', 'profile']);
+  assert.ok(doc.claims_supported.includes('name'));
   assert.ok(doc.id_token_signing_alg_values_supported.includes('EdDSA'));
   assert.equal((await request(app, '/.well-known/openid-configuration', { method: 'POST', body: {} })).status, 405);
   assert.equal((await request(app, '/api/auth/token')).status, 404);
@@ -279,4 +280,44 @@ test('OIDC_CLIENTS에서 빠진 클라이언트는 재시작 때 사용 중지�
   const auth2 = authorizePath({ challenge: again.challenge });
   const code2 = await codeFrom((await navigate(next, auth2.path, cookie)).headers.location, auth2.state);
   assert.equal((await tokenRequest(next, { grant_type: 'authorization_code', code: code2, redirect_uri: REDIRECT, code_verifier: again.verifier }, { client: rotated })).status, 200);
+}));
+
+test('profile 범위를 요청하면 ID 토큰에 커뮤니티 닉네임만 싣고, openid만이면 싣지 않음(기획 35 결정 7)', async () => scenario(async ({ app, mailbox }) => {
+  const cookie = cookieFrom(await registerAndLogin(app, mailbox, adult('oidc-profile@example.test')));
+  const { verifier, challenge } = pkce();
+  const auth = authorizePath({ challenge, scope: 'openid profile' });
+  const code = await codeFrom((await navigate(app, auth.path, cookie)).headers.location, auth.state);
+  const token = await tokenRequest(app, { grant_type: 'authorization_code', code, redirect_uri: REDIRECT, code_verifier: verifier });
+  assert.equal(token.status, 200, JSON.stringify(token.body));
+  const claims = await verifyIdToken(app, token.body.id_token, { nonce: auth.nonce });
+  assert.equal(claims.name, '연결회원'); assert.equal(claims.age_band, '14plus');
+  for (const name of ['email', 'email_verified', 'picture']) assert.equal(name in claims, false);
+  const plain = pkce();
+  const auth2 = authorizePath({ challenge: plain.challenge });
+  const code2 = await codeFrom((await navigate(app, auth2.path, cookie)).headers.location, auth2.state);
+  const token2 = await tokenRequest(app, { grant_type: 'authorization_code', code: code2, redirect_uri: REDIRECT, code_verifier: plain.verifier });
+  assert.equal('name' in (await verifyIdToken(app, token2.body.id_token, { nonce: auth2.nonce })), false);
+}));
+
+test('prompt=none: 로그인 안 됨은 login_required, 연령 확인 남음은 interaction_required로 게임에 바로 돌려보내고, 로그인됨은 화면 없이 코드', async () => scenario(async ({ app, db, mailbox }) => {
+  const errorOf = async (cookie, expected) => {
+    const { challenge } = pkce();
+    const auth = authorizePath({ challenge, scope: 'openid profile', extra: { prompt: 'none' } });
+    const response = await navigate(app, auth.path, cookie);
+    assert.equal(response.status, 302);
+    const url = new URL(response.headers.location);
+    assert.equal(`${url.origin}${url.pathname}`, REDIRECT, '계정 화면이 아니라 게임 복귀 주소로');
+    assert.equal(url.searchParams.get('error'), expected); assert.equal(url.searchParams.get('state'), auth.state);
+    assert.equal(url.searchParams.get('code'), null);
+  };
+  await errorOf(undefined, 'login_required');
+  const login = await registerAndLogin(app, mailbox, adult('oidc-silent@example.test'));
+  const cookie = cookieFrom(login);
+  const { verifier, challenge } = pkce();
+  const auth = authorizePath({ challenge, scope: 'openid profile', extra: { prompt: 'none' } });
+  const code = await codeFrom((await navigate(app, auth.path, cookie)).headers.location, auth.state);
+  const token = await tokenRequest(app, { grant_type: 'authorization_code', code, redirect_uri: REDIRECT, code_verifier: verifier });
+  assert.equal((await verifyIdToken(app, token.body.id_token, { nonce: auth.nonce })).name, '연결회원');
+  db.prepare('UPDATE user SET ageBand=NULL WHERE id=?').run(login.body.user.id);
+  await errorOf(cookie, 'interaction_required');
 }));
