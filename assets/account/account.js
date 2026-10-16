@@ -5,7 +5,10 @@
   const entry = window.gracekinAccountEntry || { view: 'signin', token: '', params: new URLSearchParams() };
   delete window.gracekinAccountEntry;
   const byId = id => document.getElementById(id);
-  const state = { config: null, user: null, ageBand: null, view: 'signin', resetToken: entry.view === 'reset' ? entry.token : '', verifyToken: entry.view === 'verify' ? entry.token : '', guardianRequest: null, busy: false, ready: false, pendingLink: null };
+  const state = { config: null, user: null, ageBand: null, view: 'signin', resetToken: entry.view === 'reset' ? entry.token : '', verifyToken: entry.view === 'verify' ? entry.token : '', guardianRequest: null, busy: false, ready: false, pendingLink: null, oauthQuery: entry.oauthQuery || '', oidc: null };
+  // 소셜 공급자 표시 순서와 이름. 실제 사용 가능 여부는 서버 설정(/account/config)을 따른다.
+  const PROVIDERS = [['naver', '네이버'], ['google', '구글']];
+  const providerName = id => (PROVIDERS.find(([key]) => key === id) || [null, ''])[1];
   entry.token = '';
   const game = ['slimeline', 'gyeongguk'].includes(entry.params.get('game')) ? entry.params.get('game') : null;
   const boards = game === 'gyeongguk' ? ['notice', 'free', 'deck', 'strategy'] : ['notice', 'free', 'guide', 'gallery'];
@@ -27,6 +30,26 @@
     GUARDIAN_CONSENT_UNAVAILABLE: '보호자 동의 가입을 준비하고 있어요. 지금은 가입 없이 게임을 둘러볼 수 있어요.',
     UNAUTHORIZED: '로그인 상태가 만료되었어요. 다시 로그인해 주세요.', FORBIDDEN: '이 요청을 진행할 수 없어요. 현재 계정과 동의 상태를 확인해 주세요.'
   };
+  // 소셜 로그인·게임 로그인에서 돌아온 오류 코드. {p}는 공급자 이름이다.
+  const returnErrors = {
+    signup_disabled: '아직 가입하지 않은 {p} 계정이에요. 회원가입에서 나이를 먼저 선택한 뒤 {p}로 가입해 주세요.',
+    account_not_linked: '같은 이메일로 가입한 계정이 이미 있어요. 그 계정으로 로그인한 뒤 내 계정의 로그인 수단에서 {p}를 연결해 주세요.',
+    email_not_found: '{p}에서 이메일을 받지 못했어요. 이메일 제공에 동의한 뒤 다시 시도해 주세요.',
+    EMAIL_NOT_VERIFIED: '가입 확인 메일을 보냈어요. 메일의 링크로 이메일을 확인한 뒤 다시 로그인해 주세요.',
+    AGE_CONFIRMATION_REQUIRED: '가입 시간이 지났거나 나이 선택을 확인하지 못했어요. 회원가입에서 나이를 다시 선택해 주세요.',
+    GUARDIAN_APPROVAL_REQUIRED: '보호자 동의 상태를 확인해 주세요.',
+    account_already_linked_to_different_user: '이 {p} 계정은 이미 다른 회원에게 연결되어 있어요.',
+    email_does_not_match: '{p} 계정을 연결하지 못했어요. 잠시 후 다시 시도해 주세요.',
+    access_denied: '{p} 로그인을 취소했어요.',
+    invalid_client: '게임 로그인 요청을 확인할 수 없어요. 게임으로 돌아가 다시 시도해 주세요.',
+    invalid_redirect: '게임 로그인 요청을 확인할 수 없어요. 게임으로 돌아가 다시 시도해 주세요.',
+    client_disabled: '지금은 이 게임의 로그인을 사용할 수 없어요.'
+  };
+  function returnMessage(code, provider) {
+    const name = providerName(provider) || '소셜';
+    const text = returnErrors[code] || (provider ? '{p} 로그인을 마치지 못했어요. 처음부터 다시 시도해 주세요.' : '로그인 요청을 마치지 못했어요. 처음부터 다시 시도해 주세요.');
+    return text.split('{p}').join(name);
+  }
   async function request(path, data) {
     if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//') || path.includes('\\')) throw new Error('올바르지 않은 요청이에요.');
     const controller = new AbortController();
@@ -57,7 +80,7 @@
   function navigate(view, focus = true) {
     if (state.busy) return;
     if (view === 'signup') view = 'age';
-    if (!['signin', 'age', 'signup-details', 'guardian', 'verify', 'forgot', 'reset', 'member'].includes(view)) view = 'signin';
+    if (!['signin', 'age', 'signup-details', 'guardian', 'verify', 'forgot', 'reset', 'member', 'oidc-age'].includes(view)) view = 'signin';
     if (view !== 'signup-details') byId('signup-password').value = '';
     if (view !== 'signin') byId('signin-password').value = '';
     if (view !== 'reset') { byId('reset-password').value = ''; byId('reset-confirm').value = ''; state.resetToken = ''; }
@@ -93,9 +116,72 @@
     byId('guardian-method-description').textContent = config?.guardianConsentMethod === 'email-reply-auto'
       ? '보호자 이메일로 개인정보 처리와 어린이 가입에 관한 동의 내용을 보내 드려요. 내용을 읽고 같은 주소에서 메일의 7줄 회신 양식만 보내 주세요. 인용문·서명·첨부파일은 빼 주세요. 회신의 발신 정보와 동의 내용을 자동 확인하고, 조건이 맞으면 승인해요. 확인하기 어려운 회신은 승인하지 않고 다시 안내해요. 메일을 열거나 링크를 누르는 것만으로 동의 처리하지 않아요.'
       : '보호자 이메일로 개인정보 처리와 어린이 가입에 관한 동의 내용을 보내 드려요. 내용을 읽고 회신해 주시면 운영자가 확인해요. 메일을 열거나 링크를 누르는 것만으로 동의 처리하지 않아요.';
+    renderSocial();
     if (!config) message('service-notice', '계정 서비스 상태를 확인하지 못했어요. 새 가입과 이메일 기능은 잠시 이용할 수 없지만 기존 계정으로 로그인을 시도할 수 있어요.');
     else if (!config.registrationAvailable || !config.emailAvailable) message('service-notice', '새 회원가입과 이메일 인증·비밀번호 찾기를 준비하고 있어요. 기존 계정의 로그인은 계속 이용할 수 있어요.');
     else message('service-notice', '');
+  }
+  function socialProviders() {
+    const enabled = Array.isArray(state.config?.socialProviders) ? state.config.socialProviders : [];
+    return PROVIDERS.map(([id]) => id).filter(id => enabled.includes(id));
+  }
+  function renderSocial() {
+    const available = socialProviders();
+    const signup = Boolean(state.config?.socialSignupAvailable) && available.length > 0;
+    for (const [id] of PROVIDERS) {
+      byId(`signin-${id}`).hidden = !available.includes(id);
+      byId(`signup-${id}`).hidden = !signup || !available.includes(id);
+    }
+    byId('signin-social').hidden = !available.length;
+    byId('signup-social').hidden = !signup || state.ageBand !== '14plus';
+    byId('choose-adult-detail').textContent = signup ? `이메일 또는 ${available.map(providerName).join('·')}로 계정을 만들어요` : '이메일로 계정을 만들어요';
+  }
+  // 게임(OIDC) 로그인 요청은 서명된 만료 시각까지만 이어 간다.
+  function activeOAuthQuery() {
+    if (!state.oauthQuery) return '';
+    const exp = Number(new URLSearchParams(state.oauthQuery).get('exp'));
+    if (Number.isFinite(exp) && exp * 1000 - 30000 > Date.now()) return state.oauthQuery;
+    state.oauthQuery = ''; state.oidc = null; renderOidc();
+    message('service-notice', '게임 로그인 요청이 만료되었어요. 게임으로 돌아가 다시 로그인해 주세요.');
+    return '';
+  }
+  function renderOidc() {
+    byId('oidc-notice').hidden = !state.oauthQuery;
+    byId('oidc-notice-text').textContent = state.oauthQuery && state.oidc ? `${state.oidc.clientName}에서 그레이스킨게임즈 계정 로그인을 요청했어요. 로그인을 마치면 게임으로 돌아가요.` : '';
+  }
+  function leaveTo(url) {
+    if (typeof url !== 'string' || !/^https?:\/\//.test(url)) throw new Error('다음 화면으로 이동하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    location.assign(url);
+  }
+  async function continueOidc() {
+    const query = activeOAuthQuery();
+    if (!query) return;
+    message('global-message', '게임으로 돌아가고 있어요.');
+    const data = await request('/auth/oauth2/continue', { postLogin: true, oauth_query: query });
+    leaveTo(data.url);
+  }
+  // 로그인된 회원은 바로 게임으로 돌려보내고, 연령 기록이 없는 기존 회원은 먼저 나이를 고른다.
+  async function prepareOidc() {
+    try { state.oidc = await request('/account/oidc/context', { oauth_query: state.oauthQuery }); }
+    catch (error) { state.oauthQuery = ''; state.oidc = null; renderOidc(); message('service-notice', error.message); return false; }
+    renderOidc();
+    if (!state.oidc.signedIn || state.oidc.loginRequired) return false;
+    if (state.oidc.needsAgeConfirmation) { navigate('oidc-age', false); return true; }
+    try { await continueOidc(); } catch (error) { state.oidcError = error.message; return false; }
+    return true;
+  }
+  async function startSocial(provider, signup) {
+    const body = { provider };
+    if (signup) {
+      const name = byId('signup-name').value.trim();
+      if (state.ageBand !== '14plus') throw new Error('만 14세 이상을 선택한 뒤 간편 가입할 수 있어요.');
+      if ([...name].length < 2 || [...name].length > 24) throw new Error('닉네임을 2~24자로 먼저 입력해 주세요.');
+      Object.assign(body, { requestSignUp: true, ageBand: '14plus', name });
+    }
+    const query = activeOAuthQuery();
+    if (query) body.oauth_query = query;
+    const data = await request('/auth/sign-in/social', body);
+    leaveTo(data.url);
   }
   function applyPendingLink() {
     if (!state.ready || state.busy || !state.pendingLink) return;
@@ -176,12 +262,68 @@
     }
   }
   byId('grain-retry').addEventListener('click', loadWallet);
+  let methodsRequest = 0;
+  function clearLoginMethods() {
+    methodsRequest += 1;
+    byId('login-methods').hidden = true;
+    byId('login-method-list').replaceChildren();
+    message('login-methods-error', '');
+  }
+  function renderLoginMethods(data) {
+    if (!Array.isArray(data?.methods) || !Array.isArray(data.available)) throw new Error('로그인 수단을 확인하지 못했어요. 새로고침해 주세요.');
+    const linked = new Map(data.methods.map(item => [item.provider, item]));
+    const list = byId('login-method-list');
+    list.replaceChildren();
+    const rows = [['email', '이메일·비밀번호'], ...PROVIDERS.filter(([id]) => data.available.includes(id) || linked.has(id))];
+    for (const [id, name] of rows) {
+      const item = linked.get(id);
+      const li = document.createElement('li');
+      const title = document.createElement('strong');
+      title.textContent = name;
+      const status = document.createElement('small');
+      const linkedDate = item && !Number.isNaN(new Date(item.linkedAt).getTime()) ? ` · ${new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium' }).format(new Date(item.linkedAt))}` : '';
+      if (item) status.textContent = data.canUnlink ? `연결됨${linkedDate}` : `연결됨${linkedDate} · 마지막 로그인 수단이라 해제할 수 없어요`;
+      else status.textContent = id === 'email' ? '연결 안 됨 · 아래 비밀번호 재설정으로 이메일 로그인을 추가할 수 있어요' : '연결 안 됨';
+      li.append(title, status);
+      const canLink = !item && id !== 'email' && data.available.includes(id) && state.user?.ageBand !== 'under14';
+      if ((item && data.canUnlink) || canLink) {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'text-button';
+        button.textContent = item ? '연결 해제' : '연결하기';
+        button.addEventListener('click', () => withBusy('login-methods', 'login-methods-error', async () => {
+          if (!item) { const next = await request('/account/login-methods/link', { provider: id }); leaveTo(next.url); return; }
+          const next = await request('/account/login-methods/unlink', { provider: id });
+          renderLoginMethods(next);
+          message('global-message', `${name} 로그인 연결을 해제했어요.`, true);
+        }));
+        li.append(button);
+      }
+      list.append(li);
+    }
+    byId('login-methods').hidden = false;
+  }
+  async function loadLoginMethods() {
+    clearLoginMethods();
+    const requestId = methodsRequest, userId = state.user?.id;
+    // 소셜 공급자가 꺼져 있으면 기존 내 계정 화면을 그대로 둔다.
+    if (!userId || !socialProviders().length) return;
+    try {
+      const data = await request('/account/login-methods');
+      if (requestId !== methodsRequest || state.user?.id !== userId) return;
+      renderLoginMethods(data);
+    } catch (error) {
+      if (requestId !== methodsRequest || state.user?.id !== userId) return;
+      byId('login-methods').hidden = false;
+      message('login-methods-error', error.message);
+    }
+  }
   function showMember() {
     byId('member-title').textContent = `${state.user.name}님, 반가워요`;
     byId('member-email').textContent = state.user.email;
     byId('member-permission').textContent = state.user.canWriteCommunity ? '커뮤니티에서 글과 댓글을 나눌 수 있어요.' : '이 계정으로는 커뮤니티의 글과 공식 안내를 읽을 수 있어요. 글·댓글 작성은 제공하지 않아요.';
     navigate('member');
     loadWallet();
+    loadLoginMethods();
   }
   function showSignup(ageBand) {
     if (!state.config?.registrationAvailable || state.busy) return;
@@ -189,6 +331,7 @@
     state.ageBand = ageBand;
     byId('signup-step').textContent = ageBand === 'under14' ? '어린이 회원가입 · 동의 확인 완료' : '회원가입 · 2단계';
     byId('signup-description').textContent = ageBand === 'under14' ? '보호자 동의 확인을 마쳤어요. 어린이 계정 정보를 입력하고 이메일을 확인해 주세요. 커뮤니티는 읽기만 이용할 수 있어요.' : '계정을 만들고 이메일을 확인하면 로그인할 수 있어요.';
+    renderSocial();
     byId('signup-email-help').textContent = ageBand === 'under14' ? '아직 가입되지 않은 보호자 이메일을 사용할 수도 있어요. 이미 다른 계정에서 쓰는 이메일로는 새 계정을 만들 수 없어요.' : '가입 확인 메일을 받을 수 있는 주소를 입력해 주세요.';
     navigate('signup-details');
   }
@@ -244,12 +387,30 @@
   byId('verify-another').addEventListener('click', () => { if (state.busy) return; state.verifyToken = ''; navigate('verify'); });
   byId('member-forgot').addEventListener('click', () => { byId('forgot-email').value = state.user?.email || ''; navigate('forgot'); });
   byId('choose-adult').addEventListener('click', () => showSignup('14plus'));
+  for (const [id] of PROVIDERS) {
+    byId(`signin-${id}`).addEventListener('click', () => withBusy('signin-panel', 'signin-error', () => startSocial(id, false)));
+    byId(`signup-${id}`).addEventListener('click', () => withBusy('signup-panel', 'signup-social-error', () => startSocial(id, true)));
+  }
+  byId('oidc-adult').addEventListener('click', () => withBusy('oidc-age-panel', 'oidc-age-error', async () => {
+    await request('/account/oidc/age', { ageBand: '14plus' });
+    await continueOidc();
+  }));
+  byId('oidc-child').addEventListener('click', () => { byId('oidc-age-options').hidden = true; byId('oidc-child-guide').hidden = false; byId('oidc-guardian').focus(); });
+  byId('oidc-guardian').addEventListener('click', () => { state.ageBand = 'under14'; navigate('guardian'); });
+  byId('oidc-cancel').addEventListener('click', () => withBusy('oidc-notice', 'oidc-error', async () => {
+    const query = state.oauthQuery;
+    state.oauthQuery = ''; state.oidc = null; renderOidc();
+    try { const data = await request('/account/oidc/cancel', { oauth_query: query }); leaveTo(data.url); }
+    catch (error) { message('service-notice', `${error.message} 게임 화면으로 직접 돌아가 주세요.`); }
+  }));
   byId('choose-child').addEventListener('click', () => { state.ageBand = 'under14'; navigate('guardian'); });
   byId('change-age').addEventListener('click', () => { byId('signup-form').reset(); state.ageBand = null; navigate('age'); });
   byId('signin-form').addEventListener('submit', event => {
     event.preventDefault();
     withBusy('signin-form', 'signin-error', async () => {
-      await request('/auth/sign-in/email', { email: byId('signin-email').value.trim(), password: byId('signin-password').value });
+      const query = activeOAuthQuery();
+      const result = await request('/auth/sign-in/email', { email: byId('signin-email').value.trim(), password: byId('signin-password').value, ...(query ? { oauth_query: query } : {}) });
+      if (query && result && result.redirect === true) { byId('signin-password').value = ''; leaveTo(result.url); return; }
       const data = await request('/account/session');
       if (!data.user) throw new Error('로그인 상태를 확인하지 못했어요. 다시 로그인해 주세요.');
       state.user = data.user; byId('signin-password').value = '';
@@ -298,7 +459,7 @@
     });
   });
   byId('signout-button').addEventListener('click', () => withBusy('member-panel', 'member-error', async () => {
-    await request('/auth/sign-out', {}); state.user = null; clearWallet();
+    await request('/auth/sign-out', {}); state.user = null; clearWallet(); clearLoginMethods();
     byId('member-title').textContent = '반가워요'; byId('member-email').textContent = ''; byId('member-permission').textContent = ''; byId('signin-form').reset();
     state.busy = false; navigate('signin'); message('global-message', '로그아웃했어요.', true);
   }));
@@ -324,7 +485,7 @@
     state.resetToken = '';
     state.verifyToken = '';
     state.pendingLink = null;
-    state.user = null; clearWallet();
+    state.user = null; clearWallet(); clearLoginMethods();
     byId('member-panel').hidden = true;
     byId('member-email').textContent = '';
     byId('member-title').textContent = '반가워요';
@@ -339,10 +500,21 @@
     if (results[1].status === 'fulfilled') state.user = results[1].value.user || null;
     byId('loading-message').hidden = true;
     applyAvailability();
+    renderOidc();
+    const oidcHandled = state.oauthQuery ? await prepareOidc() : false;
     const nextView = view === 'member' && !state.user ? 'signin' : view;
-    if (state.user && ['signin', 'signup', 'member'].includes(nextView)) showMember();
+    if (oidcHandled) { /* 게임으로 돌아가거나 나이 확인 화면을 이미 열었다. */ }
+    else if (state.oauthQuery && ['signin', 'signup', 'member'].includes(nextView)) navigate(nextView === 'signup' ? 'age' : 'signin', false);
+    else if (state.user && ['signin', 'signup', 'member'].includes(nextView)) showMember();
     else navigate(nextView, false);
     if (entry.params.get('error') === 'INVALID_TOKEN') message('verify-error', errors.INVALID_TOKEN);
+    // 소셜 로그인·연결에서 돌아온 결과는 한 번만 보여 준다.
+    const returned = { provider: entry.params.get('social'), error: entry.params.get('error'), joined: entry.params.get('joined'), linked: entry.params.get('linked') };
+    for (const name of ['social', 'joined', 'linked']) entry.params.delete(name);
+    if (returned.error && returned.error !== 'INVALID_TOKEN') { entry.params.delete('error'); message(state.user && state.view === 'member' ? 'member-error' : 'signin-error', returnMessage(returned.error, returned.provider)); }
+    if (returned.joined) message('global-message', `${providerName(returned.joined)} 계정으로 가입을 마쳤어요.`);
+    if (returned.linked) message('global-message', `${providerName(returned.linked)} 로그인을 연결했어요.`);
+    if (state.oidcError) { message('oidc-error', state.oidcError); state.oidcError = ''; }
     state.ready = true;
     applyPendingLink();
   }

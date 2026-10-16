@@ -23,18 +23,19 @@
 <p id="loading-message" class="loading-message" role="status">계정 화면을 준비하고 있어요.</p>
 <div id="service-notice" class="notice" role="status" hidden></div>
 <p id="global-message" class="notice success" role="status" tabindex="-1" hidden></p>
+<div id="oidc-notice" class="notice" role="status" hidden><p id="oidc-notice-text" class="oidc-notice-text"></p><button id="oidc-cancel" type="button" class="text-button">취소하고 게임으로 돌아가기</button><p id="oidc-error" class="form-message" role="alert" tabindex="-1" hidden></p></div>
 <section id="signin-panel" class="panel" aria-labelledby="signin-title" hidden>
 <p class="step-label">다시 오셨군요</p><h2 id="signin-title" tabindex="-1">로그인</h2><p class="description">그레이스킨게임즈의 사이트·커뮤니티 계정이에요.</p>
 <form id="signin-form">
 <div class="field"><label for="signin-email">이메일</label><input id="signin-email" name="email" type="email" autocomplete="email" maxlength="254" required></div>
 <div class="field"><label for="signin-password">비밀번호</label><input id="signin-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required></div>
 <p id="signin-error" class="form-message" role="alert" tabindex="-1" hidden></p><button class="primary-button" type="submit">로그인</button>
-</form><div class="form-links"><button id="open-forgot" type="button" class="text-button">비밀번호 찾기</button><button id="open-verify" type="button" class="text-button">인증 메일 다시 받기</button></div><p class="switch-note">처음 오셨나요? <button id="open-signup" type="button" class="text-button">회원가입</button></p>
+</form><div id="signin-social" class="social-options" hidden><p class="social-divider"><span>또는</span></p><button id="signin-naver" class="social-button" type="button" data-provider="naver" hidden>네이버로 로그인</button><button id="signin-google" class="social-button" type="button" data-provider="google" hidden>구글로 로그인</button><p class="description small">이미 가입한 네이버·구글 계정만 로그인할 수 있어요. 처음이라면 회원가입에서 나이를 먼저 선택해 주세요.</p></div><div class="form-links"><button id="open-forgot" type="button" class="text-button">비밀번호 찾기</button><button id="open-verify" type="button" class="text-button">인증 메일 다시 받기</button></div><p class="switch-note">처음 오셨나요? <button id="open-signup" type="button" class="text-button">회원가입</button></p>
 </section>
 <section id="age-panel" class="panel" aria-labelledby="age-title" hidden>
 <p class="step-label">회원가입 · 1단계</p><h2 id="age-title" tabindex="-1">먼저 나이를 확인할게요</h2><p class="description">가입하는 분의 나이에 따라 안내해 드려요.<br> 아직 이름이나 이메일은 입력하지 않아도 돼요.</p>
 <p class="notice">신규 가입 이벤트 · 이메일 확인을 마치면 계정당 한 번 <strong>30,000 그레인</strong>을 받아요.</p>
-<div class="age-options"><button id="choose-adult" class="choice-button" type="button"><strong>만 14세 이상이에요</strong><span>이메일로 계정을 만들어요 <span aria-hidden="true">→</span></span></button><button id="choose-child" class="choice-button" type="button"><strong>만 14세 미만이에요</strong><span>보호자 동의부터 함께 진행해요 <span aria-hidden="true">→</span></span></button></div>
+<div class="age-options"><button id="choose-adult" class="choice-button" type="button"><strong>만 14세 이상이에요</strong><span><i id="choose-adult-detail" class="choice-detail">이메일로 계정을 만들어요</i> <span aria-hidden="true">→</span></span></button><button id="choose-child" class="choice-button" type="button"><strong>만 14세 미만이에요</strong><span>보호자 동의부터 함께 진행해요 <span aria-hidden="true">→</span></span></button></div>
 <p class="description small">만 14세 미만은 법정대리인(보호자)의 동의 확인을 마친 뒤 가입할 수 있어요.</p><button type="button" class="text-button" data-view="signin">이미 계정이 있어요</button>
 </section>
 <section id="signup-panel" class="panel" aria-labelledby="signup-title" hidden>
@@ -46,7 +47,7 @@
 <div class="field"><label for="signup-password">비밀번호</label><input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small>8~128자로 입력해 주세요.</small></div>
 <p class="privacy-note">이메일·닉네임·비밀번호로 계정을 만들어요. 가입 전에 <a href="/community/privacy/" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>을 확인해 주세요.</p>
 <p id="signup-error" class="form-message" role="alert" tabindex="-1" hidden></p><button id="signup-submit" class="primary-button" type="submit">가입 확인 메일 받기</button>
-</form><button id="change-age" type="button" class="text-button">이전 단계로</button>
+</form><div id="signup-social" class="social-options" hidden><p class="social-divider"><span>또는 간편 가입</span></p><p class="description small">위에 입력한 닉네임으로 가입해요. 로그인용 이메일은 선택한 서비스에 등록된 이메일을 써요. 네이버는 이메일 제공에 동의해야 가입할 수 있어요.</p><button id="signup-naver" class="social-button" type="button" data-provider="naver" hidden>네이버로 가입하기</button><button id="signup-google" class="social-button" type="button" data-provider="google" hidden>구글로 가입하기</button><p id="signup-social-error" class="form-message" role="alert" tabindex="-1" hidden></p></div><button id="change-age" type="button" class="text-button">이전 단계로</button>
 </section>
 <section id="guardian-panel" class="panel" aria-labelledby="guardian-title" hidden>
 <p class="step-label">어린이 회원가입 · 보호자 동의</p><h2 id="guardian-title" tabindex="-1">보호자와 함께해 주세요</h2><p class="description">법정대리인의 동의 확인을 먼저 진행해요. 확인을 마치기 전에는 어린이의 닉네임·이메일·비밀번호를 받지 않아요.</p>
@@ -60,6 +61,12 @@
 </form>
 <div id="guardian-status" hidden><p id="guardian-status-message" class="notice" role="status"></p><p id="guardian-review-message" class="description" role="status" hidden></p><p id="guardian-request-number" class="description small"></p><button id="guardian-refresh" class="primary-button" type="button">동의 확인 상태 새로고침</button><button id="guardian-continue" class="primary-button" type="button" hidden>어린이 계정 만들기</button><button id="guardian-restart" class="primary-button" type="button" hidden>보호자 동의 다시 신청하기</button><button id="guardian-cancel" class="text-button" type="button">가입 신청 취소</button><p id="guardian-status-error" class="form-message" role="alert" tabindex="-1" hidden></p></div>
 </div><button type="button" class="text-button" data-view="age">나이 선택으로 돌아가기</button>
+</section>
+<section id="oidc-age-panel" class="panel" aria-labelledby="oidc-age-title" hidden>
+<p class="step-label">게임 연결 · 나이 확인</p><h2 id="oidc-age-title" tabindex="-1">게임을 이용하기 전에 나이를 확인할게요</h2><p class="description">이 계정에는 아직 나이 구분이 없어요. 처음 한 번만 선택하면 돼요. 생년월일은 받지 않아요.</p>
+<div id="oidc-age-options" class="age-options"><button id="oidc-adult" class="choice-button" type="button"><strong>만 14세 이상이에요</strong><span>선택하고 게임으로 돌아가요 <span aria-hidden="true">→</span></span></button><button id="oidc-child" class="choice-button" type="button"><strong>만 14세 미만이에요</strong><span>보호자 동의 가입을 안내해 드려요 <span aria-hidden="true">→</span></span></button></div>
+<div id="oidc-child-guide" hidden><p class="notice">만 14세 미만은 보호자 동의를 거친 어린이 계정으로 게임을 연결할 수 있어요. 이 계정은 게임에 연결하지 않았어요.</p><button id="oidc-guardian" class="primary-button" type="button">보호자 동의 가입 안내 보기</button></div>
+<p id="oidc-age-error" class="form-message" role="alert" tabindex="-1" hidden></p>
 </section>
 <section id="verify-panel" class="panel" aria-labelledby="verify-title" hidden>
 <p class="step-label">이메일 확인</p><h2 id="verify-title" tabindex="-1">메일함을 확인해 주세요</h2><p id="verify-description" class="description">메일의 확인 링크를 누르면 가입을 마칠 수 있어요. 메일이 보이지 않으면 스팸함도 확인해 주세요.</p>
@@ -80,6 +87,9 @@
 <p id="grain-status" class="description" role="status">잔액을 불러오고 있어요.</p>
 <div id="grain-content" hidden><p class="grain-balance"><strong id="grain-balance"></strong> <span>그레인</span></p><p class="description small">사이트 게임에서 사용할 화폐예요. 게임별 사용 기능은 준비 중이에요.</p><h4>지급 내역</h4><ul id="grain-entries" class="grain-entries"></ul><p id="grain-empty" class="description" hidden>아직 지급 내역이 없어요.</p></div>
 <p id="grain-error" class="form-message" role="alert" hidden></p><button id="grain-retry" class="text-button" type="button" hidden>그레인 다시 불러오기</button>
+</section><section id="login-methods" class="login-methods" aria-labelledby="login-methods-title" aria-busy="false" hidden>
+<h3 id="login-methods-title">로그인 수단</h3><p class="description small">로그인한 상태에서만 연결하거나 해제할 수 있어요. 마지막 하나는 해제할 수 없어요.</p>
+<ul id="login-method-list" class="login-method-list"></ul><p id="login-methods-error" class="form-message" role="alert" tabindex="-1" hidden></p>
 </section><a id="community-link" class="primary-button button-link" href="/community/?game=slimeline">커뮤니티로 가기 <span aria-hidden="true">→</span></a><div class="form-links"><button id="member-forgot" type="button" class="text-button">비밀번호 재설정</button><button id="signout-button" type="button" class="text-button">로그아웃</button></div><p id="member-error" class="form-message" role="alert" tabindex="-1" hidden></p><p class="privacy-note">계정 삭제와 개인정보 관련 요청은 <a href="mailto:support@gracekingames.com">support@gracekingames.com</a>으로 보내 주세요.</p>
 </section>
 <div class="guest-return"><span>가입은 나중에 해도 괜찮아요.</span><a id="guest-link" href="https://gracekingames.com/">게임 둘러보기 <span aria-hidden="true">↗</span></a></div>
