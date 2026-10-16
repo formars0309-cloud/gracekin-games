@@ -355,7 +355,7 @@ def verify(root: Path) -> Report:
         entry = account_entry.read_text()
         tokens = javascript_tokens(entry)
         origins = [value for kind, value in tokens if kind in {'string', 'template'} and value.startswith(('http:', 'https:', '//'))]
-        check(origins == ['https://gracekin-games-community.fly.dev'], '계정 진입: 고정 계정 출처 이외의 이동 목적지 발견')
+        check(origins == ['https://community.gracekingames.com'], '계정 진입: 고정 계정 출처 이외의 이동 목적지 발견')
         check('history.replaceState' in entry and entry.index('history.replaceState') < entry.index('location.replace'), '계정 진입: 이동 전에 인증값을 주소에서 제거해야 함')
         check('destination.hash' in entry and 'destination.search = clean.toString()' in entry, '계정 진입: 인증값은 이동 URL의 해시에만 전달해야 함')
     # 공지 데이터의 보관 위치·개수·특정 JS 구현 문자열에 회원 기능을 결박하지 않는다.

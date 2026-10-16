@@ -1,7 +1,7 @@
 /* 인증 링크의 비밀값을 주소에서 즉시 지우고, 고정된 계정 서버에서만 처리한다. */
 (() => {
   'use strict';
-  const ACCOUNT_ORIGIN = 'https://gracekin-games-community.fly.dev';
+  const ACCOUNT_ORIGIN = 'https://community.gracekingames.com';
   const allowedViews = new Set(['signin', 'signup', 'forgot', 'reset', 'verify', 'guardian']);
   const isPages = location.hostname === 'gracekingames.com' || location.hostname === 'www.gracekingames.com';
   window.gracekinAccountRedirecting = isPages;

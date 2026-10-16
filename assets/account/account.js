@@ -11,7 +11,7 @@
   const boards = game === 'gyeongguk' ? ['notice', 'free', 'deck', 'strategy'] : ['notice', 'free', 'guide', 'gallery'];
   const board = boards.includes(entry.params.get('board')) ? entry.params.get('board') : 'notice';
   const communityPath = `/community/?${new URLSearchParams({ game: game || 'slimeline', board })}`;
-  const studioPath = path => location.hostname === 'gracekin-games-community.fly.dev' ? `https://gracekingames.com${path}` : path;
+  const studioPath = path => location.hostname === 'community.gracekingames.com' ? `https://gracekingames.com${path}` : path;
   for (const link of document.querySelectorAll('.studio-home-link')) link.href = studioPath('/');
   byId('community-link').href = communityPath;
   for (const id of ['back-link', 'guest-link']) byId(id).href = studioPath(game ? `/games/${game}/` : '/');
