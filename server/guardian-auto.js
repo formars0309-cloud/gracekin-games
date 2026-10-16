@@ -16,6 +16,15 @@ const API_LIMIT = 2 * 1024 * 1024;
 const LEASE_MS = 60 * 1000;
 const SAFE_HEADERS = ['auto-submitted', 'precedence', 'x-autoreply', 'x-autorespond', 'x-auto-response-suppress', 'list-id', 'resent-from', 'resent-to', 'resent-sender'];
 
+function validWebhookSecret(value) {
+  if (typeof value !== 'string' || !value.startsWith('whsec_')) return false;
+  const encoded = value.slice(6);
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) return false;
+  const decoded = Buffer.from(encoded, 'base64');
+  // Resend가 발급하는 24바이트 키를 포함하며, 패딩·여분 비트가 다른 표기는 거부합니다.
+  return decoded.length >= 24 && decoded.length <= 128 && decoded.toString('base64') === encoded;
+}
+
 // HTTP 입력이 아닌 서버 내부 설정으로만 활성화합니다. 불완전한 자동 설정은 수동 모드로 바꾸지 않습니다.
 export function automaticGuardianSettings(options = {}) {
   const mode = options.guardianConsentMode ?? process.env.GUARDIAN_CONSENT_MODE ?? 'email-reply-review';
@@ -23,7 +32,7 @@ export function automaticGuardianSettings(options = {}) {
   const webhookSecret = options.resendWebhookSecret ?? process.env.RESEND_WEBHOOK_SECRET;
   const ready = options.guardianAutoApprovalReady ?? (process.env.GUARDIAN_AUTO_APPROVAL_READY === 'true');
   const autoConfigured = mode === 'email-reply-auto' && typeof apiKey === 'string' && /^re_[A-Za-z0-9_-]+$/.test(apiKey)
-    && typeof webhookSecret === 'string' && /^whsec_[A-Za-z0-9+/]{40,}={0,2}$/.test(webhookSecret);
+    && validWebhookSecret(webhookSecret);
   return { mode, apiKey, webhookSecret, autoConfigured, autoReady: autoConfigured && ready === true };
 }
 

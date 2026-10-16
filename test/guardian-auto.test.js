@@ -8,7 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { Webhook } from 'svix';
 import { startServer } from '../server/app.js';
 import { CONSENT_VERSION, automaticReplyText } from '../server/guardian.js';
-import { createAutomaticGuardianReview, GUARDIAN_WEBHOOK_PATH } from '../server/guardian-auto.js';
+import { automaticGuardianSettings, createAutomaticGuardianReview, GUARDIAN_WEBHOOK_PATH } from '../server/guardian-auto.js';
 import { cleanupGuardianEvidence, withdrawGuardian, deleteGuardianChild } from '../server/guardian-review.js';
 import { request, cookieFrom, tokenFrom } from './account-helpers.js';
 
@@ -20,11 +20,12 @@ const post = (app, path, body, cookie) => request(app, path, { method: 'POST', b
 
 async function scenario(callback, overrides = {}) {
   const folder = await mkdtemp(join(tmpdir(), 'gracekin-auto-'));
-  const secret = `whsec_${randomBytes(32).toString('base64')}`, verifier = new Webhook(secret), mailbox = [], inbox = new Map(), calls = [];
+  const secret = `whsec_${randomBytes(32).toString('base64')}`, mailbox = [], inbox = new Map(), calls = [];
   const options = { port: 0, dataDir: folder, guardianReplyTo: replyTo, guardianConsentMode: 'email-reply-auto', guardianAutoApprovalReady: true,
     resendReceivingApiKey: 're_test_internal_only', resendWebhookSecret: secret, mailer: async mail => mailbox.push(mail),
     rateLimit: { authMax: 1000, writeMax: 1000 },
     guardianReceivingFetch: async (url, init) => { calls.push({ url, redirect: init.redirect, signal: init.signal }); return response(inbox.get(url.match(/receiving\/([^?]+)/)[1])); }, ...overrides };
+  const verifier = new Webhook(options.resendWebhookSecret || secret);
   let app, db;
   try {
     app = await startServer(options);
@@ -82,6 +83,23 @@ test('서명·공급자 인증·정확한 회신으로 자동 승인하고 한 �
   assert.equal(state.canWriteCommunity, false);
   assert.equal((await post(app, '/api/community/posts', { game: 'slimeline', board: 'free', title: '차단 확인', body: '어린이 글' }, cookie)).status, 403);
 }));
+
+test('공급자의 24바이트 서명키와 32바이트 키를 수용하고 비정규·짧은 키는 닫음', async () => {
+  for (const bytes of [24, 32]) {
+    const secret = `whsec_${randomBytes(bytes).toString('base64')}`;
+    await scenario(async ({ app, db, apply, received, webhook }) => {
+      assert.equal((await request(app, '/api/account/config')).body.guardianConsentAvailable, true);
+      assert.equal((await webhook(received(await apply()))).status, 200);
+      assert.equal(db.prepare('SELECT status FROM guardian_requests').get().status, 'approved');
+    }, { resendWebhookSecret: secret });
+  }
+  const settings = { guardianConsentMode: 'email-reply-auto', guardianAutoApprovalReady: true, resendReceivingApiKey: 're_test_internal_only' };
+  const nonCanonical = `${Buffer.alloc(25).toString('base64').slice(0, -3)}B==`;
+  for (const secret of ['', 'whsec_', `whsec_${randomBytes(23).toString('base64')}`, `whsec_${randomBytes(32).toString('base64').replace(/=+$/, '')}`, `whsec_${nonCanonical}`, `whsec_${'A'.repeat(31)}`, `whsec_${'!'.repeat(32)}`, `whsec_${randomBytes(24).toString('base64')} `]) {
+    const result = automaticGuardianSettings({ ...settings, resendWebhookSecret: secret });
+    assert.equal(result.autoConfigured, false); assert.equal(result.autoReady, false);
+  }
+});
 
 test('자동 설정이 빠지거나 준비 플래그가 없으면 수동 모드로 조용히 열리지 않음', async () => {
   for (const override of [{ guardianAutoApprovalReady: false }, { resendReceivingApiKey: '' }, { resendWebhookSecret: '' }, { guardianReplyTo: '' }, { guardianConsentMode: '알수없음' }]) {
