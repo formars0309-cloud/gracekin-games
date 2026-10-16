@@ -4,7 +4,7 @@ import { readFile, mkdir, chmod, writeFile, unlink, readdir, lstat, realpath } f
 import { basename, join, resolve } from 'node:path';
 import { auditGuardian, expireGuardianRequests, withdrawGuardian } from './guardian.js';
 
-async function evidenceDirectory(dataDir, create = false) {
+export async function evidenceDirectory(dataDir, create = false) {
   const directory = join(dataDir, 'guardian-evidence');
   if (create) await mkdir(directory, { recursive: true, mode: 0o700 });
   const info = await lstat(directory).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
@@ -16,7 +16,7 @@ async function evidenceDirectory(dataDir, create = false) {
 function maskEmail(email) { if (!email) return null; const [name, domain] = email.split('@'); return `${name.slice(0, 1)}***@${domain}`; }
 export function listGuardianRequests(db) {
   expireGuardianRequests(db);
-  return db.prepare('SELECT id,status,guardianEmail,createdAt,expiresAt FROM guardian_requests ORDER BY createdAt DESC LIMIT 100').all().map(row => ({ requestNumber: row.id, status: row.status, guardianEmail: maskEmail(row.guardianEmail), createdAt: new Date(row.createdAt).toISOString(), expiresAt: new Date(row.expiresAt).toISOString() }));
+  return db.prepare('SELECT id,status,guardianEmail,createdAt,expiresAt,consentMethod,reviewStatus,reviewReason FROM guardian_requests ORDER BY createdAt DESC LIMIT 100').all().map(row => ({ requestNumber: row.id, status: row.status, guardianEmail: maskEmail(row.guardianEmail), consentMethod: row.consentMethod, reviewStatus: row.reviewStatus, reviewReason: row.reviewReason, createdAt: new Date(row.createdAt).toISOString(), expiresAt: new Date(row.expiresAt).toISOString() }));
 }
 // 헤더 일치는 보조 검사입니다. 법정대리인 여부와 회신 의사는 운영자가 원문을 보고 확인합니다.
 function replySender(parsed) {
@@ -42,7 +42,7 @@ export async function approveGuardianRequest(db, { id, evidencePath, dataDir, co
   await writeFile(target, evidence, { flag: 'wx', mode: 0o600 });
   db.exec('BEGIN IMMEDIATE');
   try {
-    const result = db.prepare("UPDATE guardian_requests SET status='approved',reviewedAt=? WHERE id=? AND status='pending' AND expiresAt>?").run(now, id, now);
+    const result = db.prepare("UPDATE guardian_requests SET status='approved',reviewedAt=?,reviewStatus='approved',reviewReason=NULL WHERE id=? AND status='pending' AND expiresAt>?").run(now, id, now);
     if (result.changes !== 1) throw new Error('검토 중 신청 상태가 변경되었습니다.');
     auditGuardian(db, id, 'approved', now, digest, filename);
     db.exec('COMMIT');
@@ -55,7 +55,7 @@ export function rejectGuardianRequest(db, id, now = Date.now()) {
 }
 export async function cleanupGuardianEvidence(db, dataDir, now = Date.now()) {
   const directory = await evidenceDirectory(dataDir);
-  expireGuardianRequests(db);
+  expireGuardianRequests(db, now);
   db.prepare("UPDATE guardian_requests SET status='withdrawn' WHERE status='used' AND childUserId IS NULL").run();
   const rows = db.prepare("SELECT a.id,a.evidenceFile FROM guardian_audit a JOIN guardian_requests r ON r.id=a.requestId WHERE r.status IN ('expired','withdrawn') AND r.childUserId IS NULL AND a.evidenceFile IS NOT NULL").all();
   for (const row of rows) {
@@ -64,14 +64,15 @@ export async function cleanupGuardianEvidence(db, dataDir, now = Date.now()) {
     if (directory) await unlink(join(directory, row.evidenceFile)).catch(error => { if (error.code !== 'ENOENT') throw error; });
     db.prepare('UPDATE guardian_audit SET evidenceFile=NULL,evidenceHash=NULL WHERE id=?').run(row.id);
   }
-  db.prepare("UPDATE guardian_requests SET guardianName=NULL,guardianEmail=NULL WHERE status IN ('expired','withdrawn') AND childUserId IS NULL").run();
+  db.prepare("DELETE FROM guardian_mail_events WHERE requestId IN (SELECT id FROM guardian_requests WHERE status IN ('expired','withdrawn') AND childUserId IS NULL) OR (requestId IS NULL AND createdAt<=?)").run(now - 7 * 24 * 60 * 60 * 1000);
+  db.prepare("UPDATE guardian_requests SET guardianName=NULL,guardianEmail=NULL,replyNonceHash=NULL,reviewStatus=NULL,reviewReason=NULL WHERE status IN ('expired','withdrawn') AND childUserId IS NULL").run();
   // 원문 저장과 DB 기록 사이 중단으로 남은 파일만 하루 유예 후 정리합니다.
-  // 일반 UUID 이름의 .eml만 관리하며 다른 이름·하위폴더·심볼릭 링크는 건드리지 않습니다.
+  // 일반 UUID 이름의 .eml·.json만 관리하며 다른 이름·하위폴더·심볼릭 링크는 건드리지 않습니다.
   let orphans = 0;
   if (directory) {
     const referenced = new Set(db.prepare('SELECT evidenceFile FROM guardian_audit WHERE evidenceFile IS NOT NULL').all().map(row => row.evidenceFile));
     for (const entry of await readdir(directory, { withFileTypes: true })) {
-      if (!entry.isFile() || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.eml$/.test(entry.name) || referenced.has(entry.name)) continue;
+      if (!entry.isFile() || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(?:eml|json)$/.test(entry.name) || referenced.has(entry.name)) continue;
       const file = join(directory, entry.name);
       const info = await lstat(file).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
       if (info?.isFile() && now - info.mtimeMs >= 24 * 60 * 60 * 1000) { await unlink(file).catch(error => { if (error.code !== 'ENOENT') throw error; }); orphans++; }

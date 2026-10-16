@@ -58,6 +58,7 @@ assets/gyeongguk/**
 # 공통 계정 화면·동의 관리에 필요한 파일만 포함
 !server/account.js
 !server/guardian.js
+!server/guardian-auto.js
 !server/guardian-review.js
 !server/mailer.js
 !account/

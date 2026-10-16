@@ -56,7 +56,7 @@ export function createAccountService(db, auth, { origin, mailer, guardian, now =
     if (url.pathname === '/api/account/verify-email' && request.method === 'POST') { const body = await readJson(request); return verifyEmail(body.token); }
     if (!['/api/account/config','/api/account/session'].includes(url.pathname)) fail(404, 'NOT_FOUND', '요청한 내용을 찾을 수 없습니다.');
     if (request.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
-    if (url.pathname === '/api/account/config') return json({ emailAvailable: Boolean(mailer), registrationAvailable: Boolean(mailer), guardianConsentAvailable: guardian.enabled, guardianConsentMethod: guardian.enabled ? 'email-reply-review' : null });
+    if (url.pathname === '/api/account/config') return json({ emailAvailable: Boolean(mailer), registrationAvailable: Boolean(mailer), guardianConsentAvailable: guardian.enabled, guardianConsentMethod: guardian.method });
     if (url.pathname === '/api/account/session') {
       const session = await auth.api.getSession({ headers: request.headers });
       const user = activeAccountUser(db, session?.user);
