@@ -10,12 +10,13 @@ import { cookieFrom, registerAndLogin, request } from '../../test/account-helper
 const folder = await mkdtemp(join(tmpdir(), 'gracekin-race-browser-'));
 const mailbox = [];
 const startsAt = Math.floor(Date.now() / 600000) * 600000;
-let clock = startsAt + 10000, verifiedAdult = false;
+let clock = startsAt + 10000, liveStarted = null, verifiedAdult = false;
+const now = () => clock + (liveStarted === null ? 0 : Math.floor(performance.now() - liveStarted));
 let app, db;
 const output = value => process.stdout.write(JSON.stringify(value) + '\n');
 try {
   app = await startServer({
-    port: 0, dataDir: folder, now: () => clock,
+    port: 0, dataDir: folder, now,
     mailer: async mail => mailbox.push(mail), guardianReplyTo: 'support@example.test',
     slimeRaceAdultVerifier: () => verifiedAdult,
     rateLimit: { authMax: 200, readMax: 5000, writeMax: 500 },
@@ -34,10 +35,10 @@ try {
     const command = JSON.parse(line);
     if (command.action === 'close') { output({ ok: true }); break; }
     if (command.action === 'adult') verifiedAdult = command.value === true;
-    else if (command.action === 'time') clock = startsAt + command.elapsed;
+    else if (command.action === 'time') { clock = startsAt + command.elapsed; liveStarted = command.live ? performance.now() : null; }
     else if (command.action === 'round') {
       // 실제 승자·배당은 결과 단계에서만 시험 프로세스에 반환한다.
-      if (clock < startsAt + 570000) throw new Error('결과 전 내부 승자 조회 금지');
+      if (now() < startsAt + 570000) throw new Error('결과 전 내부 승자 조회 금지');
     } else if (command.action !== 'ledger') throw new Error('지원하지 않는 검수 명령');
     const state = await request(app, '/api/slime-race/state');
     const me = await request(app, '/api/slime-race/me', { cookie });

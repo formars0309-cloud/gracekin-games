@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output-dir', type=Path)
+    parser.add_argument('--sound-only', action='store_true', help='음원 취소 보완만 재검수한다')
     args = parser.parse_args()
     output = args.output_dir or Path(tempfile.mkdtemp(prefix='gracekin-race-review-'))
     output.mkdir(parents=True, exist_ok=True)
@@ -44,14 +45,65 @@ def main() -> None:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             context = browser.new_context(viewport={'width': 1440, 'height': 1000}, reduced_motion='reduce')
+            context.add_init_script("""window.__raceAudioPlays = [];
+              const originalPlay = HTMLMediaElement.prototype.play;
+              HTMLMediaElement.prototype.play = function() {
+                const entry = {src:this.src, status:'pending'};
+                window.__raceAudioPlays.push(entry);
+                const result = originalPlay.call(this);
+                result.then(() => {entry.status='fulfilled';}, () => {entry.status='rejected';});
+                return result;
+              };""")
             context.add_cookies([
                 {'name': item.split('=', 1)[0], 'value': item.split('=', 1)[1], 'url': fixture['origin']}
                 for item in fixture['cookie'].split('; ')
             ])
-            # 검수에서 실제 운영 서버·통계·폰트 서비스에 요청하지 않는다.
-            context.route('**/*', lambda route: route.continue_() if urlsplit(route.request.url).hostname == '127.0.0.1' else route.abort())
-            page = context.new_page()
+            network_control = {'lose_ticket_reply': False, 'committed_status': None, 'initial_api_failures': False}
+
+            def route_request(route):
+                # 검수에서 실제 운영 서버·통계·폰트 서비스에 요청하지 않는다.
+                if urlsplit(route.request.url).hostname != '127.0.0.1':
+                    route.abort()
+                elif network_control['initial_api_failures'] and route.request.url.endswith(('/api/slime-race/state', '/api/slime-race/me')):
+                    if network_control['initial_api_failures'] == 'network':
+                        route.abort()
+                    else:
+                        route.fulfill(status=500, content_type='application/json', body=json.dumps({'error': {'code': 'REVIEW_FAILURE', 'message': '검수용 일시 연결 실패'}}))
+                elif route.request.url.endswith('/api/slime-race/tickets') and network_control['lose_ticket_reply']:
+                    # 서버 저장은 성공했으나 응답만 사라진 실제 재전송 경계를 만든다.
+                    network_control['lose_ticket_reply'] = False
+                    response = route.fetch()
+                    network_control['committed_status'] = response.status
+                    route.abort()
+                else:
+                    route.continue_()
+
+            context.route('**/*', route_request)
             errors = []
+            for failure_mode in ([] if args.sound_only else ['server', 'network']):
+                failure_page = context.new_page()
+                failure_page.on('pageerror', lambda error: errors.append(str(error)))
+                network_control['initial_api_failures'] = failure_mode
+                failure_page.goto(fixture['origin'], wait_until='networkidle')
+                failure_page.locator('[data-public-error]').wait_for(state='visible')
+                failure_page.locator('[data-action="ticket"]').click()
+                failure_page.wait_for_function("document.querySelector('[data-gate]').textContent.includes('불러오지') || document.querySelector('[data-gate]').textContent.includes('다시')")
+                assert not errors, '최초 API 실패에서 브라우저 실행 오류: ' + '; '.join(errors)
+                failure_page.screenshot(path=str(output / f'initial-api-{failure_mode}-failure.png'), full_page=True)
+                network_control['initial_api_failures'] = False
+                failure_page.locator('[data-action="close"]').click()
+                failure_page.locator('#sr-ticket').wait_for(state='hidden')
+                failure_page.locator('[data-action="retry"]').click()
+                failure_page.locator('[data-public-error]').wait_for(state='hidden')
+                failure_page.locator('[data-action="ticket"]').click()
+                failure_page.locator('.sr-runner').nth(4).wait_for()
+                failure_page.wait_for_function("document.querySelector('[data-dialog-balance]').textContent.includes('30,000')")
+                assert not errors, 'API 다시 불러오기 복구 중 실행 오류: ' + '; '.join(errors)
+                failure_page.close()
+            if not args.sound_only:
+                checks.append('최초 state·me 500 응답·네트워크 중단에도 실행 오류 없이 안내하고 다시 불러오기로 실제 상태·잔액 복구')
+
+            page = context.new_page()
             audio_requests = []
             page.on('pageerror', lambda error: errors.append(str(error)))
             page.on('request', lambda request: audio_requests.append(request.url) if request.url.endswith('.mp3') else None)
@@ -64,6 +116,22 @@ def main() -> None:
             assert page.locator('[data-action="sound"]').get_attribute('aria-pressed') == 'true'
             page.locator('[data-action="sound"]').click()
             assert page.locator('[data-action="sound"]').get_attribute('aria-pressed') == 'false'
+            page.wait_for_function("window.__raceAudioPlays.length && window.__raceAudioPlays.every(play => play.status !== 'pending')")
+            assert '음악을 재생하지 못했어요' not in page.locator('[data-spectator-message]').inner_text(), '사용자 소리 끄기를 재생 오류로 표시'
+            page.locator('[data-action="sound"]').click()
+            page.wait_for_function("window.__raceAudioPlays.some(play => play.src.endsWith('bgm-spring.mp3') && play.status === 'fulfilled')")
+            page.locator('[data-action="sound"]').click()
+            page.wait_for_function("window.__raceAudioPlays.length && window.__raceAudioPlays.every(play => play.status !== 'pending')")
+            assert '재생하지 못했어요' not in page.locator('[data-spectator-message]').inner_text(), '사용자 음원 끄기를 BGM·효과음 오류로 표시'
+            if args.sound_only:
+                assert not errors, '소리 재검수 중 실행 오류: ' + '; '.join(errors)
+                report = {'통과': ['첫 무음·선택 전 음원 요청 없음·실제 BGM 재생 fulfilled·빠른 BGM/효과음 끄기에 허위 재생 오류 없음'], '운영 요청': '로컬 127.0.0.1 이외 전부 차단'}
+                page.screenshot(path=str(output / 'sound-toggle.png'), full_page=True)
+                (output / 'sound-result.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
+                print(json.dumps(report, ensure_ascii=False, indent=2))
+                context.close()
+                browser.close()
+                return
             page.locator('[data-action="ticket"]').click()
             page.locator('.sr-runner').nth(4).wait_for()
             assert page.locator('[data-action="buy"]').is_disabled(), '성인 미확인 구매가 열림'
@@ -86,8 +154,20 @@ def main() -> None:
 
             buy(0, 1000)
             assert command('ledger')['me']['wallet']['balance'] == 29000
-            buy(0, 1500)
-            assert command('ledger')['me']['wallet']['balance'] == 28500
+            page.locator('.sr-runner').nth(0).click()
+            page.locator('[data-amount]').fill('1500')
+            network_control['lose_ticket_reply'] = True
+            page.locator('[data-action="buy"]').click()
+            page.locator('[data-action="retry-purchase"]').wait_for(state='visible')
+            after_lost_reply = command('ledger')
+            assert network_control['committed_status'] == 200
+            assert after_lost_reply['me']['wallet']['balance'] == 28500
+            with page.expect_response(lambda response: response.url.endswith('/api/slime-race/tickets') and response.request.method == 'POST') as replay:
+                page.locator('[data-action="retry-purchase"]').click()
+            assert replay.value.status == 200
+            page.wait_for_function("!document.querySelector('[data-action=buy]').disabled")
+            assert command('ledger')['ledger'] == after_lost_reply['ledger'], '응답 유실 재확인 중복 차감'
+            checks.append('서버 저장 후 응답 유실을 주입해 같은 요청 재확인·중복 차감 없음')
             buy(1, 500)
             assert command('ledger')['me']['wallet']['balance'] == 28000
             with page.expect_response(lambda response: response.url.endswith('/api/slime-race/tickets') and response.request.method == 'POST') as reply:
@@ -104,6 +184,18 @@ def main() -> None:
             page.locator('#sr-ticket').wait_for(state='hidden')
             assert page.locator('[data-action="ticket"]').evaluate('(el) => document.activeElement === el'), '창 닫기 초점 복귀 실패'
             page.screenshot(path=str(output / 'desktop-home.png'), full_page=True)
+            page.set_viewport_size({'width': 320, 'height': 800})
+            page.reload(wait_until='networkidle')
+            page.locator('[data-action="ticket"]').click()
+            page.locator('.sr-runner').nth(4).wait_for()
+            first_meta = page.locator('.sr-runner-detail').first.bounding_box()
+            visible_list = page.locator('.sr-ticket-scroll').bounding_box()
+            assert first_meta['y'] >= visible_list['y'] and first_meta['y'] + first_meta['height'] <= visible_list['y'] + visible_list['height'], '320px 초기 창에서 첫 선수 세 항목이 가려짐'
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), '320px 초기 창 가로 넘침'
+            page.screenshot(path=str(output / 'mobile-320-initial-ticket.png'), full_page=True)
+            checks.append('320×800 새로고침 후 처음 연 창에서 첫 선수 세 항목 전체가 스크롤 없이 보임')
+            page.keyboard.press('Escape')
+            page.locator('#sr-ticket').wait_for(state='hidden')
             page.set_viewport_size({'width': 390, 'height': 844})
             page.locator('[data-action="ticket"]').click()
             page.locator('#sr-ticket').wait_for(state='visible')
@@ -114,6 +206,11 @@ def main() -> None:
             page.screenshot(path=str(output / 'mobile-dialog.png'), full_page=True)
             checks.append('PC 팝업·390px 모바일 시트·세 열 정보·Escape 초점 복귀·감소 모션 환경')
 
+            # 판매 종료 직전에는 고정 폴링 5초를 기다리지 않고 경계를 재조회한다.
+            command('time', elapsed=499000, live=True)
+            with page.expect_response(lambda response: response.url.endswith('/api/slime-race/state') and response.json()['round']['phase'] == 'countdown', timeout=2500):
+                page.reload(wait_until='domcontentloaded')
+            checks.append('판매 종료 1초 전 실시간 시계에서 2.5초 안에 마감 서버 상태 재조회')
             command('time', elapsed=500000)
             page.reload(wait_until='networkidle')
             page.locator('[data-action="ticket"]').click()

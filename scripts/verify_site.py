@@ -362,9 +362,10 @@ def verify(root: Path) -> Report:
 
     home = pages.get(root / 'index.html')
     if home:
+        expected_entries = {'card-image', 'card-button'} if 'slime-race' in home.ids else {'stage', 'card-image', 'card-button'}
         for game, url in GAME_URLS.items():
             links = [link for link in home.links if link.get('href') == f'/games/{game}/']
-            check(len(links) == 3, f'대문: {game} 진입 링크는 무대·그림·버튼 3개여야 함')
+            check(len(links) == len(expected_entries) and {link.get('data-umami-event-from') for link in links} == expected_entries, f'대문: {game} 게임 소개 진입 위치·개수 불일치')
             check(all(link.get('data-umami-event') == f'homepage-{game}' for link in links), f'대문: {game} 홈페이지 이동 이벤트 불일치')
             check(not any(link.get('href') == url for link in home.links), f'대문: {game} 게임 직접 실행 링크 발견')
     for game, url in GAME_URLS.items():
