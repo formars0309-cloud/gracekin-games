@@ -128,11 +128,60 @@
     catch (error) { message(errorId, error.message, true); }
     finally { state.busy = false; controls.forEach(control => { control.disabled = false; }); form.setAttribute('aria-busy', 'false'); applyAvailability(); applyPendingLink(); }
   }
+  let walletRequest = 0;
+  function clearWallet() {
+    walletRequest += 1;
+    byId('grain-wallet').setAttribute('aria-busy', 'false');
+    byId('grain-content').hidden = true;
+    byId('grain-balance').textContent = '';
+    byId('grain-entries').replaceChildren();
+    message('grain-error', '');
+    message('grain-status', '');
+    byId('grain-retry').hidden = true;
+  }
+  async function loadWallet() {
+    clearWallet();
+    const requestId = walletRequest;
+    const userId = state.user?.id;
+    if (!userId) return;
+    byId('grain-wallet').setAttribute('aria-busy', 'true');
+    message('grain-status', '잔액과 지급 내역을 불러오고 있어요.');
+    try {
+      const data = await request('/account/grain');
+      if (requestId !== walletRequest || state.user?.id !== userId) return;
+      if (!Number.isSafeInteger(data.balance) || data.balance < 0 || !Array.isArray(data.entries)) throw new Error('그레인 정보를 확인하지 못했어요. 다시 불러와 주세요.');
+      byId('grain-balance').textContent = new Intl.NumberFormat('ko-KR').format(data.balance);
+      for (const item of data.entries) {
+        const li = document.createElement('li');
+        const description = document.createElement('span');
+        description.textContent = item.reason;
+        const amount = document.createElement('strong');
+        amount.textContent = `${item.amount > 0 ? '+' : ''}${new Intl.NumberFormat('ko-KR').format(item.amount)} 그레인`;
+        const time = document.createElement('time');
+        time.dateTime = item.createdAt;
+        time.textContent = new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.createdAt));
+        li.append(description, amount, time);
+        byId('grain-entries').append(li);
+      }
+      byId('grain-empty').hidden = data.entries.length !== 0;
+      byId('grain-content').hidden = false;
+      message('grain-status', '');
+    } catch (error) {
+      if (requestId !== walletRequest || state.user?.id !== userId) return;
+      message('grain-status', '');
+      message('grain-error', error.message);
+      byId('grain-retry').hidden = false;
+    } finally {
+      if (requestId === walletRequest) byId('grain-wallet').setAttribute('aria-busy', 'false');
+    }
+  }
+  byId('grain-retry').addEventListener('click', loadWallet);
   function showMember() {
     byId('member-title').textContent = `${state.user.name}님, 반가워요`;
     byId('member-email').textContent = state.user.email;
     byId('member-permission').textContent = state.user.canWriteCommunity ? '커뮤니티에서 글과 댓글을 나눌 수 있어요.' : '이 계정으로는 커뮤니티의 글과 공식 안내를 읽을 수 있어요. 글·댓글 작성은 제공하지 않아요.';
     navigate('member');
+    loadWallet();
   }
   function showSignup(ageBand) {
     if (!state.config?.registrationAvailable || state.busy) return;
@@ -244,12 +293,13 @@
     withBusy('reset-form', 'reset-error', async () => {
       if (byId('reset-password').value !== byId('reset-confirm').value) throw new Error('새 비밀번호와 확인란을 똑같이 입력해 주세요.');
       await request('/auth/reset-password', { token: state.resetToken, newPassword: byId('reset-password').value });
-      state.resetToken = ''; state.user = null; byId('reset-form').reset();
+      state.resetToken = ''; state.user = null; clearWallet(); byId('reset-form').reset();
       state.busy = false; navigate('signin'); message('global-message', '비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.', true);
     });
   });
   byId('signout-button').addEventListener('click', () => withBusy('member-panel', 'member-error', async () => {
-    await request('/auth/sign-out', {}); state.user = null; byId('signin-form').reset();
+    await request('/auth/sign-out', {}); state.user = null; clearWallet();
+    byId('member-title').textContent = '반가워요'; byId('member-email').textContent = ''; byId('member-permission').textContent = ''; byId('signin-form').reset();
     state.busy = false; navigate('signin'); message('global-message', '로그아웃했어요.', true);
   }));
   byId('guardian-form').addEventListener('submit', event => {
@@ -274,18 +324,24 @@
     state.resetToken = '';
     state.verifyToken = '';
     state.pendingLink = null;
+    state.user = null; clearWallet();
+    byId('member-panel').hidden = true;
+    byId('member-email').textContent = '';
+    byId('member-title').textContent = '반가워요';
   });
   window.addEventListener('pageshow', event => {
-    if (event.persisted) { navigate(state.view, false); applyAvailability(); }
+    if (event.persisted) { byId('loading-message').hidden = false; start(state.view); }
   });
-  async function start() {
+  async function start(view = entry.view) {
+    state.ready = false;
     const results = await Promise.allSettled([request('/account/config'), request('/account/session')]);
     if (results[0].status === 'fulfilled') state.config = results[0].value;
     if (results[1].status === 'fulfilled') state.user = results[1].value.user || null;
     byId('loading-message').hidden = true;
     applyAvailability();
-    if (state.user && ['signin', 'signup'].includes(entry.view)) showMember();
-    else navigate(entry.view, false);
+    const nextView = view === 'member' && !state.user ? 'signin' : view;
+    if (state.user && ['signin', 'signup', 'member'].includes(nextView)) showMember();
+    else navigate(nextView, false);
     if (entry.params.get('error') === 'INVALID_TOKEN') message('verify-error', errors.INVALID_TOKEN);
     state.ready = true;
     applyPendingLink();

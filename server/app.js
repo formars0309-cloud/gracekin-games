@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { APIError } from 'better-auth/api';
 import { DatabaseSync } from 'node:sqlite';
@@ -11,6 +12,7 @@ import { getMigrations } from 'better-auth/db/migration';
 import { createCommunity } from './community.js';
 import { createMailer } from './mailer.js';
 import { createAccountService } from './account.js';
+import { createGrainService } from './grain.js';
 import { createGuardianService, guardianIsActive } from './guardian.js';
 import { automaticGuardianSettings, createAutomaticGuardianReview, GUARDIAN_WEBHOOK_PATH } from './guardian-auto.js';
 import { cleanupGuardianEvidence } from './guardian-review.js';
@@ -78,7 +80,7 @@ export async function startServer(options = {}) {
   await chmod(dataDir, 0o700);
   const mailer = createMailer(options);
   const signupContext = new AsyncLocalStorage();
-  let accounts, guardian, cleanupTimer;
+  let accounts, guardian, grain, cleanupTimer;
   const secret = await loadSecret(dataDir, production, options.secret ?? process.env.BETTER_AUTH_SECRET);
   let db, handler, origin, allowedHost;
   const server = createServer((req, res) => {
@@ -140,7 +142,11 @@ export async function startServer(options = {}) {
         create: { before: async data => {
           const context = signupContext.getStore();
           if (!context || !['14plus','under14'].includes(context.ageBand)) throw new APIError('FORBIDDEN', { code: 'AGE_CONFIRMATION_REQUIRED', message: '가입 절차를 다시 진행해 주세요.' });
-          return { data: { ...data, ...(context.claim ? { id: context.claim.userId } : {}), name: text(data.name, 2, 24, '닉네임'), ageBand: context.ageBand } };
+          const name = text(data.name, 2, 24, '닉네임');
+          const id = context.claim?.userId || randomUUID();
+          context.grainSignupUserId = id;
+          grain.reserveSignup(id);
+          return { data: { ...data, id, name, ageBand: context.ageBand } };
         } },
         update: { before: async data => ({ data: { ...data, ...(Object.hasOwn(data, 'name') ? { name: text(data.name, 2, 24, '닉네임') } : {}) } }) },
       }, session: { create: { before: async data => {
@@ -165,7 +171,8 @@ export async function startServer(options = {}) {
     await cleanupGuardianEvidence(db, dataDir);
     cleanupTimer = setInterval(() => { void cleanupGuardianEvidence(db, dataDir).catch(() => {}); }, 60 * 60 * 1000);
     cleanupTimer.unref();
-    accounts = createAccountService(db, auth, { origin, mailer, guardian, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
+    grain = createGrainService(db, { now: options.now });
+    accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
     const community = createCommunity(db, auth);
     const limit = createLimiter(options.rateLimit);
     handler = toNodeHandler(async request => {
@@ -208,7 +215,7 @@ export async function startServer(options = {}) {
           let response;
           try {
             response = await signupContext.run(context, () => auth.handler(new Request(`${origin}${path}`, { method: 'POST', headers: request.headers, body: JSON.stringify(body) })));
-          } finally { guardian.release(context?.claim); }
+          } finally { guardian.release(context?.claim); grain.releaseSignup(context?.grainSignupUserId); }
           if (context.deliveryFailed) fail(503, 'EMAIL_DELIVERY_FAILED', '메일을 보내지 못했습니다. 가입을 신청했다면 이메일 확인 메일을 다시 요청해 주세요.');
           if (response.ok && ['/api/auth/sign-up/email', '/api/auth/send-verification-email', '/api/auth/request-password-reset', '/api/auth/reset-password'].includes(path)) return hardened(json({ status: true }));
           if (response.ok) return hardened(response);
