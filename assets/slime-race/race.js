@@ -264,7 +264,17 @@
   dialog.addEventListener('cancel',event => { event.preventDefault(); closeDialog(); });
   dialog.addEventListener('click',event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) closeDialog(); } });
   dialog.addEventListener('keydown',event => { if (event.key !== 'Tab') return; const controls = [...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),a[href],summary')].filter(el => el.getClientRects().length); const first = controls[0], last = controls[controls.length-1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } });
-  function playEffect(name) { if (!state.sound || state.hidden || !document.hasFocus()) return; if (effect) effect.pause(); effect = new Audio('/assets/slime-race/'+name+'.mp3'); effect.volume = .35; effect.play().catch(() => spectator('효과음을 재생하지 못했어요. 소리 설정을 다시 확인해 주세요.')); }
+  function playEffect(name) {
+    if (!state.sound || state.hidden || !document.hasFocus()) return;
+    if (effect) effect.pause();
+    const generation = state.soundGeneration;
+    const localAudio = new Audio('/assets/slime-race/'+name+'.mp3');
+    effect = localAudio; localAudio.volume = .35;
+    localAudio.play().catch(() => {
+      if (effect !== localAudio || generation !== state.soundGeneration || !state.sound || state.hidden || !document.hasFocus()) return;
+      spectator('효과음을 재생하지 못했어요. 소리 설정을 다시 확인해 주세요.');
+    });
+  }
   function pauseSound() { state.soundGeneration+=1; bgm?.pause(); effect?.pause(); }
   async function toggleSound() {
     const generation=++state.soundGeneration; state.sound = !state.sound; const button = $('[data-action="sound"]'); button.setAttribute('aria-pressed',String(state.sound)); button.textContent = state.sound ? '소리 켜짐' : '소리 꺼짐';
