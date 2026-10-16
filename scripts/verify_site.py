@@ -4,6 +4,7 @@
 정적 검사는 브라우저·서버 보안 실험을 대신하지 않는다. 서버와 시험 자료는
 공개 파일 검사에 섞지 않으며, 회원 기능은 같은 출처의 /api 요청으로만 허용한다.
 상단 표시 파일은 고정된 계정 요약 GET 출처만 별도 허용한다.
+레이스 전용 파일은 고정 출처·네 경로의 요청 가드를 함께 확인한다.
 """
 from __future__ import annotations
 
@@ -228,6 +229,32 @@ def network_issues(source: str, *, allow_summary: bool = False) -> list[str]:
     return list(dict.fromkeys(issues))
 
 
+def race_network_issues(source: str) -> list[str]:
+    """레이스 파일의 단일 요청 헬퍼만 허용하며 일반 API 검사 범위는 유지한다.
+
+    정적 판독기는 임의의 동적 URL을 증명하지 않는다. 검토한 고정 출처·네 경로
+    가드의 토큰이 같고 출처 참조 횟수가 제한된 경우에만 해당 fetch 인자를
+    같은 출처 API로 치환해 나머지 네트워크·저장소 검사에 넘긴다.
+    """
+    tokens = javascript_tokens(source)
+    required = [
+        "const API_BASE = ['https://gracekingames.com', 'https://www.gracekingames.com'].includes(location.origin) ? 'https://community.gracekingames.com' : location.origin;",
+        "async function request(kind, payload, controller) { if (!['state', 'me', 'tickets', 'history'].includes(kind)) throw new Error(",
+    ]
+    for snippet in required:
+        expected = javascript_tokens(snippet)
+        if not any(tokens[index:index + len(expected)] == expected for index in range(len(tokens))):
+            return ['레이스 고정 출처·경로·요청 가드 확인 필요'] + network_issues(source)
+    for identifier, count in [('API_BASE', 2), ('kind', 3)]:
+        if sum(kind == 'identifier' and value == identifier for kind, value in tokens) != count:
+            return ['레이스 출처의 추가 참조·변경 발견'] + network_issues(source)
+    call = r'fetch\(\s*`\$\{API_BASE\}/api/slime-race/\$\{kind\}`\s*,\s*\{\s*method:\s*payload\s*\?\s*\x27POST\x27\s*:\s*\x27GET\x27\s*,\s*credentials:\s*\x27include\x27\s*,\s*cache:\s*\x27no-store\x27\s*,'
+    checked, count = re.subn(call, "fetch('/api/slime-race/state', { method: payload ? 'POST' : 'GET', credentials: 'include', cache: 'no-store',", source)
+    if count != 1:
+        return ['레이스 요청의 자격증명·캐시·단일 헬퍼 확인 필요'] + network_issues(source)
+    return network_issues(checked)
+
+
 def host_router_issues(source: str) -> list[str]:
     """고정된 커뮤니티 호스트 이동 파일에는 API 호출이나 외부 목적지 추가를 허용하지 않는다."""
     issues = network_issues(source)
@@ -379,7 +406,8 @@ def verify(root: Path) -> Report:
         rel = path.relative_to(root)
         check(not any(pattern.search(content) for pattern in SECRET_PATTERNS), f'{rel}: 민감정보 의심 패턴 발견 (원문 비노출)')
         if path.suffix == '.js':
-            for issue in network_issues(content, allow_summary=rel.as_posix() == 'assets/shared/account-header.js'):
+            issues = race_network_issues(content) if rel.as_posix() == 'assets/slime-race/race.js' else network_issues(content, allow_summary=rel.as_posix() == 'assets/shared/account-header.js')
+            for issue in issues:
                 check(False, f'{rel}: {issue}')
         if path.suffix == '.css':
             for value in css_references(content):

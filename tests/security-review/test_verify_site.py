@@ -100,6 +100,48 @@ class HostRouterTests(unittest.TestCase):
                 self.assertTrue(SITE.host_router_issues(source))
 
 
+class RaceNetworkBoundaryTests(unittest.TestCase):
+    HELPER = """const API_BASE = ['https://gracekingames.com', 'https://www.gracekingames.com'].includes(location.origin) ? 'https://community.gracekingames.com' : location.origin;
+    async function request(kind, payload, controller) {
+      if (!['state', 'me', 'tickets', 'history'].includes(kind)) throw new Error('요청 경로 오류');
+      return fetch(`${API_BASE}/api/slime-race/${kind}`, { method: payload ? 'POST' : 'GET', credentials: 'include', cache: 'no-store', signal: controller.signal });
+    }"""
+
+    def test_fixed_race_helper_is_allowed_only_in_its_context(self):
+        self.assertTrue(SITE.network_issues(self.HELPER))
+        self.assertEqual(SITE.race_network_issues(self.HELPER), [])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'assets/slime-race').mkdir(parents=True)
+            (root / 'assets/slime-race/race.js').write_text(self.HELPER)
+            (root / 'assets/unrelated.js').write_text(self.HELPER)
+            failures = SITE.verify(root).failures
+            self.assertFalse(any('assets/slime-race/race.js:' in failure for failure in failures))
+            self.assertTrue(any('assets/unrelated.js: 같은 출처' in failure for failure in failures))
+
+    def test_namespace_origin_guard_credentials_and_extra_calls_are_rejected(self):
+        mutations = [
+            self.HELPER.replace('/api/slime-race/', '/api/account/'),
+            self.HELPER.replace('https://community.gracekingames.com', 'https://community.gracekingames.com.evil.test'),
+            self.HELPER.replace('https://gracekingames.com\',', 'http://gracekingames.com\','),
+            self.HELPER.replace('location.origin)', 'location.hostname)'),
+            self.HELPER.replace("'https://www.gracekingames.com'", "'https://evil.test'"),
+            self.HELPER.replace("'tickets'", "'unknown'"),
+            self.HELPER.replace("if (!['state', 'me', 'tickets', 'history'].includes(kind))", 'if (false)'),
+            self.HELPER.replace("credentials: 'include'", "credentials: 'omit'"),
+            self.HELPER.replace("cache: 'no-store'", "cache: 'default'"),
+            self.HELPER + " API_BASE = 'https://evil.test';",
+            self.HELPER.replace('return fetch', "kind = '../auth/session'; return fetch"),
+            self.HELPER.replace('${kind}', '${kind + "/../auth/session"}'),
+            self.HELPER + " fetch('https://community.gracekingames.com/api/auth/sign-in/email');",
+            self.HELPER + " fetch(url);",
+            self.HELPER + " localStorage.setItem('ticket', 'saved');",
+        ]
+        for source in mutations:
+            with self.subTest(source=source):
+                self.assertTrue(SITE.race_network_issues(source))
+
+
 class PublicAssetTests(unittest.TestCase):
     def test_docker_requires_server_module_and_asset_parent_allowances(self):
         with tempfile.TemporaryDirectory() as directory:
