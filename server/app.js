@@ -14,6 +14,8 @@ import { createMailer } from './mailer.js';
 import { createAccountService } from './account.js';
 import { createAccountSummary } from './account-summary.js';
 import { createGrainService } from './grain.js';
+import { createSlimeRace } from './slime-race.js';
+import { createSlimeRaceRoutes } from './slime-race-routes.js';
 import { createGuardianService, guardianIsActive } from './guardian.js';
 import { automaticGuardianSettings, createAutomaticGuardianReview, GUARDIAN_WEBHOOK_PATH } from './guardian-auto.js';
 import { cleanupGuardianEvidence } from './guardian-review.js';
@@ -22,7 +24,7 @@ import { OIDC_DISCOVERY_PATH, oidcSettings, parseOidcClients, createOidcRoutes }
 import { CLIENT_IP_HEADER, FLY_COMMUNITY_APP, createLimiter, errorResponse, fail, json, loadSecret, readJson, safePath, text, trustedClientIP } from './security.js';
 
 const DEFAULT_ROOT = fileURLToPath(new URL('../', import.meta.url));
-const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.woff2': 'font/woff2', '.woff': 'font/woff' };
 const AUTH_PATHS = new Set(['/api/auth/sign-up/email', '/api/auth/sign-in/email', '/api/auth/sign-out', '/api/auth/change-password', '/api/auth/send-verification-email', '/api/auth/request-password-reset', '/api/auth/reset-password']);
 
 function staticAllowed(path) {
@@ -83,7 +85,7 @@ export async function startServer(options = {}) {
   await chmod(dataDir, 0o700);
   const mailer = createMailer(options);
   const signupContext = new AsyncLocalStorage();
-  let accounts, guardian, grain, cleanupTimer;
+  let accounts, guardian, grain, cleanupTimer, slimeRace;
   const secret = await loadSecret(dataDir, production, options.secret ?? process.env.BETTER_AUTH_SECRET);
   let db, handler, origin, allowedHost;
   const server = createServer((req, res) => {
@@ -185,6 +187,8 @@ export async function startServer(options = {}) {
     const community = createCommunity(db, auth);
     const accountSummary = createAccountSummary(db, auth, { origin });
     const limit = createLimiter(options.rateLimit);
+    slimeRace = createSlimeRace(db, { now: options.now, onTimerError: () => { console.error('슬라임 경주 자동 진행 실패: 저장소 상태를 확인해 주세요.'); } });
+    const slimeRaceRoutes = createSlimeRaceRoutes({ db, auth, race: slimeRace, origin, limit, adultVerifier: options.slimeRaceAdultVerifier });
     const oidcRoutes = createOidcRoutes({ auth, db, origin, secret, clients: oidcClients, limit });
     await oidcRoutes.seedClients();
     const socialRoutes = createSocialRoutes({ auth, db, origin, production, secret, grain, guardian, signupContext, limit, providers: social.providers, signupAvailable: Boolean(mailer) });
@@ -197,6 +201,8 @@ export async function startServer(options = {}) {
           if (request.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
           return hardened(json({ ok: true }));
         }
+        const raceResponse = await slimeRaceRoutes(request, url);
+        if (raceResponse) return hardened(raceResponse);
         const extended = await oidcRoutes.handle(request, url) ?? await socialRoutes.handle(request, url);
         if (extended) return hardened(extended);
         if (!path.startsWith('/api/')) return hardened(await serveStatic(request, safePath(path), root));
@@ -249,12 +255,14 @@ export async function startServer(options = {}) {
       server, origin, port: address.port,
       async close() {
         clearInterval(cleanupTimer);
+        slimeRace?.close();
         await new Promise((resolve, reject) => { server.close(error => error ? reject(error) : resolve()); server.closeIdleConnections(); });
         db.close();
       },
     };
   } catch (error) {
     clearInterval(cleanupTimer);
+    slimeRace?.close();
     await new Promise(resolve => server.close(() => resolve()));
     db?.close();
     throw error;
