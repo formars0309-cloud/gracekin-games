@@ -13,7 +13,7 @@
 | `gracekingames.com/games/gyeongguk/` | 경국지계 홈페이지 | 이 저장소 |
 | `gracekingames.com/community/?game=slimeline` | 슬라임 라인 커뮤니티 진입 | 같은 경로·쿼리·해시를 유지해 전용 Fly 커뮤니티로 이동 |
 | `gracekingames.com/community/?game=gyeongguk` | 경국지계 커뮤니티 진입 | 같은 경로·쿼리·해시를 유지해 전용 Fly 커뮤니티로 이동 |
-| `gracekin-games-community.fly.dev/community/` | 커뮤니티 화면·회원·글·댓글 | 전용 서버에서 화면과 API를 같은 출처로 제공 |
+| `community.gracekingames.com/community/` | 커뮤니티 화면·회원·글·댓글의 전환 목표 주소 | 전용 서버에서 화면과 API를 같은 출처로 제공 |
 | `slimeline.gracekingames.com` | 슬라임 라인 | GitHub Pages `squishy-parade` 저장소에 사용자 도메인 연결 |
 | `gyeongguk.gracekingames.com` | 경국지계 | fly.io `gyeongguk` 앱에 인증서 추가(`fly certs add`) |
 
@@ -33,7 +33,9 @@
 
 ## 커뮤니티
 
-현재 단계는 전용 Fly 회원 서버와 Pages 진입 경로의 연결 준비다. 실제 서버 배포·공유 검증 완료 여부는 [커뮤니티 배포 기록](docs/커뮤니티-배포.md)에 확정해 남긴다. 대문과 게임 홈페이지의 주소·DNS는 기존대로 유지한다.
+현재 운영 중인 회원 커뮤니티는 전용 Fly 앱 `gracekin-games-community`의 `https://gracekin-games-community.fly.dev`에서 열린다. 이번 변경은 정식 출처를 `https://community.gracekingames.com`으로 전환하기 위한 코드·설정 준비이며, 새 주소의 DNS·인증서 설정과 배포는 아직 하지 않았다. 전환 절차와 남은 확인 사항은 [커뮤니티 배포 기록](docs/커뮤니티-배포.md)에 적었다. 대문과 게임 홈페이지의 주소·DNS는 기존대로 유지한다.
+
+전환 배포 후 옛 주소의 GET·HEAD 화면 요청은 같은 경로·쿼리의 새 주소로 301 이동한다. 옛 주소의 `/api`와 `/api/…`, 그 외 메서드, 임의 Host는 403으로 거부한다. Pages에서 넘기는 주소도 새 출처로 고정하며 경로·쿼리·해시를 유지한다. 주소가 바뀌면 기존 로그인 세션은 이어지지 않아 한 번 다시 로그인해야 한다. 게임과 커뮤니티의 공통 계정 기능은 이번 변경에 포함하지 않는다.
 
 게임마다 게시판과 공식 안내를 분리한다. 슬라임 라인은 자유게시판(`free`)·공략과 팁(`guide`)·갤러리(`gallery`)·공지사항(`notice`), 경국지계는 자유게시판(`free`)·덱 연구(`deck`)·전략과 공략(`strategy`)·공지사항(`notice`)을 제공한다. `board`가 없으면 공지사항을 연다.
 
@@ -51,7 +53,7 @@ Umami Cloud(무료 Hobby, 사이트 1개, 월 10만 이벤트, 6개월 보관)�
 - 대문 → 게임 홈페이지: `homepage-slimeline`, `homepage-gyeongguk`(속성 `from` = `stage` 첫 화면 무대, `card-image`, `card-button`). 게임 실행 횟수와 구분한다.
 - 게임 홈페이지 START → 실제 게임: `play-slimeline`, `play-gyeongguk`. 클릭 의도를 세며 실제 로딩 완료나 플레이 시간은 뜻하지 않는다.
 - 제보 설문지 이동: `feedback-form`. 제출 완료 횟수는 뜻하지 않는다.
-- 대문·게임별 홈페이지·커뮤니티에 같은 사이트 ID와 실제 도메인 제한, 추적 거부 설정을 적용한다. 현재 도메인 제한은 `gracekingames.com`이므로 Fly 기본 주소에서 열린 커뮤니티의 방문은 이 통계에 포함하지 않는다.
+- 대문·게임별 홈페이지·커뮤니티에 같은 사이트 ID와 실제 도메인 제한, 추적 거부 설정을 적용한다. 현재 도메인 제한은 `gracekingames.com`이므로 `community.gracekingames.com`의 커뮤니티 방문도 이 통계에 포함하지 않는다.
 - 바닥글에 "방문 통계는 쿠키 없이, 누구인지 알 수 없는 형태로만 셉니다." 한 줄을 넣었다. 디자인 캔버스 HomeB에는 없는 줄이다.
 
 ## 남은 일
@@ -82,7 +84,7 @@ npm start
 npm test
 ```
 
-GitHub Pages만으로는 회원가입·로그인·공유 글쓰기·댓글을 실행할 수 없다. 정적 파일만 열면 공식 안내를 읽을 수 있고, 회원 기능은 서버 연결 안내를 표시한다. 회원 서버와 Pages의 연결은 실제 배포·검증 후 공개 상태를 확정한다.
+GitHub Pages만으로는 회원가입·로그인·공유 글쓰기·댓글을 실행할 수 없다. 정적 파일만 열면 공식 안내를 읽을 수 있고, 회원 기능은 서버 연결 안내를 표시한다. 도메인 전환의 공개 상태는 새 주소의 DNS·인증서·배포와 실제 서버 검증 후 확정한다.
 
 정적 사이트 검증기는 위의 Node.js 서버 테스트와 별도이며, 실행하려면 **Python 3**가 설치되어 있어야 한다. 게임별 페이지를 통합한 뒤 내부 링크·자산, START 이동, 게임 사전 실행 여부, 게임별 안내 분리와 민감정보 패턴을 확인한다.
 

@@ -1,4 +1,4 @@
-# 새 전용 앱의 검토용 설정이다. 기존 경국지계 앱에는 적용하지 않는다.
+# 운영 중인 커뮤니티 전용 앱의 도메인 전환 설정이다. 기존 경국지계 앱에는 적용하지 않는다.
 app = "gracekin-games-community"
 primary_region = "nrt"
 kill_signal = "SIGTERM"
@@ -18,8 +18,10 @@ kill_timeout = "15s"
   DATA_DIR = "/data"
   # FLY_APP_NAME이 이 전용 앱과 일치할 때만 Fly Proxy의 접속자 IP를 신뢰한다.
   TRUST_FLY_PROXY = "true"
-  # 1단계 검증 주소. 정식 도메인 전환 때 아래 health check Host도 함께 바꾼다.
-  BETTER_AUTH_URL = "https://gracekin-games-community.fly.dev"
+  # 정식 출처와 상태 확인 Host를 함께 전환한다. DNS·인증서 준비 후 조율자가 배포한다.
+  BETTER_AUTH_URL = "https://community.gracekingames.com"
+  # 옛 주소는 GET/HEAD 화면 요청만 정식 출처로 넘기며 API·쓰기 요청은 거부한다.
+  LEGACY_HOSTS = "gracekin-games-community.fly.dev"
 
 [http_service]
   internal_port = 8766
@@ -41,7 +43,7 @@ kill_timeout = "15s"
     path = "/health"
     protocol = "http"
     [http_service.checks.headers]
-      Host = "gracekin-games-community.fly.dev"
+      Host = "community.gracekingames.com"
 
 [mounts]
   source = "community_data"
