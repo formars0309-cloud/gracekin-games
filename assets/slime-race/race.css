@@ -19,3 +19,21 @@
 @media(max-width:360px){.sr-heading{flex-direction:column;align-items:stretch;gap:10px}.sr-heading h1{white-space:nowrap}.sr-round{display:flex;align-items:center;gap:8px;flex-wrap:wrap;text-align:left}.sr-round strong{font-size:19px}.sr-arena-controls span{display:none}.sr-betnote{font-size:11px}}
 @media(pointer:coarse){.sr-close{width:44px;height:44px}.sr-quick button,.sr-text-button{min-height:40px}.sr-arena-controls button{min-height:44px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.sr-ticket[open],.sr-ticket.sr-closing{transform:none}}
+/* 닫힌 안내는 도구 버튼으로 열고, 작은 화면에서는 선수 비교 영역을 먼저 확보한다. */
+.sr-ticket details:not([open]){display:none}
+@media(max-width:700px){
+ .sr-bet{gap:9px;padding-top:10px;padding-bottom:10px}
+ .sr-bet>div:first-child>.sr-betamount:not(.sr-prize){display:none}
+ .sr-bethead{margin-bottom:3px}
+ .sr-bethead>span{font-size:12px}
+ .sr-betamount{margin-top:3px;font-size:12px}
+ .sr-betnote{font-size:12px;line-height:1.5;margin-top:4px!important}
+ .sr-betentry label{font-size:12px;margin-bottom:4px}
+ .sr-message{font-size:12px}
+ .sr-message:empty{display:none}
+ .sr-betbottom{font-size:12px;margin-top:5px}
+ .sr-quick{margin-top:5px}
+ .sr-private-tools{flex-wrap:nowrap;padding-top:5px;padding-bottom:5px}
+ .sr-private-tools>span{display:none}
+ .sr-private-tools>.sr-text-button{font-size:12px;white-space:nowrap}
+}

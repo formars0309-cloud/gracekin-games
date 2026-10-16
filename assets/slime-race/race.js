@@ -6,6 +6,7 @@
   const $ = selector => root.querySelector(selector);
   const dialog = $('#sr-ticket');
   const canvas = $('canvas');
+  $('.sr-prize > span').textContent='우승 시 총 당첨 · 원금 포함';
   const amountInput = $('[data-amount]');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const API_BASE = ['https://gracekingames.com', 'https://www.gracekingames.com'].includes(location.origin) ? 'https://community.gracekingames.com' : location.origin;
@@ -16,7 +17,7 @@
   const spots = [[2,-26,-.1,26,17],[2,-22,-.14,28,21],[2,-23.5,0,32,20.5],[15.6,-14.3,0,20,8],[-6,-24,-.35,25,12.5],[1,-24,-.06,29,20], [15.6,-14.3,0,20,8],[-8,-24.5,-.35,19,12],[3,-26.5,-.1,26,13.5],[2,-22.5,-.12,30,15.5]];
   const assets = Object.fromEntries(spots.map(([x,y,rot,w,h],i) => ['spot'+i,{x,y,rot,w,h}]));
   const images = {}, portraits = new Map();
-  const state = { public: null, publicStatus: 'loading', me: null, meStatus: 'loading', selectedId: null, amount: 100, pending: null, busy: false, history: null, publicSeq: 0, meSeq: 0, historySeq: 0, anchorServer: 0, anchorMono: 0, publicAt: 0, positions: new Map(), previous: new Map(), positionAt: 0, sound: false, hidden: document.hidden, personalActive: document.hasFocus() && !document.hidden, privateEpoch: 0, raf: 0, particles: [], publicTimer: 0, publicController: null, meController: null, closeTimer: 0, returnFocus: null, renderedKey: '', scenery: null, resultKey: null };
+  const state = { public: null, publicStatus: 'loading', me: null, meStatus: 'loading', selectedId: null, amount: 100, pending: null, busy: false, history: null, publicSeq: 0, meSeq: 0, historySeq: 0, anchorServer: 0, anchorMono: 0, publicAt: 0, positions: new Map(), previous: new Map(), positionAt: 0, sound: false, soundGeneration: 0, hidden: document.hidden, personalActive: document.hasFocus() && !document.hidden, privateEpoch: 0, raf: 0, particles: [], publicTimer: 0, motionTimer: 0, clockPhase: null, publicController: null, meController: null, closeTimer: 0, returnFocus: null, renderedKey: '', scenery: null, resultKey: null };
   let bgm = null, effect = null;
   const money = value => {
     try { if (typeof value === 'string' && /^-?\d+$/.test(value)) return BigInt(value).toLocaleString('ko-KR'); }
@@ -36,7 +37,7 @@
     if (round.phase === 'countdown' && now() >= round.raceStartsAt) return 'racing';
     return round.phase;
   };
-  const ownBet = id => state.me?.roundId === currentRound()?.id ? state.me.bets.find(bet => bet.slimeId === id)?.amount || 0 : 0;
+  const ownBet = id => state.me && currentRound() && state.me.roundId === currentRound().id ? state.me.bets.find(bet => bet.slimeId === id)?.amount || 0 : 0;
   const salesOpen = () => state.publicStatus === 'ready' && performance.now() - state.publicAt < 12000 && currentRound()?.phase === 'sales' && now() < currentRound().salesCloseAt;
   const eligible = () => state.meStatus === 'ready' && state.me?.user && state.me.eligibility.canBet === true && state.me.roundId === currentRound()?.id;
   function message(text) { $('[data-purchase-message]').textContent = text; }
@@ -95,18 +96,38 @@
       if (!data.round.entrants.some(s => s.slimeId === state.selectedId)) state.selectedId = data.round.entrants[0].slimeId;
       if (changed) { state.renderedKey = ''; clearPrivate('loading'); if (dialog.open) void refreshMe(); }
       if (data.round.phase === 'results' && (changed || oldPhase !== 'results') && state.sound) playEffect('sfx-result');
-      renderRoster(); render(); startAnimation();
+      renderRoster(); render(); scheduleStartMotion(); startAnimation();
       if (dialog.open && (changed || oldPhase !== data.round.phase && data.round.phase === 'results')) void refreshMe();
     } catch (error) {
       if (sequence !== state.publicSeq || state.hidden) return;
       state.publicStatus = 'error'; $('[data-public-error]').hidden = false; $('[data-public-message]').textContent = error.message + ' 경기 정보를 다시 불러와 주세요.'; render();
     } finally {
-      if (sequence === state.publicSeq && !state.hidden) { const round=currentRound(),stage=phase(); const base=stage==='racing'||stage==='countdown'?1000:5000; const boundary=round?(stage==='sales'?round.salesCloseAt:stage==='countdown'?round.raceStartsAt:stage==='racing'?round.resultsAt:round.endsAt):0; state.publicTimer=setTimeout(refreshPublic,state.publicStatus==='error'?5000:boundary>now()?Math.min(base,Math.max(100,boundary-now())):base); }
+      if (sequence === state.publicSeq && !state.hidden) state.publicTimer = setTimeout(refreshPublic, nextPublicDelay());
     }
+  }
+  function nextPublicDelay() {
+    if (state.publicStatus === 'error') return 5000;
+    const round = currentRound();
+    if (!round) return 5000;
+    const stage = phase();
+    const base = stage === 'countdown' || stage === 'racing' ? 1000 : 5000;
+    // 응답에 기록된 단계의 끝을 기준으로 삼아, 오래된 단계를 100ms마다 재조회하지 않는다.
+    const boundary = { sales: round.salesCloseAt, countdown: round.raceStartsAt, racing: round.resultsAt, results: round.endsAt }[round.phase];
+    const remaining = boundary - now();
+    if (remaining <= 0) return 1000;
+    return remaining <= base ? remaining + 120 : base;
+  }
+  function scheduleStartMotion() {
+    clearTimeout(state.motionTimer);
+    const round = currentRound();
+    if (!round || state.hidden || reduced.matches) return;
+    const delay = round.raceStartsAt - now() - 650;
+    if (delay > 0) state.motionTimer = setTimeout(() => { if (!state.hidden && !reduced.matches) startAnimation(); }, delay);
+    else if (now() < round.raceStartsAt + 650) startAnimation();
   }
   function applyMe(data) {
     if (data.roundId !== currentRound()?.id) return false;
-    if (state.me?.user?.id === data.user?.id && state.me.roundId === data.roundId && data.revision < state.me.revision) return false;
+    if (state.me && state.me.user?.id === data.user?.id && state.me.roundId === data.roundId && data.revision < state.me.revision) return false;
     if (state.pending && data.user?.id && state.pending.userId !== data.user.id) { state.pending = null; state.busy = false; message('계정이 바뀌었어요. 새 계정의 정보를 확인해 주세요.'); }
     state.me = data; state.meStatus = 'ready'; renderRoster(); render(); return true;
   }
@@ -140,7 +161,7 @@
     for (const slime of state.public.roster) { const item = node('div'); const image = node('img'); image.src = portraits.get(slime.name) || '/assets/slime-race/art/slime'+names.indexOf(slime.name)+'.png'; image.alt = ''; const text = node('span',null,slime.name+' · '+slime.grade); text.append(node('small',null,slime.style)); item.append(image,text); all.append(item); }
   }
   function renderGate() {
-    const gate = $('[data-gate]'); gate.replaceChildren();
+    const gate = $('[data-gate]'); gate.replaceChildren(); gate.hidden=Boolean(state.meStatus==='ready'&&state.me?.user&&state.me.eligibility.canBet);
     if (state.meStatus === 'loading') gate.textContent = '계정과 구매 자격을 확인하고 있어요.';
     else if (state.meStatus === 'error') gate.textContent = '내 정보를 확인하지 못했어요. 새로고침 후 다시 확인해 주세요.';
     else if (!state.me?.user) { gate.append(document.createTextNode('로그인과 성인 확인을 마친 회원만 티켓을 구매할 수 있어요.')); const link = node('a',null,'로그인'); link.href = '/account/'; gate.append(link); }
@@ -174,7 +195,7 @@
     const round = currentRound(), stage = phase();
     if (!round) { $('[data-timer]').textContent = '—'; $('[data-status]').textContent = state.publicStatus === 'error' ? '연결을 확인해 주세요' : '서버에 연결하고 있어요'; return; }
     const end = stage === 'sales' ? round.salesCloseAt : stage === 'countdown' ? round.raceStartsAt : stage === 'racing' ? round.resultsAt : round.endsAt;
-    const seconds = Math.max(0,Math.ceil((end-now())/1000)); $('[data-phase]').textContent=stage==='racing'&&seconds===0?'서버 결과 확인 중':PHASES[stage]; if(stage==='countdown'&&round.raceStartsAt-now()<650&&!reduced.matches)startAnimation(); $('[data-timer]').textContent = String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0'); $('[data-status]').textContent = stage === 'sales' ? '티켓 구매 마감까지' : stage === 'countdown' ? '출발까지' : stage === 'racing' ? seconds ? '1분 경주 진행 중' : '서버 결과 확인 중' : '다음 경기까지';
+    const seconds = Math.max(0,Math.ceil((end-now())/1000)); $('[data-phase]').textContent=stage==='racing'&&seconds===0?'서버 결과 확인 중':PHASES[stage]; if(stage!==state.clockPhase){state.clockPhase=stage;if(stage==='countdown'||stage==='racing')startAnimation();} $('[data-timer]').textContent = String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0'); $('[data-status]').textContent = stage === 'sales' ? '티켓 구매 마감까지' : stage === 'countdown' ? '출발까지' : stage === 'racing' ? seconds ? '1분 경주 진행 중' : '서버 결과 확인 중' : '다음 경기까지';
     if (!salesOpen()) { amountInput.disabled = true; $('[data-action="buy"]').disabled = true; $('[data-action="cancel"]').disabled = true; root.querySelectorAll('[data-add]').forEach(button => { button.disabled = true; }); }
   }
   function renderResult() {
@@ -244,11 +265,12 @@
   dialog.addEventListener('click',event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) closeDialog(); } });
   dialog.addEventListener('keydown',event => { if (event.key !== 'Tab') return; const controls = [...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),a[href],summary')].filter(el => el.getClientRects().length); const first = controls[0], last = controls[controls.length-1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } });
   function playEffect(name) { if (!state.sound || state.hidden || !document.hasFocus()) return; if (effect) effect.pause(); effect = new Audio('/assets/slime-race/'+name+'.mp3'); effect.volume = .35; effect.play().catch(() => spectator('효과음을 재생하지 못했어요. 소리 설정을 다시 확인해 주세요.')); }
+  function pauseSound() { state.soundGeneration+=1; bgm?.pause(); effect?.pause(); }
   async function toggleSound() {
-    state.sound = !state.sound; const button = $('[data-action="sound"]'); button.setAttribute('aria-pressed',String(state.sound)); button.textContent = state.sound ? '소리 켜짐' : '소리 꺼짐';
+    const generation=++state.soundGeneration; state.sound = !state.sound; const button = $('[data-action="sound"]'); button.setAttribute('aria-pressed',String(state.sound)); button.textContent = state.sound ? '소리 켜짐' : '소리 꺼짐';
     if (!state.sound) { bgm?.pause(); effect?.pause(); return; }
     if (!bgm) { bgm = new Audio('/assets/slime-race/bgm-spring.mp3'); bgm.loop = true; bgm.preload = 'none'; bgm.volume = .18; }
-    try { await bgm.play(); playEffect('sfx-pollen'); } catch (_) { state.sound = false; button.textContent = '소리 꺼짐'; button.setAttribute('aria-pressed','false'); spectator('음악을 재생하지 못했어요. 다시 눌러 주세요.'); }
+    try { await bgm.play(); if(generation!==state.soundGeneration||!state.sound||state.hidden||!document.hasFocus())return; playEffect('sfx-pollen'); } catch (_) { if(generation!==state.soundGeneration||!state.sound||state.hidden||!document.hasFocus())return; state.sound = false; button.textContent = '소리 꺼짐'; button.setAttribute('aria-pressed','false'); spectator('음악을 재생하지 못했어요. 다시 눌러 주세요.'); }
   }
   root.addEventListener('click',event => {
     const button = event.target.closest('button'); if (!button || button.disabled) return;
@@ -268,18 +290,18 @@
     else if (action === 'cheer') { spectator((selected()?.name || '슬라임 친구들')+'에게 응원을 보냈어요. 응원은 결과에 영향을 주지 않아요.'); if (!reduced.matches) { const t=performance.now(); state.particles.push(...Array.from({length:5},(_,i) => ({start:t+i*55,x:canvas.clientWidth*.5+i*12,y:canvas.clientHeight*.48+i*8,shape:i%2?'✧':'♡',color:i%2?'#fff5c5':'#cd6a85'}))); startAnimation(); } }
   });
   amountInput.addEventListener('input',() => { state.amount = Number(amountInput.value); message(''); render(); });
-  function onHidden() { state.hidden = document.hidden; state.personalActive = !state.hidden && document.hasFocus(); if (state.hidden) { clearTimeout(state.publicTimer); state.publicSeq += 1; state.publicController?.abort(); cancelAnimationFrame(state.raf); bgm?.pause(); effect?.pause(); clearPrivate('loading'); } else { void refreshPublic(); void refreshMe(); if (state.sound && bgm) bgm.play().catch(() => {}); } }
+  function onHidden() { state.hidden = document.hidden; state.personalActive = !state.hidden && document.hasFocus(); if (state.hidden) { clearTimeout(state.publicTimer); clearTimeout(state.motionTimer); state.publicSeq += 1; state.publicController?.abort(); cancelAnimationFrame(state.raf); pauseSound(); clearPrivate('loading'); } else { void refreshPublic(); void refreshMe(); if (state.sound && bgm) bgm.play().catch(() => {}); } }
   document.addEventListener('visibilitychange',onHidden);
-  window.addEventListener('blur',() => { state.personalActive=false; bgm?.pause(); effect?.pause(); clearPrivate('loading'); });
+  window.addEventListener('blur',() => { state.personalActive=false; pauseSound(); clearPrivate('loading'); });
   window.addEventListener('focus',() => { if (!document.hidden) { state.personalActive=true; void refreshPublic(); void refreshMe(); if (state.sound && bgm) bgm.play().catch(() => {}); } });
   window.addEventListener('gracekin-account-change',event => { if (event.detail?.source === 'slime-race') return; if (event.detail?.phase === 'clear') { state.personalActive=false; state.pending=null; state.busy=false; clearPrivate('loading'); } else { state.personalActive=!document.hidden&&document.hasFocus(); void refreshMe(); } });
-  window.addEventListener('pagehide',() => { state.hidden=true; state.personalActive=false; clearTimeout(state.publicTimer); state.publicController?.abort(); cancelAnimationFrame(state.raf); bgm?.pause(); effect?.pause(); clearPrivate('loading'); });
+  window.addEventListener('pagehide',() => { state.hidden=true; state.personalActive=false; clearTimeout(state.publicTimer); clearTimeout(state.motionTimer); state.publicController?.abort(); cancelAnimationFrame(state.raf); pauseSound(); clearPrivate('loading'); });
   window.addEventListener('pageshow',event => { if (event.persisted) { state.hidden=false; state.personalActive=document.hasFocus(); void refreshPublic(); void refreshMe(); } });
   window.addEventListener('online',() => { if (!document.hidden) { void refreshPublic(); void refreshMe(); } });
   setInterval(() => { updateClock(); if (dialog.open && state.meStatus === 'ready' && !salesOpen()) renderGate(); },250);
   setInterval(() => { if (!state.hidden && dialog.open && !state.busy) void refreshMe(); },30000);
   new ResizeObserver(() => { state.scenery=null; draw(); }).observe(canvas);
-  reduced.addEventListener('change',() => { state.particles=[]; draw(); startAnimation(); });
+  reduced.addEventListener('change',() => { state.particles=[]; scheduleStartMotion(); draw(); startAnimation(); });
   void refreshPublic();
   loadAssets().then(() => { state.renderedKey=''; renderRoster(); draw(); });
 
