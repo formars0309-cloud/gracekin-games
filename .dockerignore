@@ -87,6 +87,7 @@ scripts/**
 assets/shared/**
 !assets/shared/account-header.js
 !assets/shared/account-header.css
+!assets/shared/fonts.css
 
 # 슬라임 레이스 서버·관람 화면의 실제 운영 파일만 포함한다.
 !server/slime-race.js
