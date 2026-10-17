@@ -120,7 +120,7 @@ test('기존 회원의 잔액 조회는 빈 지갑 응답만 반환하고 지급
   db.prepare('UPDATE user SET ageBand=NULL,emailVerified=0 WHERE id=?').run(userId);
   app = await restart();
   const cookie = cookieFrom(await login(app, email));
-  for (let i = 0; i < 2; i++) assert.deepEqual((await wallet(app, cookie)).body, { balance: 0, entries: [] });
+  for (let i = 0; i < 2; i++) assert.deepEqual((await wallet(app, cookie)).body, { balance: 0, entries: [], pending: [], pendingTotal: 0, rewardEligibility: 'unverified' });
   for (const table of ['grain_ledger', 'grain_wallets', 'grain_event_eligibility']) assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE userId=?`).get(userId).n, 0);
 }));
 

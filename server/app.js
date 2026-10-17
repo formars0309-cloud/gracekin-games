@@ -9,11 +9,13 @@ import { fileURLToPath } from 'node:url';
 import { betterAuth } from 'better-auth';
 import { toNodeHandler } from 'better-auth/node';
 import { getMigrations } from 'better-auth/db/migration';
-import { createCommunity } from './community.js';
+import { createCommunity, initializeCommunitySchema } from './community.js';
 import { createMailer } from './mailer.js';
 import { createAccountService } from './account.js';
 import { createAccountSummary } from './account-summary.js';
 import { createGrainService } from './grain.js';
+import { createGrainRewards } from './grain-rewards.js';
+import { createGrainAdmin } from './grain-admin.js';
 import { createSlimeRace } from './slime-race.js';
 import { createSlimeRaceRoutes } from './slime-race-routes.js';
 import { createGuardianService, guardianIsActive } from './guardian.js';
@@ -85,7 +87,7 @@ export async function startServer(options = {}) {
   await chmod(dataDir, 0o700);
   const mailer = createMailer(options);
   const signupContext = new AsyncLocalStorage();
-  let accounts, guardian, grain, cleanupTimer, slimeRace;
+  let accounts, guardian, grain, cleanupTimer, slimeRace, rewards;
   const secret = await loadSecret(dataDir, production, options.secret ?? process.env.BETTER_AUTH_SECRET);
   let db, handler, origin, allowedHost;
   const server = createServer((req, res) => {
@@ -183,12 +185,15 @@ export async function startServer(options = {}) {
     cleanupTimer = setInterval(() => { void cleanupGuardianEvidence(db, dataDir).catch(() => {}); }, 60 * 60 * 1000);
     cleanupTimer.unref();
     grain = createGrainService(db, { now: options.now });
-    accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, socialProviders: social.providers, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
-    const community = createCommunity(db, auth);
+    initializeCommunitySchema(db);
+    rewards = createGrainRewards(db, { now: options.now, startTimer: options.grainRewardsStartTimer, onTimerError: () => { console.error('그레인 보상 자동 확정 실패: 저장소 상태를 확인해 주세요.'); } });
+    const grainAdmin = createGrainAdmin(db, auth, { rewards, now: options.now, adminUserIds: options.adminUserIds ?? process.env.ADMIN_USER_IDS });
+    accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, rewards, socialProviders: social.providers, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
+    const community = createCommunity(db, auth, { rewards, isAdmin: grainAdmin.isAdmin, now: options.now });
     const accountSummary = createAccountSummary(db, auth, { origin });
     const limit = createLimiter(options.rateLimit);
     slimeRace = createSlimeRace(db, { now: options.now, onTimerError: () => { console.error('슬라임 경주 자동 진행 실패: 저장소 상태를 확인해 주세요.'); } });
-    const slimeRaceRoutes = createSlimeRaceRoutes({ db, auth, race: slimeRace, origin, limit, adultVerifier: options.slimeRaceAdultVerifier });
+    const slimeRaceRoutes = createSlimeRaceRoutes({ db, auth, race: slimeRace, origin, limit, adultVerifier: options.slimeRaceAdultVerifier, rewards });
     const oidcRoutes = createOidcRoutes({ auth, db, origin, secret, clients: oidcClients, limit });
     await oidcRoutes.seedClients();
     const socialRoutes = createSocialRoutes({ auth, db, origin, production, secret, grain, guardian, signupContext, limit, providers: social.providers, signupAvailable: Boolean(mailer) });
@@ -246,6 +251,17 @@ export async function startServer(options = {}) {
           const messages = { INVALID_EMAIL_OR_PASSWORD: '이메일 또는 비밀번호를 확인해 주세요.', USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: '사용할 수 없는 이메일입니다.', PASSWORD_TOO_SHORT: '비밀번호는 8자 이상 입력해 주세요.', PASSWORD_TOO_LONG: '비밀번호는 128자 이하로 입력해 주세요.', INVALID_PASSWORD: '현재 비밀번호를 확인해 주세요.', EMAIL_NOT_VERIFIED: '이메일 확인을 마친 뒤 로그인해 주세요.', GUARDIAN_APPROVAL_REQUIRED: '보호자 동의 상태를 확인해 주세요.', INVALID_TOKEN: '링크가 만료되었거나 이미 사용되었습니다.', EMAIL_DELIVERY_FAILED: '메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.' };
           return hardened(json({ error: { code, message: messages[code] || '인증 요청을 처리하지 못했습니다. 입력 내용을 확인해 주세요.' } }, response.status, response.status === 429 ? { 'retry-after': '60' } : {}));
         }
+        if (path === '/api/grain/attendance') {
+          if (request.method !== 'POST') fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
+          if (url.search) fail(422, 'INVALID_INPUT', '출석 요청에는 추가 항목을 보낼 수 없습니다.');
+          const body = await readJson(request);
+          if (Object.keys(body).length) fail(422, 'INVALID_INPUT', '출석 요청 항목을 확인해 주세요.');
+          const session = await auth.api.getSession({ headers: request.headers, query: { disableRefresh: true } });
+          if (!session?.user) fail(401, 'AUTH_REQUIRED', '로그인 후 이용해 주세요.');
+          return hardened(json(rewards.attendance(session.user)));
+        }
+        const adminResponse = await grainAdmin.handle(request, url);
+        if (adminResponse) return hardened(adminResponse);
         if (path.startsWith('/api/account/')) return hardened(await accounts.handle(request, url));
         if (path.startsWith('/api/community/')) return hardened(await community(request, url));
         fail(404, 'NOT_FOUND', '요청한 내용을 찾을 수 없습니다.');
@@ -256,6 +272,7 @@ export async function startServer(options = {}) {
       async close() {
         clearInterval(cleanupTimer);
         slimeRace?.close();
+        rewards?.close();
         await new Promise((resolve, reject) => { server.close(error => error ? reject(error) : resolve()); server.closeIdleConnections(); });
         db.close();
       },
@@ -263,6 +280,7 @@ export async function startServer(options = {}) {
   } catch (error) {
     clearInterval(cleanupTimer);
     slimeRace?.close();
+    rewards?.close();
     await new Promise(resolve => server.close(() => resolve()));
     db?.close();
     throw error;

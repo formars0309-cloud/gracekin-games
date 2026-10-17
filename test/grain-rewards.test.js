@@ -298,3 +298,34 @@ test('실제 60초 주기 타이머가 요청 없이 보상을 확정하고 clos
     assert.equal(balance(f), 500); assert.equal(status(f).pendingTotal, 0);
   } finally { f.close(); }
 });
+
+test('cancelContent는 지정한 원본과 부모글 댓글만 취소하며 다른 예정은 유지', async () => {
+  const f = fixture();
+  try {
+    const parent = (await post(f, '지정 원본')).body.post.id;
+    const other = (await post(f, '다른 원본')).body.post.id;
+    const first = (await comment(f, parent)).body.comment.id;
+    const second = (await comment(f, other)).body.comment.id;
+    f.db.exec('BEGIN IMMEDIATE'); f.rewards.cancelContent('post', parent); f.db.exec('COMMIT');
+    assert.equal(status(f).pendingTotal, 500); assert.equal(status(f, 'bob').pendingTotal, 100);
+    assert.equal(f.db.prepare('SELECT status FROM grain_activity_rewards WHERE targetId=?').get(first).status, 'cancelled');
+    await mutate(f, `/api/community/comments/${second}`, 'bob', 'DELETE');
+    assert.equal(status(f, 'bob').pendingTotal, 0);
+    f.rewards.cancelPending('alice'); assert.equal(status(f).pendingTotal, 0);
+    f.setTime(initialTime + REWARD_DAY_MS); f.rewards.tick();
+    assert.equal(balance(f), 0); assert.equal(balance(f, 'bob'), 0);
+  } finally { f.close(); }
+});
+
+test('확정 시 현재 자격을 검사하며 24시간 전 재인증은 기존 예약을 유지', async () => {
+  const f = fixture();
+  try {
+    await post(f);
+    f.db.prepare("UPDATE user SET emailVerified=0 WHERE id='alice'").run();
+    f.setTime(initialTime + 60000); f.rewards.tick();
+    assert.equal(status(f).pendingTotal, 500);
+    f.db.prepare("UPDATE user SET emailVerified=1 WHERE id='alice'").run();
+    f.setTime(initialTime + REWARD_DAY_MS); f.rewards.tick();
+    assert.equal(balance(f), 500);
+  } finally { f.close(); }
+});

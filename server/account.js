@@ -9,7 +9,7 @@ export function canWriteCommunity(user) { return accountAge(user) !== 'under14' 
 export function activeAccountUser(db, user) { return user && (accountAge(user) !== 'under14' || guardianIsActive(db, user.id)) ? user : null; }
 export function accountUser(user) { return { id: user.id, name: user.name, email: user.email, emailVerified: Boolean(user.emailVerified), ageBand: accountAge(user), canWriteCommunity: canWriteCommunity(user) }; }
 
-export function createAccountService(db, auth, { origin, mailer, guardian, grain, socialProviders = [], now = Date.now, onDeliveryError = () => {} }) {
+export function createAccountService(db, auth, { origin, mailer, guardian, grain, rewards, socialProviders = [], now = Date.now, onDeliveryError = () => {} }) {
   db.exec(`CREATE TABLE IF NOT EXISTS account_email_tokens (
     tokenHash TEXT PRIMARY KEY, userId TEXT NOT NULL UNIQUE REFERENCES user(id) ON DELETE CASCADE,
     expiresAt INTEGER NOT NULL
@@ -62,14 +62,14 @@ export function createAccountService(db, auth, { origin, mailer, guardian, grain
     if (url.pathname === '/api/account/config') return json({ emailAvailable: Boolean(mailer), registrationAvailable: Boolean(mailer), guardianConsentAvailable: guardian.enabled, guardianConsentMethod: guardian.method, socialProviders, socialSignupAvailable: Boolean(mailer) && socialProviders.length > 0 });
     if (url.pathname === '/api/account/grain') {
       if (url.search) fail(422, 'INVALID_INPUT', '그레인 조회에는 추가 항목을 보낼 수 없습니다.');
-      const session = await auth.api.getSession({ headers: request.headers });
-      const user = activeAccountUser(db, session?.user);
+      const session = await auth.api.getSession({ headers: request.headers, query: { disableRefresh: true } });
+      const user = activeAccountUser(db, session?.user && db.prepare('SELECT id,name,email,emailVerified,ageBand FROM user WHERE id=?').get(session.user.id));
       if (!user) fail(401, 'UNAUTHORIZED', '로그인 후 이용해 주세요.');
-      return json(grain.wallet(user.id));
+      return json({ ...grain.wallet(user.id), ...(rewards ? rewards.summary(user) : {}) });
     }
     if (url.pathname === '/api/account/session') {
-      const session = await auth.api.getSession({ headers: request.headers });
-      const user = activeAccountUser(db, session?.user);
+      const session = await auth.api.getSession({ headers: request.headers, query: { disableRefresh: true } });
+      const user = activeAccountUser(db, session?.user && db.prepare('SELECT id,name,email,emailVerified,ageBand FROM user WHERE id=?').get(session.user.id));
       return json({ user: user ? accountUser(user) : null });
     }
     fail(404, 'NOT_FOUND', '요청한 내용을 찾을 수 없습니다.');

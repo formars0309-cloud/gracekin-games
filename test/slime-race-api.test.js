@@ -74,10 +74,12 @@ test('성인 어댑터 허용 계정의 동시 개정 충돌·동일 요청 멱�
   assert.deepEqual(concurrent.map(row => row.status).sort(), [200, 409]);
   const saved = concurrent.find(row => row.status === 200).body;
   assert.equal(saved.wallet.balance, 29000);
-  const replay = await Promise.all([send(body), send(body)]);
+  // 동시에 보낸 두 요청 중 먼저 처리된 요청을 재전송합니다. HTTP 도착 순서는 고정하지 않습니다.
+  const accepted = concurrent[0].status === 200 ? body : { ...body, requestId: 'concurrent-000000000002' };
+  const replay = await Promise.all([send(accepted), send(accepted)]);
   assert.ok(replay.every(row => row.status === 200));
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM grain_ledger WHERE eventId LIKE 'slime-race:ticket:%'").get().n, 1);
-  assert.equal((await send({ ...body, amount: 1100 })).body.error.code, 'IDEMPOTENCY_CONFLICT');
+  assert.equal((await send({ ...accepted, amount: 1100 })).body.error.code, 'IDEMPOTENCY_CONFLICT');
   const age = 86400000;
   db.prepare('UPDATE session SET expiresAt=?,updatedAt=? WHERE userId=?').run(Date.now() + 5 * age, Date.now() - 2 * age, userId);
   const before = db.prepare('SELECT expiresAt,updatedAt FROM session WHERE userId=?').get(userId);
