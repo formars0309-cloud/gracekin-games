@@ -119,3 +119,17 @@ assets/slime-race/art/**
 !assets/slime-race/art/acc9.png
 !assets/slime-race/art/tree.webp
 !assets/slime-race/art/bush.webp
+
+# 그레인 활동 보상·버그 제보·운영자 도구
+!server/grain-rewards.js
+!server/grain-admin.js
+!community/bug-report/
+community/bug-report/**
+!community/bug-report/index.html
+!account/admin/
+account/admin/**
+!account/admin/index.html
+!assets/account/tools.js
+!assets/account/tools.css
+!assets/account/admin.js
+!assets/community/bug-report.js

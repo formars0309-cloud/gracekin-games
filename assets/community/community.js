@@ -4,7 +4,7 @@
   if (window.gracekinCommunityRedirecting || location.hostname === 'gracekingames.com' || location.hostname === 'www.gracekingames.com') return;
   const studioPath = path => location.hostname === 'community.gracekingames.com' ? `https://gracekingames.com${path}` : path;
   for (const link of document.querySelectorAll('.studio-home-link')) link.href = studioPath('/');
-  const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform';
+  const FEEDBACK_URL = '/community/bug-report/';
   const GAMES = {
     slimeline: {
       name: '슬라임 라인', english: 'SLIMELINE', home: '/games/slimeline/', privacy: 'https://slimeline.gracekingames.com/privacy.html',
@@ -15,15 +15,15 @@
         { id: 'welcome', title: '슬라임 라인에 오신 것을 환영해요', excerpt: '선을 그려, 작은 슬라임의 다음 걸음을 이어 주세요.', sections: [
           ['작은 선에서 시작되는 모험', '슬라임 라인은 선을 그려 슬라임의 길을 만드는 퍼즐 게임이에요. 사계절 모험, 우리 마을과 봄 산책 섬을 만나 보세요.'],
           ['모험을 시작하려면', '슬라임 라인 홈페이지의 START를 누르면 게임으로 이동해요. 게임을 시작하기 전에 홈페이지에서 소개와 이용 안내를 살펴볼 수 있어요.'],
-          ['이곳에서 만나요', '커뮤니티에서는 공식 소식과 이용 안내를 읽을 수 있어요. 글·댓글 작성이 가능한 계정으로 로그인하면 자유게시판과 공략·팁, 갤러리에서 이야기를 나눌 수 있어요. 버그 제보와 문의는 제보·의견 보내기를 이용해 주세요.']
+          ['이곳에서 만나요', '커뮤니티에서는 공식 소식과 이용 안내를 읽을 수 있어요. 글·댓글 작성이 가능한 계정으로 로그인하면 자유게시판과 공략·팁, 갤러리에서 이야기를 나눌 수 있어요. 버그·보안 문제는 비공개 버그 제보로 보내 주세요.']
         ] },
         { id: 'play-guide', title: '슬라임 라인, 처음 시작하는 분께', excerpt: '게임을 여는 방법과 문제가 생겼을 때 확인할 곳을 모았어요.', sections: [
           ['게임 홈페이지에서 START', '게임 홈페이지의 START를 누르면 슬라임 라인이 열려요. 설치 없이 브라우저에서 즐기는 게임이며, 현재 테스트 중이에요.'],
           ['선을 그려 길을 이어요', '슬라임이 지나갈 길을 선으로 만들어 주세요. 게임 화면에 나오는 안내를 보며 한 걸음씩 시작하면 돼요.'],
-          ['막히거나 오류를 만났다면', '화면이 멈추거나 예상과 다르게 움직인다면 제보·의견 보내기로 알려 주세요. 이용한 기기와 브라우저, 문제가 생긴 화면과 상황을 함께 적어 주시면 확인에 도움이 돼요.']
+          ['막히거나 오류를 만났다면', '화면이 멈추거나 예상과 다르게 움직인다면 비공개 버그 제보로 알려 주세요. 이용한 기기와 브라우저, 문제가 생긴 화면과 상황을 함께 적어 주시면 확인에 도움이 돼요.']
         ] },
         { id: 'feedback', title: '버그 제보와 의견은 여기로 보내 주세요', excerpt: '플레이하다 만난 문제나 떠오른 생각을 편지로 받습니다.', sections: [
-          ['로그인 없이 편지를 보낼 수 있어요', '제보·의견 보내기를 누르면 그레이스킨 게임즈의 구글 설문지가 열려요. 이메일을 수집하지 않으며, 로그인 없이 보낼 수 있어요.'],
+          ['로그인한 계정으로 비공개 제보해요', '비공개 버그 제보에서 알려진 문제를 먼저 확인해 주세요. 로그인한 계정으로 제보하면 본인은 제보 목록과 처리 상태를 볼 수 있어요. 원문은 운영자만 확인해요.'],
           ['어떤 상황이었는지 알려 주세요', '게임 이름을 슬라임 라인으로 적고, 어떤 화면에서 무슨 일이 있었는지 알려 주세요. 기기와 브라우저, 오류가 반복되는 순서가 있으면 함께 적어 주세요. 비밀번호나 인증 코드 등 민감한 정보는 적지 마세요.'],
           ['다른 문의가 있다면', '이메일 문의는 support@gracekingames.com으로 보내 주세요.']
         ] }
@@ -38,7 +38,7 @@
         { id: 'welcome', title: '경국지계에 오신 것을 환영합니다', excerpt: '덮어 둔 카드 한 장이 판을 뒤집는 삼국 카드 대전.', sections: [
           ['미인과 계략의 삼국 카드 대전', '경국지계는 실시간 카드 대전 게임입니다. 게임 홈페이지에서 소개를 살펴보고 START를 눌러 대전에 들어가세요.'],
           ['현재는 테스트 기간입니다', '테스트 기간에는 전설을 포함한 모든 카드를 사용할 수 있습니다. 플레이 기록은 정식 시즌 전에 초기화될 수 있습니다.'],
-          ['공식 소식과 이용 안내', '이곳에서는 공식 소식과 이용 안내를 읽을 수 있습니다. 글·댓글 작성이 가능한 계정으로 로그인하면 자유게시판, 덱 연구, 전략·공략에서 이야기를 나눌 수 있습니다. 버그 제보와 문의는 제보·의견 보내기를 이용해 주세요.']
+          ['공식 소식과 이용 안내', '이곳에서는 공식 소식과 이용 안내를 읽을 수 있습니다. 글·댓글 작성이 가능한 계정으로 로그인하면 자유게시판, 덱 연구, 전략·공략에서 이야기를 나눌 수 있습니다. 버그·보안 문제는 비공개 버그 제보로 보내 주세요.']
         ] },
         { id: 'play-guide', title: '경국지계, 대전에 들어가기 전에', excerpt: '게임 시작 방법과 테스트 기간의 이용 안내입니다.', sections: [
           ['게임 홈페이지에서 START', '경국지계 홈페이지의 START를 누르면 게임으로 이동합니다. 브라우저에서 설치 없이 시작할 수 있습니다.'],
@@ -47,7 +47,7 @@
         ] },
         { id: 'feedback', title: '문제 신고와 소감을 보내는 방법', excerpt: '대전 중 만난 문제와 카드에 대한 생각을 들려주세요.', sections: [
           ['게임 안에서 바로 보내기', '경국지계 안의 문제 신고와 소감 남기기를 이용할 수 있습니다. 문제가 생긴 상황과 화면을 함께 알려 주시면 확인에 도움이 됩니다.'],
-          ['홈페이지에서 보내기', '제보·의견 보내기를 누르면 그레이스킨 게임즈의 구글 설문지가 열립니다. 로그인 없이 이용할 수 있고 이메일을 수집하지 않습니다. 게임 이름을 경국지계로 적어 주세요. 비밀번호나 인증 코드는 보내지 마세요.'],
+          ['홈페이지에서 보내기', '비공개 버그 제보에서 알려진 문제를 확인하고 로그인한 계정으로 제보할 수 있습니다. 본인은 제보 목록과 처리 상태를 확인할 수 있고 원문은 운영자만 확인합니다. 게임 이름을 경국지계로 적어 주세요. 비밀번호나 인증 코드는 보내지 마세요.'],
           ['이메일로 문의하기', '다른 문의는 support@gracekingames.com으로 보내 주세요.']
         ] }
       ]
@@ -63,13 +63,25 @@
     byId('game-picker').hidden = false;
     byId('community-content').hidden = true;
     byId('game-privacy-link').hidden = true;
+    // 게임을 고르기 전의 커뮤니티 진입도 로그인 회원의 하루 첫 출석에 포함한다.
+    (async () => {
+      const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        const session = await fetch('/api/community/session', { credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
+        if (!session.ok || !(await session.json()).user) return;
+        const response = await fetch('/api/grain/attendance', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: '{}', signal: controller.signal });
+        if (!response.ok) return; const result = await response.json();
+        if (result.awarded) { const notice = make('p', `오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(result.amount)} 그레인을 받았어요.`, 'reward-notice'); notice.setAttribute('role', 'status'); byId('game-picker').prepend(notice); }
+      } catch (_) { /* 게임 선택은 출석 응답과 관계없이 제공한다. */ }
+      finally { clearTimeout(timer); }
+    })();
     return;
   }
   const boardId = Object.prototype.hasOwnProperty.call(game.boards, params.get('board')) ? params.get('board') : 'notice';
   const query = (params.get('q') || '').slice(0, 80).trim();
   const pageNumber = Math.min(10000, Math.max(1, Number.parseInt(params.get('page'), 10) || 1));
   const requestedPost = params.get('post');
-  const state = { user: null, draftOwnerId: null, postBusy: false, commentBusy: false, confirmBusy: false, currentPost: null, editorKey: null, editorOriginal: { title: '', body: '' }, deleteAction: null, loadVersion: 0, commentDrafts: new Map() };
+  const state = { user: null, reportTarget: null, reportBusy: false, draftOwnerId: null, postBusy: false, commentBusy: false, confirmBusy: false, currentPost: null, editorKey: null, editorOriginal: { title: '', body: '' }, deleteAction: null, loadVersion: 0, commentDrafts: new Map() };
   const url = (board, post, search = query, page = 1) => { const next = new URLSearchParams({ game: gameId, board }); if (post) next.set('post', post); if (search) next.set('q', search); if (page > 1) next.set('page', page); return `/community/?${next}`; };
   const message = (id, text) => { byId(id).textContent = text || ''; byId(id).hidden = !text; };
   const errorText = error => error && error.message ? error.message : '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.';
@@ -104,6 +116,31 @@
     connectionRestored();
     return data;
   }
+  const rewardNotice = make('p', '', 'reward-notice'); rewardNotice.hidden = true; rewardNotice.setAttribute('role', 'status'); rewardNotice.setAttribute('aria-live', 'polite');
+  byId('community-content').prepend(rewardNotice);
+  const showReward = text => { rewardNotice.textContent = text; rewardNotice.hidden = !text; };
+  for (const link of document.querySelectorAll('.feedback-link, #article-feedback')) { link.href = FEEDBACK_URL; link.textContent = '비공개 버그 제보 →'; link.removeAttribute('data-umami-event'); }
+  const reportDialog = make('dialog', null, 'community-dialog'); reportDialog.id = 'report-dialog'; reportDialog.setAttribute('aria-labelledby', 'report-title');
+  const reportForm = make('form', null, 'dialog-form');
+  const reportHeading = make('div', null, 'dialog-heading'); const reportTitle = make('h2', '글·댓글 신고'); reportTitle.id = 'report-title';
+  const reportClose = make('button', '×', 'dialog-close'); reportClose.type = 'button'; reportClose.setAttribute('aria-label', '신고 창 닫기'); reportClose.addEventListener('click', () => { if (!state.reportBusy) reportDialog.close(); }); reportHeading.append(reportTitle, reportClose);
+  const reasonField = make('div', null, 'form-field'); const reasonLabel = make('label', '신고 사유'); reasonLabel.htmlFor = 'report-reason'; const reasonSelect = make('select'); reasonSelect.id = 'report-reason'; reasonSelect.required = true;
+  for (const reason of ['도배·광고', '욕설·괴롭힘', '개인정보 노출', '계정·그레인 거래', '버그·보안 제보 공개', '기타']) { const option = make('option', reason); option.value = reason; reasonSelect.append(option); } reasonField.append(reasonLabel, reasonSelect);
+  const detailField = make('div', null, 'form-field'); const detailLabel = make('label', '추가 설명 (선택, 최대 500자)'); detailLabel.htmlFor = 'report-description'; const reportDescription = make('textarea'); reportDescription.id = 'report-description'; reportDescription.maxLength = 500; reportDescription.rows = 4; detailField.append(detailLabel, reportDescription);
+  const reportResult = make('p', '', 'form-message'); reportResult.setAttribute('role', 'status'); reportResult.hidden = true;
+  const reportSubmit = make('button', '신고 접수', 'primary-button'); reportSubmit.type = 'submit'; reportForm.append(reportHeading, make('p', '신고는 운영자만 확인해요. 비밀번호·인증 코드와 불필요한 개인정보는 적지 마세요.', 'dialog-description'), reasonField, detailField, reportResult, reportSubmit); reportDialog.append(reportForm); document.body.append(reportDialog);
+  reportDialog.addEventListener('cancel', event => { if (state.reportBusy) event.preventDefault(); });
+  function reportButton(type, item) {
+    if (!state.user?.canWriteCommunity || item.author.id === state.user.id) return null;
+    const button = make('button', '신고', 'quiet-button report-button'); button.type = 'button'; button.addEventListener('click', () => { state.reportTarget = { targetType: type, targetId: item.id }; reportDescription.value = ''; reportResult.hidden = true; reportSubmit.hidden = false; reportTitle.textContent = type === 'post' ? '글 신고' : '댓글 신고'; reportDialog.showModal(); reasonSelect.focus(); }); return button;
+  }
+  reportForm.addEventListener('submit', async event => {
+    event.preventDefault(); if (state.reportBusy || !state.reportTarget || !reportForm.reportValidity()) return;
+    state.reportBusy = true; busy(reportForm, true); reasonSelect.disabled = true; reportResult.hidden = true;
+    try { await send('/community/reports', 'POST', { ...state.reportTarget, reason: reasonSelect.value, description: reportDescription.value.trim() }); reportResult.textContent = '신고를 접수했어요. 운영자가 확인할게요.'; reportResult.hidden = false; reportSubmit.hidden = true; }
+    catch (error) { reportResult.textContent = errorText(error); reportResult.hidden = false; }
+    finally { state.reportBusy = false; busy(reportForm, false); reasonSelect.disabled = false; }
+  });
   const send = (path, method, data) => request(path, { method, body: JSON.stringify(data || {}) });
   const formatDate = value => { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date); };
   function busy(form, value) { for (const control of form.querySelectorAll('button,input,textarea')) control.disabled = value; form.setAttribute('aria-busy', String(value)); }
@@ -137,6 +174,9 @@
       if (changedOwner) clearDrafts();
       if (nextUser) state.draftOwnerId = nextUser.id;
       renderSession();
+      if (nextUser) {
+        try { const result = await send('/grain/attendance', 'POST', {}); if (result.awarded) showReward(`오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(result.amount)} 그레인을 받았어요.`); } catch (_) { /* 출석 실패가 게시판 이용을 막지 않는다. */ }
+      }
     }
     catch (_) { state.user = null; renderSession(); byId('session-label').textContent = '로그인 상태를 확인할 수 없어요.'; }
   }
@@ -149,7 +189,7 @@
   byId('signout-button').addEventListener('click', async () => {
     const button = byId('signout-button'); if (button.disabled) return; button.disabled = true;
     window.dispatchEvent(new CustomEvent('gracekin-account-change', { detail: { phase: 'clear' } }));
-    try { await send('/auth/sign-out', 'POST'); state.user = null; state.draftOwnerId = null; clearDrafts(); renderSession(); await loadCurrent(); }
+    try { await send('/auth/sign-out', 'POST'); state.user = null; state.draftOwnerId = null; showReward(''); reportDialog.close(); clearDrafts(); renderSession(); await loadCurrent(); }
     catch (error) { showConnection(); byId('connection-message').textContent = errorText(error); }
     finally { button.disabled = false; window.dispatchEvent(new CustomEvent('gracekin-account-change', { detail: { phase: 'refresh' } })); }
   });
@@ -211,6 +251,7 @@
     const version = ++state.loadVersion;
     byId('post-list').replaceChildren(); byId('pagination').hidden = true; byId('empty-state').hidden = true;
     byId('article-body').replaceChildren(); byId('post-owner-actions').hidden = true; byId('comments-section').hidden = true; byId('article-actions').hidden = false;
+    document.querySelectorAll('.post-report-button').forEach(node => node.remove());
     state.currentPost = null; message('article-status', '');
     if (boardId === 'notice') {
       const post = game.posts.find(item => item.id === requestedPost);
@@ -260,6 +301,7 @@
     byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && post.canEdit);
     byId('comments-section').hidden = false;
     byId('comments-title').textContent = `댓글 ${comments.length}`;
+    const report = reportButton('post', post); if (report) { report.classList.add('post-report-button'); byId('article-actions').append(report); }
     renderComments(comments); renderSession();
   }
   function renderComments(comments) {
@@ -295,6 +337,7 @@
           controls.append(edit, remove); card.append(controls);
         }
       }
+      const report = reportButton('comment', comment); if (report) card.append(report);
       list.append(card);
     });
   }
@@ -330,6 +373,7 @@
       state.editorOriginal = { title, body }; byId('post-title').value = title; byId('post-body').value = body;
       byId('editor-dialog').close();
       state.commentDrafts.clear();
+      if (!editing && data.reward?.pending) { showReward('글이 등록됐어요. 24시간 동안 유지하면 500 그레인이 적립될 예정이에요.'); await new Promise(resolve => setTimeout(resolve, 2000)); }
       location.href = url(boardId, data.post.id, '', 1);
     } catch (error) { message('editor-error', errorText(error)); }
     finally { state.postBusy = false; busy(byId('post-form'), false); }
@@ -358,7 +402,7 @@
     if (!state.user) { showAuth(); return; }
     if (!state.user.canWriteCommunity) return;
     state.commentBusy = true; busy(byId('comment-form'), true); message('comment-error', '');
-    try { await send(`/community/posts/${encodeURIComponent(state.currentPost.id)}/comments`, 'POST', { body }); byId('comment-body').value = ''; await loadCurrent(); }
+    try { const data = await send(`/community/posts/${encodeURIComponent(state.currentPost.id)}/comments`, 'POST', { body }); byId('comment-body').value = ''; await loadCurrent(); if (data.reward?.pending) showReward('댓글이 등록됐어요. 24시간 동안 유지하면 100 그레인이 적립될 예정이에요.'); }
     catch (error) { message('comment-error', errorText(error)); }
     finally { state.commentBusy = false; busy(byId('comment-form'), false); }
   });
@@ -367,6 +411,6 @@
     const dirtyComment = byId('comment-body').value.trim() || [...state.commentDrafts.values()].some(item => item.body !== item.original);
     if (dirtyPost || dirtyComment) { event.preventDefault(); event.returnValue = ''; }
   });
-  async function start() { await Promise.all([loadSession(), loadCurrent()]); if (state.currentPost) { byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && state.currentPost.canEdit); renderComments(state.comments); } }
+  async function start() { await Promise.all([loadSession(), loadCurrent()]); if (state.currentPost) { byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && state.currentPost.canEdit); renderComments(state.comments); if (!document.querySelector('.post-report-button')) { const report = reportButton('post', state.currentPost); if (report) { report.classList.add('post-report-button'); byId('article-actions').append(report); } } } }
   start();
 })();
