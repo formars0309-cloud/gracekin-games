@@ -38,7 +38,7 @@
 .sr-round,.sr-speech{--sr-art:url('/assets/slime-race/art/clay/panel.png');--sr-slice:48;--sr-border:25px}
 .sr-arena-controls button{--sr-art:url('/assets/slime-race/art/clay/button.png');--sr-slice:36;--sr-border:22px}
 .sr-arena-controls .sr-primary{--sr-art:url('/assets/slime-race/art/clay/button-gold.png');--sr-slice:90 135;--sr-border:23px 35px}
-.sr-feedback{position:absolute;bottom:84px;left:18px;right:18px;display:flex;justify-content:center;min-height:22px;pointer-events:none}
+.sr-feedback{position:absolute;z-index:2;bottom:84px;left:18px;right:18px;display:flex;justify-content:center;min-height:22px;pointer-events:none}
 .sr-feedback>*{pointer-events:auto}
 .sr-feedback .sr-message{margin:0!important;padding:4px 12px;background:#fff5dfed;color:#62432c;border-radius:12px;text-align:center;max-width:100%;line-height:1.4;box-shadow:0 2px 3px #4f4c2b26}
 .sr-feedback .sr-notice{display:flex;align-items:center;justify-content:center;gap:10px;max-width:100%;margin:0;padding:5px 12px;background:#fff1dfef;border:1px solid #ac8662;color:#603723;border-radius:12px;font-size:12px;line-height:1.4}
