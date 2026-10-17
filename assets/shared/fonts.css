@@ -7,4 +7,14 @@
   --font-body: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   /* 슬라임 라인 소개 페이지와 커뮤니티의 슬라임 라인 테마에서만 쓰는 손글씨 예외 */
   --font-hand: "Nanum Pen Script", "Noto Sans KR", cursive;
+  /* 슬라임 레이스 점토 경기장의 간판·결과판에서만 쓰는 예외(Jua, OFL) */
+  --font-race: "RaceJua", "Noto Sans KR", sans-serif;
+}
+
+@font-face {
+  font-family: "RaceJua";
+  src: url('/assets/slime-race/art/clay/Jua-Regular.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
 }

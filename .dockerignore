@@ -139,3 +139,15 @@ account/admin/**
 !assets/account/tools.css
 !assets/account/admin.js
 !assets/community/bug-report.js
+
+# 슬라임 레이스 점토 경기장 운영 자산과 글꼴
+!assets/slime-race/art/clay/
+assets/slime-race/art/clay/**
+!assets/slime-race/art/clay/backdrop.webp
+!assets/slime-race/art/clay/lane.webp
+!assets/slime-race/art/clay/title-plaque.png
+!assets/slime-race/art/clay/panel.png
+!assets/slime-race/art/clay/button.png
+!assets/slime-race/art/clay/button-gold.png
+!assets/slime-race/art/clay/Jua-Regular.woff2
+!assets/slime-race/art/clay/Jua-OFL.txt

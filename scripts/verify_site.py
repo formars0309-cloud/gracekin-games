@@ -382,6 +382,9 @@ def font_css_issues(source: str, relative_path: str) -> list[str]:
     hand_allowed = relative_path == FONT_STYLESHEET or relative_path.startswith('games/slimeline/') or relative_path == 'assets/community/community.css'
     if not hand_allowed and any(re.search(r'--font-hand\b', segment) for segment in segments):
         issues.append('--font-hand는 슬라임 라인 소개와 커뮤니티 테마에서만 허용')
+    race_allowed = relative_path in (FONT_STYLESHEET, 'assets/slime-race/race.css')
+    if not race_allowed and any(re.search(r'--font-race\b', segment) for segment in segments):
+        issues.append('--font-race는 슬라임 레이스 화면에서만 허용')
     return list(dict.fromkeys(issues))
 
 

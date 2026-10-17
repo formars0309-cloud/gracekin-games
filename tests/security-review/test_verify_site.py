@@ -310,6 +310,12 @@ class FontSystemTests(unittest.TestCase):
             for relative in private:
                 self.assertFalse(any(relative in failure for failure in report.failures))
 
+    def test_race_font_is_limited_to_race_stylesheet(self):
+        css = '.sr-heading h1{font-family:var(--font-race)}'
+        self.assertEqual(SITE.font_css_issues(css, 'assets/slime-race/race.css'), [])
+        self.assertTrue(SITE.font_css_issues(css, 'assets/community/community.css'))
+        self.assertTrue(SITE.font_css_issues('@font-face{font-family:RaceJua}', 'assets/slime-race/race.css'))
+
     def test_pending_community_exception_is_limited_and_can_be_removed(self):
         # 커뮤니티 개편 병합으로 기본 예외는 비었다. 예외 장치 자체는 단계적 이전에 쓰므로 계속 검증한다.
         self.assertEqual(SITE.PENDING_FONT_MIGRATION, frozenset())
