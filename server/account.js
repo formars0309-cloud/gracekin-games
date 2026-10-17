@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { guardianIsActive } from './guardian.js';
 import { APIError } from 'better-auth/api';
 import { fail, json, readJson } from './security.js';
+import { GRAIN_REWARD_POLICY } from './grain-policy.js';
 
 export const tokenHash = token => createHash('sha256').update(token).digest('hex');
 export function accountAge(user) { return ['under14', '14plus'].includes(user.ageBand) ? user.ageBand : 'legacy'; }
@@ -59,7 +60,7 @@ export function createAccountService(db, auth, { origin, mailer, guardian, grain
     if (url.pathname === '/api/account/verify-email' && request.method === 'POST') { const body = await readJson(request); return verifyEmail(body.token); }
     if (!['/api/account/config','/api/account/session','/api/account/grain'].includes(url.pathname)) fail(404, 'NOT_FOUND', '요청한 내용을 찾을 수 없습니다.');
     if (request.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
-    if (url.pathname === '/api/account/config') return json({ emailAvailable: Boolean(mailer), registrationAvailable: Boolean(mailer), guardianConsentAvailable: guardian.enabled, guardianConsentMethod: guardian.method, socialProviders, socialSignupAvailable: Boolean(mailer) && socialProviders.length > 0 });
+    if (url.pathname === '/api/account/config') return json({ emailAvailable: Boolean(mailer), registrationAvailable: Boolean(mailer), guardianConsentAvailable: guardian.enabled, guardianConsentMethod: guardian.method, socialProviders, socialSignupAvailable: Boolean(mailer) && socialProviders.length > 0, grainRewardPolicy: GRAIN_REWARD_POLICY });
     if (url.pathname === '/api/account/grain') {
       if (url.search) fail(422, 'INVALID_INPUT', '그레인 조회에는 추가 항목을 보낼 수 없습니다.');
       const session = await auth.api.getSession({ headers: request.headers, query: { disableRefresh: true } });

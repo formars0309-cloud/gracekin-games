@@ -230,6 +230,41 @@
     message('grain-status', '');
     byId('grain-retry').hidden = true;
   }
+  function renderGrainPolicy() {
+    const policy = state.config?.grainRewardPolicy;
+    const activity = policy?.activity, grades = policy?.bugReport;
+    const values = [activity?.attendance?.amount, activity?.attendance?.dailyLimit,
+      activity?.post?.amount, activity?.post?.dailyLimit, activity?.post?.minBodyLength,
+      activity?.comment?.amount, activity?.comment?.dailyLimit, activity?.comment?.minBodyLength,
+      activity?.dailyTotalLimit, activity?.confirmationDelayMs,
+      grades?.simple?.amount, grades?.normal?.amount, grades?.critical?.amount, policy?.bestPost?.amount];
+    const valid = values.every(value => Number.isSafeInteger(value) && value > 0);
+    byId('grain-policy-content').hidden = !valid;
+    byId('grain-policy-rows').replaceChildren();
+    message('grain-policy-status', valid ? '' : '받는 방법을 불러오지 못했어요. 잠시 후 새로고침해 주세요.');
+    if (!valid) return;
+    const number = value => new Intl.NumberFormat('ko-KR').format(value);
+    const hours = number(activity.confirmationDelayMs / 3600000);
+    const rows = [
+      ['출석', [number(activity.attendance.amount)], `하루 ${number(activity.attendance.dailyLimit)}회 · 로그인 후 계정·커뮤니티 진입`],
+      ['글 작성', [number(activity.post.amount)], `하루 ${number(activity.post.dailyLimit)}회 · 본문 ${number(activity.post.minBodyLength)}자 이상 · 직전 글과 다른 내용`],
+      ['댓글 작성', [number(activity.comment.amount)], `하루 ${number(activity.comment.dailyLimit)}회 · ${number(activity.comment.minBodyLength)}자 이상 · 본인 글 제외 · 같은 글의 첫 댓글만`],
+      ['버그 채택', [`단순 ${number(grades.simple.amount)}`, `일반 ${number(grades.normal.amount)}`, `중대 ${number(grades.critical.amount)}`], '운영자 확인 후 최초 제보자만 · 중복·재현 불가·이미 알려진 문제 제외'],
+      ['우수 글', [number(policy.bestPost.amount)], '운영자 선정 · 한 글에 한 번'],
+      ['이벤트', ['이벤트 공지 지급량'], '공지한 대상·기간에 계정당 한 번'],
+    ];
+    for (const [name, amounts, condition] of rows) {
+      const row = document.createElement('tr');
+      const title = document.createElement('th'); title.scope = 'row'; title.textContent = name;
+      const amount = document.createElement('td');
+      for (const text of amounts) { const line = document.createElement('span'); line.textContent = text; amount.append(line); }
+      const detail = document.createElement('td'); detail.textContent = condition;
+      row.append(title, amount, detail); byId('grain-policy-rows').append(row);
+    }
+    byId('grain-policy-limit').textContent = `자동 활동 보상은 하루 합계 ${number(activity.dailyTotalLimit)} 그레인까지예요. 하루 한도는 한국 시간(KST) 0시를 기준으로 해요.`;
+    byId('grain-policy-delay').textContent = `글·댓글은 작성 후 ${hours}시간 유지하면 확정돼요. 확정 전에는 잔액과 별도로 ‘적립 예정’에 표시돼요. 서버 처리 시점에 따라 실제 확정이 늦어질 수 있어요.`;
+    byId('grain-pending-description').textContent = `글·댓글을 작성한 뒤 ${hours}시간 동안 유지하면 확정돼요. 확정 전 삭제·숨김되거나 보상 자격이 바뀌면 지급되지 않을 수 있어요.`;
+  }
   async function loadWallet() {
     clearWallet();
     const requestId = walletRequest;
@@ -257,7 +292,7 @@
         const time = document.createElement('time');
         const due = new Date(item.confirmsAt);
         if (!Number.isNaN(due.getTime())) time.dateTime = due.toISOString();
-        time.textContent = Number.isNaN(due.getTime()) ? '작성 후 24시간 뒤 확정 예정' : `${new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(due)} 확정 예정`;
+        time.textContent = Number.isNaN(due.getTime()) ? '유지 조건 충족 후 확정 예정' : `${new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(due)} 확정 예정`;
         li.append(label, amount, time); byId('grain-pending').append(li);
       }
       byId('grain-pending-empty').hidden = pending.length !== 0;
@@ -530,6 +565,7 @@
     if (results[1].status === 'fulfilled') state.user = results[1].value.user || null;
     byId('loading-message').hidden = true;
     applyAvailability();
+    renderGrainPolicy();
     renderOidc();
     const oidcHandled = state.oauthQuery ? await prepareOidc() : false;
     const nextView = view === 'member' && !state.user ? 'signin' : view;

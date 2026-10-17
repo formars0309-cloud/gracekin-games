@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { activeAccountUser } from './account.js';
 import { fail, json, readJson, text } from './security.js';
+import { GRAIN_REWARD_POLICY } from './grain-policy.js';
 
 const BUG_STATUSES = ['접수', '확인 중', '중복', '재현 불가', '채택', '수정 완료'];
 const ISSUE_STATUSES = ['확인 중', '수정 중', '수정 완료'];
-const BUG_GRADES = { simple: { amount: 2000, label: '단순' }, normal: { amount: 5000, label: '일반' }, critical: { amount: 20000, label: '중대' } };
-const DAY = 86400000;
+const BUG_GRADES = GRAIN_REWARD_POLICY.bugReport;
+const DAY = GRAIN_REWARD_POLICY.dayMs;
 const iso = value => value === null ? null : new Date(value).toISOString();
 
 function fields(body, allowed) {
@@ -173,7 +174,7 @@ export function createGrainAdmin(db, auth, { rewards, now = Date.now, adminUserI
           link = parsed.href;
         }
         const report = mutate(() => {
-          const time = now(), start = Math.floor((time + 9 * 3600000) / DAY) * DAY - 9 * 3600000;
+          const time = now(), start = Math.floor((time + GRAIN_REWARD_POLICY.kstOffsetMs) / DAY) * DAY - GRAIN_REWARD_POLICY.kstOffsetMs;
           if (db.prepare('SELECT COUNT(*) AS n FROM grain_bug_reports WHERE userId=? AND createdAt>=? AND createdAt<?').get(user.id, start, start + DAY).n >= 5) fail(429, 'BUG_REPORT_LIMIT', '버그 제보는 하루 5건까지 접수할 수 있습니다.');
           const id = randomUUID();
           db.prepare('INSERT INTO grain_bug_reports(id,userId,game,title,body,steps,url,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?)').run(id, user.id, game, title, description, steps, link, time, time);
@@ -256,7 +257,7 @@ export function createGrainAdmin(db, auth, { rewards, now = Date.now, adminUserI
       const result = mutate(() => {
         const { row } = content('post', postId);
         if (row.hiddenAt !== null) fail(422, 'CONTENT_HIDDEN', '숨긴 글은 우수 글로 선정할 수 없습니다.');
-        const result = award(findUser(row.authorId), `best-post:${row.id}`, 3000, '우수 글 선정');
+        const result = award(findUser(row.authorId), `best-post:${row.id}`, GRAIN_REWARD_POLICY.bestPost.amount, '우수 글 선정');
         audit(user, 'best-post', 'post', row.id, reason, { postId: row.id, targetUserId: row.authorId });
         return result;
       });

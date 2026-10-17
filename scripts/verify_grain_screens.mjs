@@ -28,6 +28,7 @@ try {
   db.prepare("UPDATE user SET ageBand='under14' WHERE id=?").run(accounts.child.id);
   db.prepare("INSERT INTO guardian_requests(id,capabilityHash,status,createdAt,expiresAt,consentVersion,consentText,childUserId) VALUES(?,?,'used',?,?,?, ?,?)").run('screen-guardian', 'screen-capability', Date.now(), Date.now() + 86400000, 'screen', '격리 검수용 동의', accounts.child.id);
   await app.close(); app = await startServer({ ...options, adminUserIds: accounts.admin.id });
+  const policy = (await request(app, '/api/account/config')).body.grainRewardPolicy;
   const send = (path, body, who = 'member') => request(app, path, { method: 'POST', body, cookie: accounts[who].cookie });
   const own = await send('/api/community/posts', { game: 'slimeline', board: 'free', title: '검수용 본인 글', body: '충분한 길이로 글을 작성하여 24시간 적립 예정 보상과 본인 글 신고 버튼 제외를 검증합니다.' });
   const other = await send('/api/community/posts', { game: 'slimeline', board: 'free', title: '다른 회원의 공개 글', body: '운영자가 작성한 검수용 본문이며 다른 회원 화면에서 신고 버튼이 표시되는지 확인합니다.' }, 'admin');
@@ -50,15 +51,40 @@ try {
     assert.ok(size.document <= size.viewport + 1, `${label} ${width}px 가로 넘침: ${size.document}`);
     await page.screenshot({ path: join(artifacts, `${label}-${width}.png`), fullPage: true }); results.push(`${label} ${width}px 가로 넘침 없음`);
   }
+  async function publicPolicy(page, signedIn) {
+    const table = page.locator('#grain-policy table');
+    await page.locator('#grain-policy-content:not([hidden])').waitFor();
+    assert.equal(await page.locator('#grain-policy').evaluate(node => node.closest('.panel') === null), true);
+    assert.equal(await table.locator('caption').textContent(), '활동·운영자 확인·이벤트 보상');
+    assert.equal(await table.locator('thead th[scope=col]').count(), 3);
+    assert.equal(await table.locator('tbody th[scope=row]').count(), 6);
+    const rows = await table.locator('tbody tr').allTextContents();
+    const number = value => new Intl.NumberFormat('ko-KR').format(value);
+    const activity = policy.activity;
+    for (const [index, texts] of [
+      [0, [number(activity.attendance.amount), `하루 ${activity.attendance.dailyLimit}회`]],
+      [1, [number(activity.post.amount), `하루 ${activity.post.dailyLimit}회`, `본문 ${activity.post.minBodyLength}자 이상`, '직전 글과 다른 내용']],
+      [2, [number(activity.comment.amount), `하루 ${activity.comment.dailyLimit}회`, `${activity.comment.minBodyLength}자 이상`, '본인 글 제외', '같은 글의 첫 댓글만']],
+      [3, [`단순 ${number(policy.bugReport.simple.amount)}`, `일반 ${number(policy.bugReport.normal.amount)}`, `중대 ${number(policy.bugReport.critical.amount)}`, '최초 제보자만']],
+      [4, [number(policy.bestPost.amount), '한 글에 한 번']], [5, ['이벤트 공지 지급량', '계정당 한 번']],
+    ]) for (const text of texts) assert.ok(rows[index].includes(text), `${index}행 정책 안내 누락: ${text}`);
+    const text = await page.locator('#grain-policy').textContent();
+    for (const detail of [number(activity.dailyTotalLimit), `${activity.confirmationDelayMs / 3600000}시간`, '이메일 확인', '만 14세 미만', '보상 정지', 'KST', '확정 전 삭제·숨김', '소급 지급하지 않아요']) assert.ok(text.includes(detail), `공개 정책 조건 누락: ${detail}`);
+    assert.equal(await page.locator('#grain-content').isVisible(), signedIn);
+    const overflow = await table.evaluate(node => ({ width: node.clientWidth, content: node.scrollWidth, parent: node.parentElement.clientWidth }));
+    assert.ok(overflow.content <= overflow.width + 1 && overflow.width <= overflow.parent + 1, '표 내부 가로 넘침');
+    results.push(`공개 정책 ${signedIn ? '로그인' : '비로그인'} ${page.viewportSize().width}px 수치·조건·표 의미·회원 정보 구분 통과`);
+  }
   for (const width of [1440, 390, 320]) {
     for (const [who, path, ready, label] of [
       ['member', '/account/', '#grain-content:not([hidden])', '계정'],
+      ['guest', '/account/', '#signin-panel:not([hidden])', '계정비로그인'],
       ['member', '/community/bug-report/', '#bug-private:not([hidden])', '비공개제보'],
       ['admin', '/account/admin/', '#admin-events .tool-record, #events-result', '운영도구'],
       ['member', `/community/?game=slimeline&board=free&post=${other.body.post.id}`, '.post-report-button', '커뮤니티'],
       ['member', '/community/?game=gyeongguk&board=free', '#session-label', '경국지계'],
     ]) {
-      const page = await pageFor(who); await page.setViewportSize({ width, height: 900 }); await page.goto(app.origin + path); await page.locator(ready).first().waitFor({ state: 'visible' }); await page.waitForLoadState('networkidle'); await noOverflow(page, label, width); await page.close();
+      const page = await pageFor(who); await page.setViewportSize({ width, height: 900 }); await page.goto(app.origin + path); await page.locator(ready).first().waitFor({ state: 'visible' }); await page.waitForLoadState('networkidle'); if (path === '/account/') await publicPolicy(page, who === 'member'); await noOverflow(page, label, width); await page.close();
     }
   }
   const legacy = await pageFor('legacy'); await legacy.setViewportSize({ width: 320, height: 844 }); await legacy.goto(app.origin + '/account/'); await legacy.getByText('이메일을 확인하면 활동 보상을 받을 수 있어요.', { exact: false }).waitFor(); await noOverflow(legacy, '미확인안내', 320);
@@ -98,6 +124,11 @@ try {
   assert.deepEqual(Object.keys(payload).sort(), ['reason', 'recipients']);
   const guest = await pageFor('guest'); await guest.goto(app.origin + '/account/admin/'); await guest.getByText('운영자만 이용할 수 있어요. 운영 계정으로 로그인했는지 확인해 주세요.').waitFor(); assert.equal(await guest.locator('#admin-content').isVisible(), false);
   await guest.goto(app.origin + '/community/bug-report/'); await guest.locator('#bug-login:not([hidden])').waitFor(); assert.equal(await guest.locator('#bug-private').isVisible(), false);
+  // 실제 로그아웃 뒤에도 공개 표가 남고 본인 잔액·내역은 제거되는지 확인합니다.
+  await member.goto(app.origin + '/account/'); await member.locator('#grain-content:not([hidden])').waitFor();
+  await member.locator('#signout-button').click(); await member.locator('#signin-panel:not([hidden])').waitFor();
+  await publicPolicy(member, false); assert.equal(await member.locator('#grain-balance').textContent(), '');
+  assert.equal(await member.locator('#grain-entries li').count(), 0); await noOverflow(member, '계정로그아웃후', 390);
   assert.deepEqual(pageErrors, []); results.push('신고·댓글보상·비공개제보·숨김복원·정지해제·회수·채택·공개문제등록수정·우수글·이벤트 실제 API 동작 통과', '본인 글 신고 제외·비회원 비공개양식/운영 차단·이벤트 본문 허용필드·콘솔 예외 없음');
   await writeFile(join(artifacts, '결과.json'), JSON.stringify({ results, pageErrors }, null, 2));
   console.log(`검증 통과: ${results.length}개 확인\n검수 자료: ${artifacts}`);

@@ -12,6 +12,7 @@ import { getMigrations } from 'better-auth/db/migration';
 import { toNodeHandler } from 'better-auth/node';
 import { createGrainService, GRAIN_ECONOMY } from '../server/grain.js';
 import { createGrainAdmin } from '../server/grain-admin.js';
+import { GRAIN_REWARD_POLICY } from '../server/grain-policy.js';
 import { initializeGuardian } from '../server/guardian.js';
 import { errorResponse, fail, json } from '../server/security.js';
 import { request, cookieFrom } from './account-helpers.js';
@@ -154,6 +155,8 @@ test('버그 등급별 2000·5000·20000 지급과 동시·상태 재처리 멱�
     assert.ok(outcomes.every(row => row.status === 200));
     const entry = db.prepare('SELECT * FROM grain_ledger WHERE eventId=?').get(`bug-report:${report.id}`);
     assert.equal(entry.userId, users.alice.id); assert.equal(entry.amount, amount); assert.equal(entry.reason, `버그 제보 보상(${label})`);
+    assert.equal(entry.amount, GRAIN_REWARD_POLICY.bugReport[grade].amount);
+    assert.equal(label, GRAIN_REWARD_POLICY.bugReport[grade].label);
     assert.equal((await api(`/api/admin/bug-reports/${report.id}`, { status: '수정 완료', reason })).status, 200);
     assert.equal((await accept(api, report.id, grade)).body.awarded, false);
     const otherGrade = grade === 'critical' ? 'normal' : 'critical';
@@ -266,6 +269,7 @@ test('우수 글은 글당 한 번 3000 지급하고 숨김·미자격은 제외
   const outcomes = await Promise.all(Array.from({ length: 5 }, () => api('/api/admin/best-post', { postId, reason })));
   assert.equal(outcomes.filter(row => row.body.awarded).length, 1);
   assert.equal(balance(db, users.alice.id), 3000);
+  assert.equal(balance(db, users.alice.id), GRAIN_REWARD_POLICY.bestPost.amount);
   assert.equal(db.prepare('SELECT eventId FROM grain_ledger').get().eventId, `best-post:${postId}`);
   const hiddenId = (await post()).body.post.id;
   await api('/api/admin/content', { targetType: 'post', targetId: hiddenId, hidden: true, reason });
