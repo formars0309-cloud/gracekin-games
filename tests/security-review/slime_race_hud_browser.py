@@ -55,14 +55,21 @@ def main():
                 page.wait_for_timeout(120)
                 layout=page.evaluate('''() => {
                   const rect = selector => {const r=document.querySelector(selector).getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
-                  return {overflow:document.documentElement.scrollWidth>innerWidth,arena:rect('.sr-arena'),title:rect('.sr-title-sign'),clock:rect('.sr-round'),owl:rect('.sr-announcer img'),speech:rect('.sr-speech'),controls:rect('.sr-arena-controls'),feedback:rect('.sr-feedback')};
+                  const img=document.querySelector('.sr-announcer img'),box=img.getBoundingClientRect();
+                  const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;
+                  const ctx=c.getContext('2d');ctx.drawImage(img,0,0);const pixels=ctx.getImageData(0,0,c.width,c.height).data;
+                  let left=c.width,top=c.height,right=0,bottom=0;
+                  for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++)if(pixels[(y*c.width+x)*4+3]){left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x+1);bottom=Math.max(bottom,y+1);}
+                  const scale=Math.min(box.width/c.width,box.height/c.height),ox=box.x+(box.width-c.width*scale)/2,oy=box.y+(box.height-c.height*scale)/2;
+                  const owl={x:ox+left*scale,y:oy+top*scale,right:ox+right*scale,bottom:oy+bottom*scale,w:(right-left)*scale,h:(bottom-top)*scale};
+                  return {owl,owlBox:rect('.sr-announcer img'),overflow:document.documentElement.scrollWidth>innerWidth,arena:rect('.sr-arena'),title:rect('.sr-title-sign'),clock:rect('.sr-round'),speech:rect('.sr-speech'),controls:rect('.sr-arena-controls'),feedback:rect('.sr-feedback')};
                 }''')
                 assert not layout['overflow'],f'{width}: 가로 넘침'
                 assert page.locator('.sr-round').evaluate('(el)=>el.scrollWidth<=el.clientWidth+1'),f'{width}: 시계 내부 가로 넘침'
                 def overlaps(a,b): return a['x']<b['right'] and a['right']>b['x'] and a['y']<b['bottom'] and a['bottom']>b['y']
                 for a,b in [('title','clock'),('title','speech'),('clock','speech'),('title','owl'),('clock','owl')]:
-                    assert not overlaps(layout[a],layout[b]),f'{width}: {a}/{b} 겹침'
-                for key in ['title','clock','owl','speech','controls','feedback']:
+                    assert not overlaps(layout[a],layout[b]),f'{width}: {a}/{b} 겹침 {layout[a]} / {layout[b]}'
+                for key in ['title','clock','owlBox','speech','controls','feedback']:
                     a,b=layout[key],layout['arena']
                     assert a['x']>=b['x'] and a['right']<=b['right'] and a['y']>=b['y'] and a['bottom']<=b['bottom'],f'{width}: {key} 경기장 밖'
                 # 새 장면은 작은 화면에서 헤더·레인·조작부를 쌓는다. 이전 고정 높이 대신
@@ -83,6 +90,8 @@ def main():
                         page.locator('.sr-arena').screenshot(path=str(output/f'{label}-{width}.png'))
                 page.set_viewport_size({'width':320,'height':844})
             for width in widths:
+                page.set_viewport_size({'width':width,'height':1000 if width>700 else 844})
+                page.locator('.sr-arena').screenshot(path=str(output/f'home-{width}.png'))
                 verify_layout(width)
                 page.locator('.sr-arena').screenshot(path=str(output/f'home-{width}.png'))
                 page.screenshot(path=str(output/f'page-{width}.png'),full_page=True)

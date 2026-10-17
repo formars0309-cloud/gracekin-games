@@ -162,10 +162,18 @@ def main():
                 session = context.new_cdp_session(page)
                 session.send('Emulation.setPageScaleFactor', {'pageScaleFactor': 2})
                 assert page.evaluate('visualViewport.scale') == 2, '확대 적용 실패'
-                page.locator('[data-action="ticket"]').tap()
-                page.locator('#sr-ticket').wait_for(state='visible')
-                page.locator('[data-action="close"]').tap()
-                page.locator('#sr-ticket').wait_for(state='hidden')
+                def zoomed_tap(selector):
+                    element=page.locator(selector)
+                    element.scroll_into_view_if_needed()
+                    # CDP의 2배 핀치 확대에서 Playwright locator.tap은 layout 좌표를
+                    # 그대로 보내므로 다른 요소를 누른다. visualViewport 오프셋을 뺀 화면 좌표로 터치를 보낸다.
+                    point=element.evaluate("el=>{const r=el.getBoundingClientRect(),v=visualViewport;return {x:r.x+r.width/2-v.offsetLeft,y:r.y+r.height/2-v.offsetTop};}")
+                    session.send('Input.dispatchTouchEvent',{'type':'touchStart','touchPoints':[point]})
+                    session.send('Input.dispatchTouchEvent',{'type':'touchEnd','touchPoints':[]})
+                zoomed_tap('[data-action="ticket"]')
+                page.locator('#sr-ticket').wait_for(state='visible',timeout=5000)
+                zoomed_tap('[data-action="close"]')
+                page.locator('#sr-ticket').wait_for(state='hidden',timeout=5000)
                 context.close()
             checks.append('320/390px DPR2 캔버스 실제 해상도·터치·2배 확대 후 구매창 열기/닫기')
             browser.close()
