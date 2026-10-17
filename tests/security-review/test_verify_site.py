@@ -311,21 +311,23 @@ class FontSystemTests(unittest.TestCase):
                 self.assertFalse(any(relative in failure for failure in report.failures))
 
     def test_pending_community_exception_is_limited_and_can_be_removed(self):
+        # 커뮤니티 개편 병합으로 기본 예외는 비었다. 예외 장치 자체는 단계적 이전에 쓰므로 계속 검증한다.
+        self.assertEqual(SITE.PENDING_FONT_MIGRATION, frozenset())
         source = '''<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel">
         <style>body{font-family:Georgia}</style>'''
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            self.assertEqual(self.font_page_failures(root, 'community/index.html', source), [])
-            self.assertTrue(self.font_page_failures(root, 'community/privacy/index.html', source))
-            self.assertEqual(SITE.font_css_issues('body{font:16px Georgia}', 'assets/community/community.css'), [])
             pending = SITE.PENDING_FONT_MIGRATION
             try:
+                SITE.PENDING_FONT_MIGRATION = frozenset({'community/index.html', 'assets/community/community.css'})
+                self.assertEqual(self.font_page_failures(root, 'community/index.html', source), [])
+                self.assertTrue(self.font_page_failures(root, 'community/privacy/index.html', source))
+                self.assertEqual(SITE.font_css_issues('body{font:16px Georgia}', 'assets/community/community.css'), [])
                 SITE.PENDING_FONT_MIGRATION = frozenset()
                 self.assertTrue(self.font_page_failures(root, 'community/index.html', source))
                 self.assertTrue(SITE.font_css_issues('body{font:16px Georgia}', 'assets/community/community.css'))
             finally:
                 SITE.PENDING_FONT_MIGRATION = pending
-
 
 if __name__ == '__main__':
     unittest.main()

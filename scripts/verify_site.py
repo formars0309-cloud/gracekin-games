@@ -277,8 +277,8 @@ def css_references(source: str) -> list[str]:
     return [url for url in urls if url and not url.startswith('#')]
 
 
-# 커뮤니티 개편이 병합되면 조율자가 비운다. 규칙 1·2·3에만 적용하는 임시 제외 목록이다.
-PENDING_FONT_MIGRATION = frozenset({'community/index.html', 'assets/community/community.css'})
+# 2026-10-18 커뮤니티 개편 병합으로 비웠다. 새 페이지를 단계적으로 옮길 때만 규칙 1·2·3의 임시 제외로 쓴다.
+PENDING_FONT_MIGRATION = frozenset()
 FONT_STYLESHEET = 'assets/shared/fonts.css'
 FONT_PAGES = frozenset({
     'index.html', 'account/index.html', 'account/admin/index.html', 'community/index.html',
