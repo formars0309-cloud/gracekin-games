@@ -302,7 +302,7 @@ def verify(root: Path) -> Report:
     docker_allowed = {line.strip()[1:] for line in dockerignore.read_text().splitlines() if line.strip().startswith('!')} if dockerignore.is_file() else set()
     for path in sorted((root / 'server').glob('*.js')):
         check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 운영 패키지에서 서버 파일 누락')
-    required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
     paths = [root / 'index.html'] + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
