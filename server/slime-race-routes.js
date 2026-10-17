@@ -5,9 +5,10 @@ const DISPLAY_ORIGINS = new Set(['https://gracekingames.com', 'https://www.grace
 const PATHS = new Map([['/api/slime-race/state', 'GET'], ['/api/slime-race/me', 'GET'], ['/api/slime-race/history', 'GET'], ['/api/slime-race/tickets', 'POST']]);
 
 // 성인 확인은 신뢰하는 서버 어댑터만 제공합니다. 기존 ageBand=14plus는 성인 증빙이 아닙니다.
-export function createSlimeRaceRoutes({ db, auth, race, origin, limit, adultVerifier }) {
+export function createSlimeRaceRoutes({ db, auth, race, origin, limit, adultVerifier, rewards }) {
   function eligibility(user) {
     if (!user) return { canBet: false, code: 'LOGIN_REQUIRED', message: '로그인 후 이용해 주세요.' };
+    if (rewards?.isSuspended(user.id)) return { canBet: false, code: 'GRAIN_REWARD_SUSPENDED', message: '그레인 보상과 이용이 정지된 계정입니다.' };
     if (!user.emailVerified) return { canBet: false, code: 'EMAIL_NOT_VERIFIED', message: '이메일 확인을 마쳐 주세요.' };
     if (user.ageBand === 'under14') return { canBet: false, code: 'ADULT_VERIFICATION_REQUIRED', message: '성인 확인 회원만 티켓을 구매할 수 있습니다.' };
     if (typeof adultVerifier !== 'function') return { canBet: false, code: 'ADULT_VERIFICATION_UNAVAILABLE', message: '성인 확인 기능을 준비 중입니다. 지금은 경기를 관람할 수 있습니다.' };

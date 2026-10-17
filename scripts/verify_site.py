@@ -302,7 +302,7 @@ def verify(root: Path) -> Report:
     docker_allowed = {line.strip()[1:] for line in dockerignore.read_text().splitlines() if line.strip().startswith('!')} if dockerignore.is_file() else set()
     for path in sorted((root / 'server').glob('*.js')):
         check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 운영 패키지에서 서버 파일 누락')
-    required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'account/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
     paths = [root / 'index.html'] + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
@@ -329,10 +329,10 @@ def verify(root: Path) -> Report:
         rel = path.relative_to(root)
         check(not page.errors, f'{rel}: HTML 구조 오류 ({"; ".join(page.errors)})')
         scripts = [attrs for tag, attrs in page.tags if tag == 'script' and attrs.get('src') == 'https://cloud.umami.is/script.js']
-        if path.is_relative_to(root / 'account'):
-            check(not scripts, f'{rel}: 계정 화면에 외부 통계 스크립트가 있음')
+        if path.is_relative_to(root / 'account') or path == root / 'community/bug-report/index.html':
+            check(not scripts, f'{rel}: 계정·비공개 제보 화면에 외부 통계 스크립트가 있음')
             external_scripts = [attrs for tag, attrs in page.tags if tag == 'script' and urlsplit(attrs.get('src', '')).netloc]
-            check(not external_scripts, f'{rel}: 계정 화면에 외부 스크립트가 있음')
+            check(not external_scripts, f'{rel}: 계정·비공개 제보 화면에 외부 스크립트가 있음')
             check(any(tag == 'meta' and attrs.get('name') == 'referrer' and attrs.get('content') == 'no-referrer' for tag, attrs in page.tags), f'{rel}: 인증 링크의 참조 주소 전송 차단 없음')
         else:
             check(len(scripts) == 1 and scripts[0].get('data-website-id') == UMAMI_ID and scripts[0].get('data-domains') == 'gracekingames.com' and scripts[0].get('data-do-not-track') == 'true', f'{rel}: 통계 설정 불일치')
@@ -382,6 +382,11 @@ def verify(root: Path) -> Report:
             href = link.get('href', '')
             check(f'game={other}' not in href and f'/games/{other}/' not in href and urlsplit(href).hostname != urlsplit(GAME_URLS[other]).hostname, f'{rel}: 다른 게임 링크 혼입')
         check(any(f'game={game}' in link.get('href', '') and '/community/' in link.get('href', '') for link in page.links), f'{rel}: 게임별 커뮤니티 링크 없음')
+
+    for private_path in ('account/admin/index.html', 'community/bug-report/index.html'):
+        private_page = pages.get(root / private_path)
+        if private_page:
+            check(any(tag == 'meta' and attrs.get('name') == 'robots' and 'noindex' in attrs.get('content', '') for tag, attrs in private_page.tags), f'{private_path}: 비공개 도구의 검색 색인 제외 없음')
 
     host_script = root / 'assets/community/host.js'
     if host_script.is_file():

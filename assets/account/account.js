@@ -221,6 +221,11 @@
     byId('grain-content').hidden = true;
     byId('grain-balance').textContent = '';
     byId('grain-entries').replaceChildren();
+    byId('grain-pending').replaceChildren();
+    byId('grain-pending-total').textContent = '';
+    byId('grain-verify').hidden = true;
+    message('grain-attendance', '');
+    message('grain-eligibility', '');
     message('grain-error', '');
     message('grain-status', '');
     byId('grain-retry').hidden = true;
@@ -233,10 +238,29 @@
     byId('grain-wallet').setAttribute('aria-busy', 'true');
     message('grain-status', '잔액과 이용 내역을 불러오고 있어요.');
     try {
+      let attendance;
+      try { attendance = await request('/grain/attendance', {}); } catch (_) { /* 잔액 조회는 출석 응답 실패와 별개로 제공한다. */ }
       const data = await request('/account/grain');
       if (requestId !== walletRequest || state.user?.id !== userId) return;
       if (!Number.isSafeInteger(data.balance) || data.balance < 0 || !Array.isArray(data.entries)) throw new Error('그레인 정보를 확인하지 못했어요. 다시 불러와 주세요.');
       byId('grain-balance').textContent = new Intl.NumberFormat('ko-KR').format(data.balance);
+      if (attendance?.awarded) message('grain-attendance', `오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(attendance.amount)} 그레인을 받았어요.`);
+      const eligibility = { eligible: '', unverified: '이메일을 확인하면 활동 보상을 받을 수 있어요. 확인 뒤 활동부터 적용하며 확인 전 활동은 소급 지급하지 않아요.', under14: '만 14세 미만 계정은 활동·이벤트 보상 대상이 아니에요. 기존 잔액은 그대로 유지해요.', suspended: '현재 활동·이벤트 보상이 정지된 계정이에요. 자세한 내용은 문의해 주세요.' };
+      message('grain-eligibility', eligibility[data.rewardEligibility] || '');
+      byId('grain-verify').hidden = data.rewardEligibility !== 'unverified';
+      const pending = Array.isArray(data.pending) ? data.pending : [];
+      byId('grain-pending-total').textContent = new Intl.NumberFormat('ko-KR').format(data.pendingTotal || 0);
+      for (const item of pending) {
+        const li = document.createElement('li');
+        const label = document.createElement('span'); label.textContent = item.reason || (item.targetType === 'comment' ? '댓글 작성' : '글 작성');
+        const amount = document.createElement('strong'); amount.textContent = `${new Intl.NumberFormat('ko-KR').format(item.amount)} 그레인`;
+        const time = document.createElement('time');
+        const due = new Date(item.confirmsAt);
+        if (!Number.isNaN(due.getTime())) time.dateTime = due.toISOString();
+        time.textContent = Number.isNaN(due.getTime()) ? '작성 후 24시간 뒤 확정 예정' : `${new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(due)} 확정 예정`;
+        li.append(label, amount, time); byId('grain-pending').append(li);
+      }
+      byId('grain-pending-empty').hidden = pending.length !== 0;
       for (const item of data.entries) {
         const li = document.createElement('li');
         const description = document.createElement('span');
@@ -262,6 +286,12 @@
     }
   }
   byId('grain-retry').addEventListener('click', loadWallet);
+  byId('grain-verify').addEventListener('click', () => {
+    if (!state.user?.email) return;
+    byId('verify-email').value = state.user.email;
+    navigate('verify');
+    byId('verify-email').value = state.user.email;
+  });
   let methodsRequest = 0;
   function clearLoginMethods() {
     methodsRequest += 1;

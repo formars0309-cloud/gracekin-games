@@ -11,3 +11,7 @@ button,textarea{font:inherit}button{cursor:pointer}button:disabled,input:disable
 .dialog-description a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}.community-footer>div:last-child>a{display:inline-block}.noscript-note a{text-decoration:underline;text-underline-offset:3px}
 
 .age-confirmation label{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.8}.age-confirmation input{width:18px;height:18px;margin:3px 0 0;flex-shrink:0;accent-color:var(--accent)}.age-confirmation p{font-size:11px;line-height:1.9;color:var(--muted);margin:10px 0 0}
+
+/* 활동·신고 안내는 양쪽 게임 테마에서 읽을 수 있게 한다. */
+.reward-notice{position:sticky;top:12px;z-index:5;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:14px 18px;color:var(--ink);font-size:13px;line-height:1.8;overflow-wrap:anywhere}.form-field select{width:100%;min-width:0;padding:12px;color:var(--ink);background:var(--surface-soft);border:1px solid var(--border);border-radius:5px;font:inherit}.report-button{min-height:44px}.comment-card>.report-button{display:block;margin-left:auto;font-size:11px}
+@media(max-width:650px){.form-field select{font-size:16px}.reward-notice{font-size:12px;padding:12px}}

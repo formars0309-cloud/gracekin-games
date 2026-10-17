@@ -40,7 +40,7 @@
 </section>
 <section id="signup-panel" class="panel" aria-labelledby="signup-title" hidden>
 <p id="signup-step" class="step-label">회원가입 · 2단계</p><h2 id="signup-title" tabindex="-1">계정을 만들어요</h2><p id="signup-description" class="description">계정을 만들고 이메일을 확인하면 로그인할 수 있어요.</p>
-<p class="notice">이메일 확인 완료 후 <strong>30,000 그레인</strong>을 지급해요. 그레인은 무료로 지급되는 사이트 공용 게임 화폐예요. 현금 구매·충전·환전, 상품·쿠폰·유료 아이템 교환, 회원 간 양도, 유료 재화 전환은 제공하지 않아요.</p>
+<p class="notice">이메일 확인 완료 후 <strong>30,000 그레인</strong>을 지급해요. 그레인은 이벤트와 커뮤니티 활동으로만 받는 무료 화폐예요. 돈으로 사거나 현금·상품으로 바꿀 수 없고, 다른 회원에게 줄 수 없어요.</p>
 <form id="signup-form">
 <div class="field"><label for="signup-name">닉네임</label><input id="signup-name" name="name" autocomplete="nickname" minlength="2" maxlength="24" required><small>2~24자. 글과 댓글에 표시되는 이름이에요.</small></div>
 <div class="field"><label for="signup-email">로그인용 이메일</label><input id="signup-email" name="email" type="email" autocomplete="email" maxlength="254" required><small id="signup-email-help">가입 확인 메일을 받을 수 있는 주소를 입력해 주세요.</small></div>
@@ -85,12 +85,12 @@
 <p class="step-label">내 계정</p><h2 id="member-title" tabindex="-1">반가워요</h2><p id="member-email" class="description"></p><p id="member-permission" class="notice"></p><section class="grain-wallet" aria-labelledby="grain-title" aria-busy="false" id="grain-wallet">
 <div class="grain-heading"><img src="/assets/currency/grain.png" width="48" height="48" alt=""><h3 id="grain-title">내 그레인</h3></div>
 <p id="grain-status" class="description" role="status">잔액을 불러오고 있어요.</p>
-<div id="grain-content" hidden><p class="grain-balance"><strong id="grain-balance"></strong> <span>그레인</span></p><p class="description small">무료로 지급되는 사이트 공용 게임 화폐예요. 현금 구매·충전·환전, 상품·쿠폰·유료 아이템 교환, 회원 간 양도, 유료 재화 전환은 제공하지 않아요.</p><h4>이용 내역</h4><ul id="grain-entries" class="grain-entries"></ul><p id="grain-empty" class="description" hidden>아직 이용 내역이 없어요.</p></div>
+<div id="grain-content" hidden><p class="grain-balance"><strong id="grain-balance"></strong> <span>그레인</span></p><p class="description small">그레인은 이벤트와 커뮤니티 활동으로만 받는 무료 화폐예요. 돈으로 사거나 현금·상품으로 바꿀 수 없고, 다른 회원에게 줄 수 없어요.</p><p id="grain-attendance" class="notice success" role="status" hidden></p><p id="grain-eligibility" class="notice" hidden></p><button id="grain-verify" class="text-button" type="button" hidden>인증 메일 다시 받기</button><p class="grain-pending-total">적립 예정 <strong id="grain-pending-total"></strong> 그레인</p><p class="description small">글·댓글을 작성한 뒤 24시간 동안 유지하면 확정돼요. 확정 전 삭제·숨김되거나 보상 자격이 바뀌면 지급되지 않을 수 있어요.</p><ul id="grain-pending" class="grain-entries"></ul><p id="grain-pending-empty" class="description" hidden>적립 예정인 보상이 없어요.</p><h4>이용 내역</h4><ul id="grain-entries" class="grain-entries"></ul><p id="grain-empty" class="description" hidden>아직 이용 내역이 없어요.</p></div>
 <p id="grain-error" class="form-message" role="alert" hidden></p><button id="grain-retry" class="text-button" type="button" hidden>그레인 다시 불러오기</button>
 </section><section id="login-methods" class="login-methods" aria-labelledby="login-methods-title" aria-busy="false" hidden>
 <h3 id="login-methods-title">로그인 수단</h3><p class="description small">로그인한 상태에서만 연결하거나 해제할 수 있어요. 마지막 하나는 해제할 수 없어요.</p>
 <ul id="login-method-list" class="login-method-list"></ul><p id="login-methods-error" class="form-message" role="alert" tabindex="-1" hidden></p>
-</section><a id="community-link" class="primary-button button-link" href="/community/?game=slimeline">커뮤니티로 가기 <span aria-hidden="true">→</span></a><div class="form-links"><button id="member-forgot" type="button" class="text-button">비밀번호 재설정</button><button id="signout-button" type="button" class="text-button">로그아웃</button></div><p id="member-error" class="form-message" role="alert" tabindex="-1" hidden></p><p class="privacy-note">계정 삭제와 개인정보 관련 요청은 <a href="mailto:support@gracekingames.com">support@gracekingames.com</a>으로 보내 주세요.</p>
+</section><a id="community-link" class="primary-button button-link" href="/community/?game=slimeline">커뮤니티로 가기 <span aria-hidden="true">→</span></a><p class="member-tools"><a href="/community/bug-report/">비공개 버그 제보</a> · <a href="/account/admin/">운영 도구</a></p><div class="form-links"><button id="member-forgot" type="button" class="text-button">비밀번호 재설정</button><button id="signout-button" type="button" class="text-button">로그아웃</button></div><p id="member-error" class="form-message" role="alert" tabindex="-1" hidden></p><p class="privacy-note">계정 삭제와 개인정보 관련 요청은 <a href="mailto:support@gracekingames.com">support@gracekingames.com</a>으로 보내 주세요.</p>
 </section>
 <div class="guest-return"><span>가입은 나중에 해도 괜찮아요.</span><a id="guest-link" href="https://gracekingames.com/">게임 둘러보기 <span aria-hidden="true">↗</span></a></div>
 </div>
