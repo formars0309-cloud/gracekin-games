@@ -198,5 +198,134 @@ class PublicAssetTests(unittest.TestCase):
             self.assertEqual(SITE.production_files(root, {}), [expected])
 
 
+class FontSystemTests(unittest.TestCase):
+    def test_role_variables_globals_and_shorthand_metrics_are_allowed(self):
+        for property_name, value in [
+            ('font-family', 'var(--font-body)'),
+            ('font-family', 'var( --font-display ) !important'),
+            ('font-family', 'inherit'),
+            ('font-family', 'initial'),
+            ('font', 'inherit'),
+            ('font', 'initial'),
+            ('font', 'var(--font-body)'),
+            ('font', '16px var(--font-body)'),
+            ('font', '600 1rem/1.75 var(--font-body)'),
+            ('font', 'italic small-caps 500 16px / 24px var(--font-display)'),
+            ('font', 'normal medium/normal var(--font-body) !important'),
+            ('font', 'clamp(14px, 2vw, 18px)/calc(1 + .5) var(--font-body)'),
+            ('font', 'var(--text-size)/var(--text-leading) var(--font-body)'),
+        ]:
+            with self.subTest(property_name=property_name, value=value):
+                self.assertTrue(SITE.font_value_allowed(property_name, value))
+
+    def test_direct_fonts_fallbacks_and_invalid_shorthand_are_rejected(self):
+        for property_name, value in [
+            ('font-family', 'Georgia, serif'),
+            ('font-family', 'system-ui'),
+            ('font-family', 'var(--font-body), sans-serif'),
+            ('font-family', 'var(--font-body, Arial)'),
+            ('font-family', 'var(--other)'),
+            ('font-family', 'unset'),
+            ('font', '16px/1.5 Georgia, serif'),
+            ('font', '16px var(--font-body), Georgia'),
+            ('font', 'Georgia 16px var(--font-body)'),
+            ('font', '16px/1.5 18px var(--font-body)'),
+            ('font', 'bold var(--font-body)'),
+            ('font', 'caption'),
+        ]:
+            with self.subTest(property_name=property_name, value=value):
+                self.assertFalse(SITE.font_value_allowed(property_name, value))
+
+    def test_actual_css_declarations_are_checked_without_matching_comment_or_content(self):
+        allowed = '''/* font-family: Georgia; */
+        .example::before {content: "예시; font-family: Georgia;"}
+        @media (max-width: 600px) {.copy {FONT: 500 16px/1.6 var(--font-body)}}'''
+        self.assertEqual(SITE.font_css_issues(allowed, 'assets/example.css'), [])
+        for source in ['.copy {font-family: Georgia}', 'font:16px serif', '@media print {.copy {font-family: Arial !important}}']:
+            with self.subTest(source=source):
+                self.assertTrue(SITE.font_css_issues(source, 'assets/example.css'))
+
+    def test_google_font_requests_are_centralized(self):
+        source = "@import url('https://fonts.googleapis.com/css2?family=Cinzel');"
+        self.assertEqual(SITE.font_css_issues(source, SITE.FONT_STYLESHEET), [])
+        for source in [source, '@import "https://fonts.googleapis.com/css2?family=Cinzel";', 'a{src:url(https://fonts.gstatic.com/test.woff2)}']:
+            with self.subTest(source=source):
+                self.assertTrue(SITE.font_css_issues(source, 'assets/example.css'))
+
+    def test_handwriting_has_only_the_registered_usage_exceptions(self):
+        source = '.copy{font-family:var(--font-hand)}'
+        for path in ['games/slimeline/style.css', 'games/slimeline/index.html', 'assets/community/community.css', SITE.FONT_STYLESHEET]:
+            with self.subTest(path=path):
+                self.assertEqual(SITE.font_css_issues(source, path), [])
+        for path in ['assets/example.css', 'games/gyeongguk/style.css', 'community/index.html']:
+            with self.subTest(path=path):
+                self.assertTrue(SITE.font_css_issues(source, path))
+
+    def font_page_failures(self, root, relative, source):
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(source)
+        report = SITE.Report()
+        SITE.verify_fonts(root, {path: SITE.Page(path)}, report)
+        return report.failures
+
+    def test_page_requires_shared_font_link_before_other_stylesheets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shared = '<link rel="stylesheet" href="/assets/shared/fonts.css">'
+            self.assertEqual(self.font_page_failures(root, 'index.html', shared), [])
+            for source in ['', '<link rel="stylesheet" href="other.css">' + shared]:
+                with self.subTest(source=source):
+                    self.assertTrue(self.font_page_failures(root, 'index.html', source))
+
+    def test_html_style_element_attribute_and_google_links_are_checked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shared = '<link rel="stylesheet" href="/assets/shared/fonts.css">'
+            allowed = shared + '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            self.assertEqual(self.font_page_failures(root, 'index.html', allowed), [])
+            for extra in [
+                '<style>h1{font-family:Georgia}</style>',
+                '<p style="font:16px Arial">본문</p>',
+                '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel">',
+                '<link rel="preconnect" href="https://fonts.googleapis.com/css2?family=Cinzel">',
+            ]:
+                with self.subTest(extra=extra):
+                    self.assertTrue(self.font_page_failures(root, 'index.html', shared + extra))
+
+    def test_root_and_account_css_are_checked_but_private_fixtures_are_excluded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            public = ['theme.css', 'account/new.css', 'account/admin/new.css']
+            private = ['server/theme.css', 'node_modules/tool/theme.css', 'tests/fixture.css']
+            for relative in public + private:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('body{font-family:Georgia}')
+            report = SITE.Report()
+            SITE.verify_fonts(root, {}, report)
+            self.assertEqual(len(report.failures), len(public))
+            for relative in public:
+                self.assertTrue(any(failure.startswith(relative + ':') for failure in report.failures))
+            for relative in private:
+                self.assertFalse(any(relative in failure for failure in report.failures))
+
+    def test_pending_community_exception_is_limited_and_can_be_removed(self):
+        source = '''<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel">
+        <style>body{font-family:Georgia}</style>'''
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(self.font_page_failures(root, 'community/index.html', source), [])
+            self.assertTrue(self.font_page_failures(root, 'community/privacy/index.html', source))
+            self.assertEqual(SITE.font_css_issues('body{font:16px Georgia}', 'assets/community/community.css'), [])
+            pending = SITE.PENDING_FONT_MIGRATION
+            try:
+                SITE.PENDING_FONT_MIGRATION = frozenset()
+                self.assertTrue(self.font_page_failures(root, 'community/index.html', source))
+                self.assertTrue(SITE.font_css_issues('body{font:16px Georgia}', 'assets/community/community.css'))
+            finally:
+                SITE.PENDING_FONT_MIGRATION = pending
+
+
 if __name__ == '__main__':
     unittest.main()
