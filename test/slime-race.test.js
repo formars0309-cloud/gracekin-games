@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { createGrainService, GRAIN_ECONOMY } from '../server/grain.js';
-import { createSlimeRace, ticketPayout, SLIME_ROSTER, raceProgress } from '../server/slime-race.js';
+import { createSlimeRace, ticketPayout, SLIME_ROSTER, raceProgress, ROUND_MS } from '../server/slime-race.js';
 
-function setup(balance = 30000) {
+function setup(balance = 30000, initialTime = 0) {
   const db = new DatabaseSync(':memory:');
   db.exec("PRAGMA foreign_keys=ON; CREATE TABLE user(id TEXT PRIMARY KEY); INSERT INTO user VALUES('me'); INSERT INTO user VALUES('other');");
-  let time = 0;
+  let time = initialTime;
   createGrainService(db, { now: () => time });
   db.prepare('INSERT INTO grain_wallets VALUES(?,?)').run('me', balance);
   const options = { now: () => time, random: () => 0, startTimer: false };
@@ -35,6 +35,46 @@ test('UTC 500/510/570/600초 경계, 마감 뒤 추첨, 결과 전 비공개와 
     assert.equal(s.db.prepare('SELECT COUNT(*) AS count FROM slime_race_rounds').get().count, 5);
     assert.equal(s.race.state().round.id, '4');
   } finally { s.close(); }
+});
+
+test('큰 시각의 첫 회차는 1회, 다음은 2회이며 중단·재시작과 기록도 시각 기준 번호를 유지', () => {
+  const firstStartsAt = 2986989 * ROUND_MS, s = setup(30000, firstStartsAt + 12345);
+  let restarted;
+  try {
+    const first = s.race.state().round;
+    assert.equal(first.roundNo, 1);
+    assert.equal(first.startsAt, firstStartsAt);
+    assert.equal(first.id, '2986989');
+    const ticket = s.body(100);
+    s.race.purchase(s.user, ticket);
+    assert.equal(ticket.roundId, first.id);
+
+    s.setTime(firstStartsAt + ROUND_MS);
+    const next = s.race.state().round;
+    assert.equal(next.roundNo, 2);
+    assert.equal(next.id, '2986990');
+    s.race.purchase(s.user, s.body(100));
+    const record = s.race.history(s.user).rounds[0];
+    assert.equal(record.roundNo, 1);
+    assert.equal(record.roundId, first.id);
+    assert.equal(record.startsAt, firstStartsAt);
+    assert.equal(s.db.prepare("SELECT eventId FROM grain_ledger WHERE eventId LIKE 'slime-race:payout:%'").get().eventId, 'slime-race:payout:'+first.id);
+
+    s.race.close();
+    s.setTime(firstStartsAt + 5 * ROUND_MS + 1000);
+    restarted = createSlimeRace(s.db, s.options);
+    const resumed = restarted.state().round;
+    assert.equal(resumed.roundNo, 6);
+    assert.equal(resumed.id, '2986994');
+    assert.equal(s.db.prepare('SELECT MIN(startsAt) AS first FROM slime_race_rounds').get().first, firstStartsAt);
+    assert.deepEqual(restarted.history(s.user).rounds.map(({ roundId, roundNo }) => [roundId, roundNo]), [['2986990', 2], ['2986989', 1]]);
+    assert.equal(s.db.prepare("SELECT COUNT(*) AS count FROM grain_ledger WHERE eventId LIKE 'slime-race:payout:%'").get().count, 2);
+    // 빈 시간 구간의 회차 행이 없어도 행 개수로 번호를 당기지 않는다.
+    s.db.prepare('DELETE FROM slime_race_rounds WHERE startsAt>? AND startsAt<?').run(firstStartsAt + ROUND_MS, resumed.startsAt);
+    assert.equal(restarted.state().round.roundNo, 6);
+    s.setTime(firstStartsAt + 8 * ROUND_MS);
+    assert.equal(restarted.state().round.roundNo, 9);
+  } finally { restarted?.close(); s.close(); }
 });
 
 test('5명 중복 없음, 5성향, 정수 확률 합계와 하한·95% 목표 배당', () => {

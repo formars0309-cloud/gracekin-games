@@ -14,7 +14,7 @@
   const CONDITIONS = ['매우나쁨', '나쁨', '보통', '좋음', '매우좋음'];
   const STYLES = ['초반 질주형', '꾸준형', '후반 추격형', '순간 가속형', '변칙형'];
   const names = ['말랑', '딸기', '귤빛', '반짝', '클로', '물방울', '밤별', '보송', '구름', '초코'];
-  const spots = [[2,-26,-.1,26,17],[2,-22,-.14,28,21],[2,-23.5,0,32,20.5],[15.6,-14.3,0,20,8],[-6,-24,-.35,25,12.5],[1,-24,-.06,29,20], [15.6,-14.3,0,20,8],[-8,-24.5,-.35,19,12],[3,-26.5,-.1,26,13.5],[2,-22.5,-.12,30,15.5]];
+  const spots = [[-4,-31,-.12,30,19.6],[-5,-30.5,-.14,30,22.5],[-3,-32,-.06,38,24.3],[15.6,-13.5,0,20,8],[-8,-27.5,-.35,27,13.5],[-5,-31,-.06,32,22],[15.6,-13.5,0,20,8],[-9,-28.5,-.35,21,13.3],[-3,-33,-.08,30,15.6],[-4,-31,-.12,34,17.6]];
   const assets = Object.fromEntries(spots.map(([x,y,rot,w,h],i) => ['spot'+i,{x,y,rot,w,h}]));
   const images = {}, portraits = new Map();
   const state = { public: null, publicStatus: 'loading', me: null, meStatus: 'loading', selectedId: null, amount: 100, pending: null, busy: false, history: null, publicSeq: 0, meSeq: 0, historySeq: 0, anchorServer: 0, anchorMono: 0, publicAt: 0, positions: new Map(), previous: new Map(), positionAt: 0, sound: false, soundGeneration: 0, hidden: document.hidden, personalActive: document.hasFocus() && !document.hidden, privateEpoch: 0, raf: 0, particles: [], publicTimer: 0, motionTimer: 0, clockPhase: null, publicController: null, meController: null, closeTimer: 0, returnFocus: null, renderedKey: '', scenery: null, resultKey: null };
@@ -27,6 +27,13 @@
   const oddsText = cents => Number.isSafeInteger(cents) ? (cents / 100).toFixed(2) + '배' : '—';
   const node = (tag, className, text) => { const element = document.createElement(tag); if (className) element.className = className; if (text !== undefined) element.textContent = text; return element; };
   const currentRound = () => state.public?.round;
+  const roundLabel = round => Number.isSafeInteger(round?.roundNo) && round.roundNo > 0 ? '제 '+round.roundNo+'회' : '';
+  function historyLabel(record) {
+    const label = roundLabel(record);
+    if (label) return label;
+    const date = new Date(record.startsAt);
+    return Number.isFinite(record.startsAt) && Number.isFinite(date.getTime()) ? date.toLocaleString('ko-KR',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '경기 기록';
+  }
   const entrants = () => currentRound()?.entrants || [];
   const selected = () => entrants().find(slime => slime.slimeId === state.selectedId);
   const now = () => state.anchorServer + performance.now() - state.anchorMono;
@@ -177,8 +184,8 @@
   }
   function render() {
     const round = currentRound(), stage = phase(), slime = selected(), bet = ownBet(state.selectedId);
-    const roundLabel = round ? '제 '+round.id+'회' : '경기 확인 중';
-    $('[data-round-label]').textContent = roundLabel; $('[data-dialog-round]').textContent = roundLabel;
+    const label = round ? roundLabel(round) || '이번 경기' : '경기 확인 중';
+    $('[data-round-label]').textContent = label; $('[data-dialog-round]').textContent = label;
     $('[data-phase]').textContent = PHASES[stage] || '경기 확인 중';
     $('[data-economy-note]').textContent = freeEconomyCompatible() ? '무료 그레인 · 현금 구매·환전·경품 교환 불가' : '정책 확인 중 · 티켓 구매 일시 중지';
     $('[data-ticket-hint]').textContent = !freeEconomyCompatible() ? '정책 확인 중 · 출전 정보와 내 티켓 확인' : stage === 'sales' && salesOpen() ? '24시간, 10분마다 · 티켓 접수 중' : stage ? '구매 마감 · 출전 정보와 내 티켓 확인' : '24시간, 10분마다';
@@ -212,10 +219,10 @@
     box.hidden = !show;
     if (!show) return;
     const winner = entrants().find(s => s.slimeId === round.winnerId);
-    $('[data-result-round]').textContent = '제 '+round.id+'회 경기 결과'; $('[data-result-winner]').textContent = winner ? winner.name+', 우승!' : '경기 결과';
+    $('[data-result-round]').textContent = (roundLabel(round) ? roundLabel(round)+' 경기 결과' : '이번 경기 결과'); $('[data-result-winner]').textContent = winner ? winner.name+', 우승!' : '경기 결과';
     $('[data-result-personal]').textContent = state.meStatus === 'ready' && state.me?.user ? '내 당첨과 손익은 기록에서 확인해 주세요.' : '숲속의 작은 챔피언에게 따뜻한 박수를 보내 주세요.';
     const ranking = $('[data-result-ranks]'); ranking.replaceChildren(); round.finishOrder.forEach((id,index) => ranking.append(node('li',null,(index+1)+'위 '+(entrants().find(s => s.slimeId === id)?.name || ''))));
-    canvas.setAttribute('aria-label','제 '+round.id+'회 슬라임 레이스 결과. '+round.finishOrder.map((id,i) => (i+1)+'위 '+entrants().find(s => s.slimeId === id)?.name).join(', '));
+    canvas.setAttribute('aria-label',(roundLabel(round) || '이번 경기')+' 슬라임 레이스 결과. '+round.finishOrder.map((id,i) => (i+1)+'위 '+entrants().find(s => s.slimeId === id)?.name).join(', '));
   }
   function requestId() { if (crypto.randomUUID) return crypto.randomUUID(); const bytes = crypto.getRandomValues(new Uint8Array(16)); bytes[6] = bytes[6]&15|64; bytes[8] = bytes[8]&63|128; const hex = [...bytes].map(b => b.toString(16).padStart(2,'0')).join(''); return [hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-'); }
   async function buy(cancel = false, retry = false) {
@@ -259,7 +266,7 @@
       state.history = data;
       summary.textContent = '누적 티켓 '+money(data.summary.totalBet)+' 그레인 · 총 당첨 '+money(data.summary.payout)+' 그레인 · 손익 '+money(data.summary.profit)+' 그레인 · 적중률 '+(data.summary.hitRate*100).toFixed(1)+'%';
       const list = $('.sr-history-list'); if (!data.rounds.length) list.append(node('li',null,'아직 경기 기록이 없어요.'));
-      for (const record of data.rounds) { const item = node('li'); const winner = state.public?.roster.find(s => s.slimeId === record.winnerId)?.name || '결과 확인 중'; item.append(node('strong',null,'제 '+record.roundId+'회 · '+winner),node('br'),document.createTextNode('티켓 '+money(record.totalBet)+' · 총 당첨 '+money(record.payout)+' · 손익 '+money(record.profit)+' 그레인')); list.append(item); }
+      for (const record of data.rounds) { const item = node('li'); const winner = state.public?.roster.find(s => s.slimeId === record.winnerId)?.name || '결과 확인 중'; item.append(node('strong',null,historyLabel(record)+' · '+winner),node('br'),document.createTextNode('티켓 '+money(record.totalBet)+' · 총 당첨 '+money(record.payout)+' · 손익 '+money(record.profit)+' 그레인')); list.append(item); }
     } catch (error) { if (sequence !== state.historySeq || state.hidden || !state.personalActive) return; summary.textContent = error.status === 401 ? '로그인 후 내 기록을 확인해 주세요.' : error.message; $('[data-action="history-retry"]').hidden = false; }
   }
   function openDialog(history = false) {
@@ -327,12 +334,13 @@
 function rounded(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
 function sprite(ctx,id,x,y,scale=1,time=0,running=false,prep=false){
  const body=images['slime'+id],acc=images['acc'+id];if(!body)return;
- const squash=prep?1.14:(running&&!reduced.matches?1+Math.sin(time*17+id)*.055:1);
+ const squash=reduced.matches?1:prep?1.14:(running?1+Math.sin(time*17+id)*.055:1);
  const lift=running&&!reduced.matches?-Math.abs(Math.sin(time*8.5+id))*(scale*3):0;
  ctx.save();ctx.translate(x,y+lift);ctx.scale(scale,scale);ctx.fillStyle='#3f382c25';ctx.beginPath();ctx.ellipse(0,-1,23*squash,5,0,0,Math.PI*2);ctx.fill();
- ctx.save();ctx.scale(squash,1/squash);ctx.drawImage(body,-32,-56,64,56);ctx.restore();
- const a=assets['spot'+id];if(acc&&a){ctx.save();ctx.translate(a.x,a.y+(running&&!reduced.matches?Math.sin(time*17+id-1.2)*1.2:0));ctx.rotate(a.rot||0);ctx.drawImage(acc,-a.w/2,-a.h/2,a.w,a.h);ctx.restore()}
- ctx.restore();
+ // 몸통 하단 원점의 변형을 공유해 장신구도 정수리와 함께 눌리고 도약한다.
+ ctx.save();ctx.scale(squash,1/squash);ctx.drawImage(body,-32,-56,64,56);
+ const a=assets['spot'+id];if(acc&&a){ctx.save();ctx.translate(a.x,a.y);ctx.rotate(a.rot||0);ctx.drawImage(acc,-a.w/2,-a.h/2,a.w,a.h);ctx.restore()}
+ ctx.restore();ctx.restore();
 }
 function makePortrait(id){const c=document.createElement('canvas');c.width=144;c.height=112;const ctx=c.getContext('2d');sprite(ctx,id,72,105,1.7);return c.toDataURL('image/png')}
 

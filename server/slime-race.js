@@ -60,6 +60,8 @@ export function createSlimeRace(db, { now = Date.now, random = randomInt, startT
   }
   const unpack = row => row && ({ ...row, entrants: JSON.parse(row.entrants), finishOrder: row.finishOrder && JSON.parse(row.finishOrder) });
   const getRound = id => unpack(db.prepare('SELECT * FROM slime_race_rounds WHERE id=?').get(id));
+  const firstRoundStartsAt = () => db.prepare('SELECT MIN(startsAt) AS startsAt FROM slime_race_rounds').get().startsAt;
+  const roundNumber = (startsAt, firstStartsAt) => (startsAt - firstStartsAt) / ROUND_MS + 1;
   function createRound(startsAt) {
     const counts = new Map(SLIME_ROSTER.map(slime => [slime.slimeId, 0]));
     for (const row of db.prepare('SELECT entrants FROM slime_race_rounds WHERE startsAt<? ORDER BY startsAt DESC LIMIT 20').all(startsAt)) {
@@ -142,7 +144,7 @@ export function createSlimeRace(db, { now = Date.now, random = randomInt, startT
     return transaction(() => {
       const serverNow = now(), round = advance(serverNow), phase = phaseAt(round.startsAt, serverNow);
       return { serverNow, economy: GRAIN_ECONOMY, round: {
-        id: round.id, startsAt: round.startsAt, salesCloseAt: round.startsAt + 500000, raceStartsAt: round.startsAt + 510000,
+        id: round.id, roundNo: roundNumber(round.startsAt, firstRoundStartsAt()), startsAt: round.startsAt, salesCloseAt: round.startsAt + 500000, raceStartsAt: round.startsAt + 510000,
         resultsAt: round.startsAt + 570000, endsAt: round.startsAt + ROUND_MS, phase,
         entrants: round.entrants.map(({ probabilityUnits, ...row }) => ({ ...row, probability: probabilityUnits / PROBABILITY_UNITS, recentRanks: recentRanks(row.slimeId) })),
         animation: animation(round, serverNow), ...(phase === 'results' ? { winnerId: round.winnerId, finishOrder: round.finishOrder } : {}),
@@ -199,9 +201,9 @@ export function createSlimeRace(db, { now = Date.now, random = randomInt, startT
   function history(user) {
     tick();
     const rows = db.prepare('SELECT t.*,r.winnerId,r.startsAt FROM slime_race_tickets t JOIN slime_race_rounds r ON r.id=t.roundId WHERE t.userId=? AND r.settledAt IS NOT NULL ORDER BY r.startsAt DESC,t.slimeId').all(user.id);
-    const grouped = new Map();
+    const grouped = new Map(), firstStartsAt = firstRoundStartsAt();
     for (const row of rows) {
-      if (!grouped.has(row.roundId)) grouped.set(row.roundId, { roundId: row.roundId, startsAt: row.startsAt, winnerId: row.winnerId, bets: [], totalBet: 0, payout: 0, profit: 0, hit: false });
+      if (!grouped.has(row.roundId)) grouped.set(row.roundId, { roundId: row.roundId, roundNo: roundNumber(row.startsAt, firstStartsAt), startsAt: row.startsAt, winnerId: row.winnerId, bets: [], totalBet: 0, payout: 0, profit: 0, hit: false });
       const group = grouped.get(row.roundId);
       group.bets.push({ slimeId: row.slimeId, amount: row.amount, oddsCents: row.oddsCents, payout: row.payout });
       group.totalBet += row.amount; group.payout += row.payout; group.profit = group.payout - group.totalBet; group.hit ||= row.payout > 0;
