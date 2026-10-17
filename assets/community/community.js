@@ -4,7 +4,7 @@
   if (window.gracekinCommunityRedirecting || location.hostname === 'gracekingames.com' || location.hostname === 'www.gracekingames.com') return;
   const studioPath = path => location.hostname === 'community.gracekingames.com' ? `https://gracekingames.com${path}` : path;
   for (const link of document.querySelectorAll('.studio-home-link')) link.href = studioPath('/');
-  const FEEDBACK_URL = '/community/bug-report/';
+  const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform';
   const GAMES = {
     slimeline: {
       name: '슬라임 라인', english: 'SLIMELINE', home: '/games/slimeline/', privacy: 'https://slimeline.gracekingames.com/privacy.html',
@@ -43,7 +43,7 @@
         { id: 'play-guide', title: '경국지계, 대전에 들어가기 전에', excerpt: '게임 시작 방법과 테스트 기간의 이용 안내입니다.', sections: [
           ['게임 홈페이지에서 START', '경국지계 홈페이지의 START를 누르면 게임으로 이동합니다. 브라우저에서 설치 없이 시작할 수 있습니다.'],
           ['게임 안의 안내를 확인하세요', '게임에 들어가면 화면에 표시된 안내를 따라 진행하세요. 테스트 기간에는 전설을 포함한 모든 카드를 사용할 수 있으며, 기록은 정식 시즌 전에 초기화될 수 있습니다.'],
-          ['플레이 중 도움이 필요하다면', '게임 안의 문제 신고와 소감 남기기로 의견을 보낼 수 있습니다. 홈페이지의 제보·의견 보내기도 이용할 수 있습니다.']
+          ['플레이 중 도움이 필요하다면', '게임 안의 문제 신고와 소감 남기기로 의견을 보낼 수 있습니다. 버그는 비공개 버그 제보로, 일반 의견은 홈페이지의 의견 보내기로 보낼 수 있습니다.']
         ] },
         { id: 'feedback', title: '문제 신고와 소감을 보내는 방법', excerpt: '대전 중 만난 문제와 카드에 대한 생각을 들려주세요.', sections: [
           ['게임 안에서 바로 보내기', '경국지계 안의 문제 신고와 소감 남기기를 이용할 수 있습니다. 문제가 생긴 상황과 화면을 함께 알려 주시면 확인에 도움이 됩니다.'],
@@ -119,7 +119,6 @@
   const rewardNotice = make('p', '', 'reward-notice'); rewardNotice.hidden = true; rewardNotice.setAttribute('role', 'status'); rewardNotice.setAttribute('aria-live', 'polite');
   byId('community-content').prepend(rewardNotice);
   const showReward = text => { rewardNotice.textContent = text; rewardNotice.hidden = !text; };
-  for (const link of document.querySelectorAll('.feedback-link, #article-feedback')) { link.href = FEEDBACK_URL; link.textContent = '비공개 버그 제보 →'; link.removeAttribute('data-umami-event'); }
   const reportDialog = make('dialog', null, 'community-dialog'); reportDialog.id = 'report-dialog'; reportDialog.setAttribute('aria-labelledby', 'report-title');
   const reportForm = make('form', null, 'dialog-form');
   const reportHeading = make('div', null, 'dialog-heading'); const reportTitle = make('h2', '글·댓글 신고'); reportTitle.id = 'report-title';
