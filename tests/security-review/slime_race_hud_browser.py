@@ -49,10 +49,10 @@ def main():
             page.on('pageerror',lambda error:errors.append(str(error)))
             page.goto(fixture['origin'],wait_until='networkidle')
             page.locator('[data-announcer-message]').filter(has_text='응원할 친구').wait_for()
-            for width in [320,390,768,1440]:
+            widths = [320,360,390,500,501,550,700,701,768,900,901,1000,1001,1024,1180,1440,1920]
+            def verify_layout(width):
                 page.set_viewport_size({'width':width,'height':1000 if width>700 else 844})
                 page.wait_for_timeout(120)
-                page.locator('.sr-arena').screenshot(path=str(output/f'home-{width}.png'))
                 layout=page.evaluate('''() => {
                   const rect = selector => {const r=document.querySelector(selector).getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
                   return {overflow:document.documentElement.scrollWidth>innerWidth,arena:rect('.sr-arena'),title:rect('.sr-title-sign'),clock:rect('.sr-round'),owl:rect('.sr-announcer img'),speech:rect('.sr-speech'),controls:rect('.sr-arena-controls'),feedback:rect('.sr-feedback')};
@@ -65,7 +65,25 @@ def main():
                 for key in ['title','clock','owl','speech','controls','feedback']:
                     a,b=layout[key],layout['arena']
                     assert a['x']>=b['x'] and a['right']<=b['right'] and a['y']>=b['y'] and a['bottom']<=b['bottom'],f'{width}: {key} 경기장 밖'
-                assert layout['arena']['h']<=590,f'{width}: 경기장 과도한 높이'
+                # 새 장면은 작은 화면에서 헤더·레인·조작부를 쌓는다. 이전 고정 높이 대신
+                # 실제 텍스트와 버튼의 읽기/조작 경계 및 경기장 프레임 포함 여부를 검사한다.
+                text_bounds=page.locator('.sr-heading h1, .sr-round, .sr-round span, .sr-round strong, .sr-speech, .sr-arena-controls button').evaluate_all('''els => els.map(el => ({text:el.textContent,width:el.clientWidth,height:el.clientHeight,scrollWidth:el.scrollWidth,scrollHeight:el.scrollHeight}))''')
+                for item in text_bounds:
+                    assert item['scrollWidth']<=item['width']+1,f'{width}: 내부 가로 텍스트 넘침 {item}'
+                    assert item['scrollHeight']<=item['height']+1,f'{width}: 내부 세로 텍스트 넘침 {item}'
+                buttons=page.locator('.sr-arena-controls button').evaluate_all('''els => els.map(el => {const r=el.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height}})''')
+                for i,a in enumerate(buttons):
+                    assert a['w']>=42 and a['h']>=42,f'{width}: 버튼 터치 영역 부족 {a}'
+                    for b in buttons[i+1:]: assert not overlaps(a,b),f'{width}: 조작 버튼 겹침'
+                assert layout['arena']['h'] <= 1000,f'{width}: 한 경기장 높이 1000px 초과'
+            def verify_phase_layout(label):
+                for width in widths:
+                    verify_layout(width)
+                    if width in (320,390,1440):
+                        page.locator('.sr-arena').screenshot(path=str(output/f'{label}-{width}.png'))
+                page.set_viewport_size({'width':320,'height':844})
+            for width in widths:
+                verify_layout(width)
                 page.locator('.sr-arena').screenshot(path=str(output/f'home-{width}.png'))
                 page.screenshot(path=str(output/f'page-{width}.png'),full_page=True)
                 page.locator('[data-action="ticket"]').click()
@@ -73,7 +91,7 @@ def main():
                 assert page.locator('[data-action="buy"]').is_disabled(),'게스트 구매 잠금'
                 page.keyboard.press('Escape');page.locator('#sr-ticket').wait_for(state='hidden')
                 assert page.locator('[data-action="ticket"]').evaluate('(el)=>document.activeElement===el'),'초점 복귀'
-            checks.append('320/390/768/1440px HUD 겹침·가로 넘침·테두리 경계·높이·구매창 잠금·Escape 초점 복귀')
+            checks.append('17개 반응형 경계 너비의 HUD 겹침·텍스트 가로/세로 넘침·테두리 경계·버튼 터치 영역·구매창 잠금·Escape 초점 복귀')
             page.set_viewport_size({'width':320,'height':844})
             page.locator('[data-action="cheer"]').click()
             assert '응원을 보냈어요' in page.locator('[data-spectator-message]').inner_text()
@@ -84,8 +102,10 @@ def main():
                 page.wait_for_timeout(80)
             control['body']=command('time',elapsed=500000)['state'];refresh()
             page.locator('[data-announcer-message]').filter(has_text='구매 마감').wait_for()
+            verify_phase_layout('countdown')
             control['body']=command('time',elapsed=530000)['state'];refresh()
             page.locator('[data-announcer-message]').filter(has_text='경주가 진행 중').wait_for()
+            verify_phase_layout('racing')
             control['body']=command('time',elapsed=510000)['state'];page.reload(wait_until='networkidle')
             page.locator('[data-announcer-message]').filter(has_text='출발!').wait_for()
             racing=copy.deepcopy(control['body'])
@@ -114,12 +134,18 @@ def main():
             result=command('time',elapsed=570001)['state'];control['body']=result;refresh()
             page.locator('.sr-result').wait_for(state='visible')
             page.locator('[data-announcer-message]').filter(has_text='우승!').wait_for()
+            verify_phase_layout('results')
             page.locator('.sr-arena').screenshot(path=str(output/'result-320.png'))
+            page.evaluate('''() => { window.__hudWrites=[]; const observer=new MutationObserver(records=>window.__hudWrites.push(...records.map(r=>r.target.nodeName))); ['.sr-result','[data-announcer-message]'].forEach(selector=>observer.observe(document.querySelector(selector),{subtree:true,childList:true,characterData:true})); }''')
+            page.clock.run_for(900)
+            assert page.evaluate('window.__hudWrites.length')==0,'같은 결과·중계 상태에서 DOM 반복 쓰기 발생'
+            checks.append('정지한 결과 상태 900ms 동안 결과/중계 DOM 반복 쓰기 0회')
             # 뒤늦은 과거 스냅샷은 오류로 격리하고 과거 승자·선두를 중계하지 않는다.
             control['body']=racing;refresh()
             page.locator('[data-public-error]').wait_for(state='visible')
             assert page.locator('.sr-result').is_hidden()
             assert '우승' not in page.locator('[data-announcer-message]').inner_text()
+            verify_phase_layout('error')
             page.locator('.sr-arena').screenshot(path=str(output/'error-320.png'))
             checks.append('경주 종료 후 서버 결과 대기·확정 결과 일치·과거 서버 시각 거부 및 결과/중계 숨김')
             control['body']=result;refresh();page.locator('.sr-result').wait_for(state='visible')
@@ -137,6 +163,7 @@ def main():
             page.locator('[data-public-error]').wait_for(state='visible')
             assert page.locator('.sr-result').is_hidden()
             assert not errors,'브라우저 오류: '+'; '.join(errors)
+            checks.append('마감·중도 경주·확정 결과·오류 상태에서도 17개 반응형 경계 너비의 모든 HUD 텍스트 넘침/겹침 없음')
             checks.append('공개 API 오류 안내와 응원 피드백은 레인·하단 버튼 밖 전용 공간에 표시, 브라우저 오류 없음')
             context.close();browser.close()
         report={'통과':checks,'증빙':str(output),'운영 요청':'로컬 127.0.0.1 이외 전부 차단'}
