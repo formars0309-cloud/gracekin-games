@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>커뮤니티 · 그레이스킨 게임즈</title>
 <meta name="description" content="슬라임 라인과 경국지계의 공식 소식과 게임 이용 안내를 확인하세요.">
-<meta name="theme-color" content="#21172e">
+<meta name="theme-color" content="#101728">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/assets/shared/fonts.css">
 <link rel="stylesheet" href="/assets/community/community.css">
 <script src="/assets/community/host.js"></script>
 <script defer src="https://cloud.umami.is/script.js" data-website-id="262268ac-4e27-49fa-862a-c911f4d38993" data-domains="gracekingames.com" data-do-not-track="true"></script>
@@ -16,6 +17,7 @@
 <script defer src="/assets/shared/account-header.js"></script>
 </head>
 <body data-game="slimeline">
+<a class="skip-link" href="#main-content">본문으로 바로가기</a>
 <div class="community-shell">
 <header class="topbar">
 <a class="studio-link studio-home-link" href="https://gracekingames.com/"><img src="/assets/favicon.svg" width="28" height="28" alt=""><span>GRACEKIN GAMES</span></a>
@@ -24,10 +26,13 @@
 </header>
 <main id="main-content">
 <section class="community-hero" aria-labelledby="community-title">
+<img id="slimeline-hero-art" class="slimeline-hero-art" src="/assets/slimeline/hero.webp" width="1736" height="906" alt="달빛 마을의 돌다리를 함께 걷는 분홍·하늘·노랑·연두 슬라임" fetchpriority="high" hidden>
 <div class="hero-copy">
-<p id="game-eyebrow" class="eyebrow">GRACEKIN GAMES</p>
+<img id="slimeline-title" class="slimeline-title" src="/assets/slimeline/title.png" width="2171" height="724" alt="슬라임 라인" hidden>
+<p id="game-eyebrow" class="eyebrow">게임 이야기</p>
 <h1 id="community-title">커뮤니티</h1>
 <p id="hero-description" class="hero-description">함께 즐기는 게임, 함께 나누는 이야기.</p>
+<div id="hero-links" class="hero-links" hidden><a id="hero-home" class="hero-home" href="/games/slimeline/">게임 소개로 돌아가기 <span aria-hidden="true">↗</span></a><a class="small-button" href="https://slimeline.gracekingames.com/" data-umami-event="play-slimeline" data-umami-event-from="community-start">게임 START <span aria-hidden="true">↗</span></a></div>
 </div>
 <div class="hero-ornament" aria-hidden="true"><span></span><span></span><span></span></div>
 </section>
@@ -37,17 +42,18 @@
 <a href="?game=gyeongguk&board=notice">경국지계 커뮤니티 →</a>
 </div>
 <div id="community-content">
-<section class="member-bar" aria-label="커뮤니티 계정">
-<div><span id="session-label" role="status">로그인 상태를 확인하고 있어요.</span><span class="account-note">그레이스킨게임즈 사이트와 함께 쓰는 계정이에요. 게임 계정 연결은 준비 중이에요.</span></div>
-<div class="member-actions"><button id="open-signin" class="quiet-button" type="button">로그인</button><button id="open-signup" class="small-button" type="button">회원가입</button><button id="signout-button" class="quiet-button" type="button" hidden>로그아웃</button></div>
+<section id="member-bar" class="member-bar" aria-label="커뮤니티 계정">
+<div><span id="session-label" role="status">로그인 상태를 확인하고 있어요.</span></div>
+<div class="member-actions"><button id="open-signin" class="quiet-button" type="button">로그인</button><button id="open-signup" class="small-button" type="button">회원가입</button></div>
 </section>
 <p id="account-permission" class="login-prompt" hidden>이 계정은 커뮤니티의 글과 공식 안내를 읽을 수 있어요. 글·댓글 작성은 제공하지 않아요.</p>
 <div id="connection-status" class="connection-status" role="status" hidden><p id="connection-message"></p><button id="retry-connection" class="quiet-button" type="button">다시 연결</button><a id="connection-notice" href="?game=slimeline&board=notice">공식 안내 보기 →</a></div>
 <nav id="board-tabs" class="board-tabs" aria-label="게시판"></nav>
 <div class="board-layout">
 <section id="board-view" class="board-surface" aria-labelledby="board-title">
-<div class="board-heading"><div><p class="section-label">COMMUNITY</p><h2 id="board-title">공지사항</h2></div><span id="result-count" class="result-count" aria-live="polite"></span></div>
+<div class="board-heading"><div><p class="section-label">우리들의 이야기</p><h2 id="board-title">공지사항</h2></div><span id="result-count" class="result-count" aria-live="polite"></span></div>
 <p id="board-description" class="board-description"></p>
+<p id="gallery-notice" class="gallery-notice" hidden>그림 올리기는 준비 중이에요. 지금은 글로 소개해 주세요.</p>
 <div class="board-toolbar"><button id="write-post" class="small-button" type="button" hidden>글쓰기 <span aria-hidden="true">＋</span></button><span id="board-help" class="board-help"></span></div>
 <form id="search-form" class="search-form" role="search">
 <label class="visually-hidden" for="search-input">게시판 글 검색</label>
@@ -57,7 +63,7 @@
 <p id="list-status" class="list-status" role="status" hidden>이야기를 불러오고 있어요.</p>
 <div id="post-list" class="post-list"></div>
 <nav id="pagination" class="pagination" aria-label="게시판 페이지" hidden></nav>
-<div id="empty-state" class="empty-state" hidden><span class="empty-mark" aria-hidden="true">✧</span><h3 id="empty-title"></h3><p id="empty-description"></p><a id="empty-link" href="?game=slimeline&board=notice">공식 안내 보기 →</a></div>
+<div id="empty-state" class="empty-state" hidden><img id="empty-slime" class="empty-slime" src="/assets/slime-front.png" width="96" height="96" alt="" hidden><h3 id="empty-title"></h3><p id="empty-description"></p><p id="empty-reward" class="empty-reward" hidden></p><div id="empty-actions" class="empty-actions" hidden><button id="empty-write" class="small-button" type="button" hidden>글쓰기</button><button id="empty-signin" class="quiet-button" type="button" hidden>로그인</button><button id="empty-signup" class="small-button" type="button" hidden>회원가입</button></div><a id="empty-link" href="?game=slimeline&board=notice">공식 안내 보기 →</a></div>
 </section>
 <article id="article-view" class="board-surface article-view" hidden aria-labelledby="article-title">
 <a id="back-to-board" class="text-link" href="?game=slimeline&board=notice">← 목록으로</a>
@@ -72,8 +78,9 @@
 <p id="comment-login" class="login-prompt" hidden>댓글을 남기려면 <button id="comment-open-signin" class="text-button" type="button">로그인</button>해 주세요.</p></section>
 </article>
 <aside class="community-aside" aria-label="커뮤니티 안내">
-<div class="aside-card"><p class="section-label">A LITTLE NOTE</p><h2>반가워요, 모험가님.</h2><p id="aside-description">게임의 공식 소식과 이용 안내를 모았습니다.</p><p>공식 소식은 누구나 읽을 수 있어요. 글·댓글 작성이 가능한 계정으로 로그인하면 게임 이야기를 나눌 수 있어요. 버그는 <a href="https://community.gracekingames.com/community/bug-report/">비공개 버그 제보</a>로, 일반 의견은 아래 편지함으로 보내 주세요.</p><a class="feedback-link" data-umami-event="feedback-form" href="https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform">의견 보내기 <span aria-hidden="true">↗</span></a></div>
-<div class="aside-small"><span aria-hidden="true">✦</span><p>서로 다른 생각도<br>다정한 말로 나누어요.</p></div>
+<section class="aside-card" aria-labelledby="grain-guide-title"><h2 id="grain-guide-title">그레인 받는 방법</h2><p id="grain-policy-status" role="status">받는 방법을 확인하고 있어요.</p><dl id="grain-policy-summary" class="grain-policy-summary" hidden></dl><p id="grain-policy-delay" hidden></p><a class="aside-link" href="/account/">지급 조건 자세히 보기 →</a></section>
+<section class="aside-card" aria-labelledby="community-guide-title"><h2 id="community-guide-title">커뮤니티 안내</h2><p id="aside-description">게임의 공식 소식과 이용 안내를 모았습니다.</p><a id="known-issues-link" class="aside-link" href="/community/bug-report/#known-issues"><span id="known-issues-count" role="status">알려진 문제 확인하기</span> →</a><a class="aside-link" href="/community/bug-report/">비공개 버그 제보 →</a><a class="aside-link" data-umami-event="feedback-form" href="https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform">의견 보내기 ↗</a><a class="aside-link" href="/community/terms/">커뮤니티 이용약관 →</a></section>
+<section class="aside-card account-guide" aria-labelledby="account-guide-title"><h2 id="account-guide-title">계정 안내</h2><p>그레이스킨게임즈 사이트와 함께 쓰는 계정이에요. 게임 계정 연결은 준비 중이에요.</p><button id="signout-button" class="quiet-button" type="button" hidden>로그아웃</button></section>
 </aside>
 </div>
 </div>
