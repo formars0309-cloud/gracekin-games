@@ -161,6 +161,11 @@ def main():
             page.clock.run_for(900)
             assert page.evaluate('window.__hudWrites.length')==0,'같은 결과·중계 상태에서 DOM 반복 쓰기 발생'
             checks.append('정지한 결과 상태 900ms 동안 결과/중계 DOM 반복 쓰기 0회')
+            page.locator('[data-action="cheer"]').click()
+            page.locator('[data-spectator-message]').wait_for(state='visible')
+            assert page.locator('[data-spectator-message]').evaluate('(el)=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}'),'결과판 뒤에 응원 안내 자체가 가림'
+            page.locator('.sr-arena').screenshot(path=str(output/'results-cheer-320.png'))
+            checks.append('320px 결과 중 실제 응원 안내의 텍스트 영역이 결과판 앞에 표시됨')
             page.locator('.sr-result button').click()
             page.locator('#sr-ticket').wait_for(state='visible')
             page.keyboard.press('Escape')
