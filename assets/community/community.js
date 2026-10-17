@@ -7,15 +7,15 @@
   const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform';
   const GAMES = {
     slimeline: {
-      name: '슬라임 라인', english: 'SLIMELINE', home: '/games/slimeline/', privacy: 'https://slimeline.gracekingames.com/privacy.html',
+      name: '슬라임 라인', home: '/games/slimeline/', privacy: 'https://slimeline.gracekingames.com/privacy.html',
       description: '작은 슬라임의 길에서 만난 이야기를 나누어요.',
       aside: '선을 그려 길을 잇는 슬라임 라인의 소식과 이용 안내예요.',
-      boards: { free: ['자유게시판', '슬라임과 함께한 순간, 자유롭게 나눌 이야기를 위한 자리예요.'], guide: ['공략·팁', '길을 잇는 작은 발견과 나만의 풀이를 위한 자리예요.'], gallery: ['갤러리', '모험 속에서 만난 풍경과 기억을 위한 자리예요.'], notice: ['공지사항', '슬라임 라인의 공식 소식과 게임 이용 안내를 확인하세요.'] },
+      boards: { free: ['자유 이야기', '슬라임과 함께한 순간과 일상의 이야기를 자유롭게 나누어요.'], guide: ['공략 나누기', '길을 잇는 작은 발견과 나만의 풀이를 함께 나누어요.'], gallery: ['작품 자랑', '슬라임을 좋아하는 마음으로 만든 작품과 모험의 추억을 소개해 주세요.'], notice: ['새 소식', '슬라임 라인의 새 소식과 게임 이용 안내를 확인하세요.'] },
       posts: [
         { id: 'welcome', title: '슬라임 라인에 오신 것을 환영해요', excerpt: '선을 그려, 작은 슬라임의 다음 걸음을 이어 주세요.', sections: [
           ['작은 선에서 시작되는 모험', '슬라임 라인은 선을 그려 슬라임의 길을 만드는 퍼즐 게임이에요. 사계절 모험, 우리 마을과 봄 산책 섬을 만나 보세요.'],
           ['모험을 시작하려면', '슬라임 라인 홈페이지의 START를 누르면 게임으로 이동해요. 게임을 시작하기 전에 홈페이지에서 소개와 이용 안내를 살펴볼 수 있어요.'],
-          ['이곳에서 만나요', '커뮤니티에서는 공식 소식과 이용 안내를 읽을 수 있어요. 글·댓글 작성이 가능한 계정으로 로그인하면 자유게시판과 공략·팁, 갤러리에서 이야기를 나눌 수 있어요. 버그·보안 문제는 비공개 버그 제보로 보내 주세요.']
+          ['이곳에서 만나요', '커뮤니티에서는 공식 소식과 이용 안내를 읽을 수 있어요. 글·댓글 작성이 가능한 계정으로 로그인하면 자유 이야기와 공략 나누기, 작품 자랑에서 이야기를 나눌 수 있어요. 버그·보안 문제는 비공개 버그 제보로 보내 주세요.']
         ] },
         { id: 'play-guide', title: '슬라임 라인, 처음 시작하는 분께', excerpt: '게임을 여는 방법과 문제가 생겼을 때 확인할 곳을 모았어요.', sections: [
           ['게임 홈페이지에서 START', '게임 홈페이지의 START를 누르면 슬라임 라인이 열려요. 설치 없이 브라우저에서 즐기는 게임이며, 현재 테스트 중이에요.'],
@@ -30,7 +30,7 @@
       ]
     },
     gyeongguk: {
-      name: '경국지계', english: 'GYEONGGUK', home: '/games/gyeongguk/', privacy: 'https://gyeongguk.gracekingames.com/privacy',
+      name: '경국지계', home: '/games/gyeongguk/', privacy: 'https://gyeongguk.gracekingames.com/privacy',
       description: '한 장의 계략, 한 판의 이야기가 모이는 곳.',
       aside: '미인과 계략의 삼국 카드 대전, 경국지계의 공식 소식과 이용 안내입니다.',
       boards: { free: ['자유게시판', '한 판을 마친 소감과 자유로운 이야기를 위한 자리입니다.'], deck: ['덱 연구', '카드의 조합과 덱에 대한 생각을 위한 자리입니다.'], strategy: ['전략·공략', '대전에서 발견한 수와 계략을 위한 자리입니다.'], notice: ['공지사항', '경국지계의 공식 소식과 게임 이용 안내를 확인하세요.'] },
@@ -81,7 +81,7 @@
   const query = (params.get('q') || '').slice(0, 80).trim();
   const pageNumber = Math.min(10000, Math.max(1, Number.parseInt(params.get('page'), 10) || 1));
   const requestedPost = params.get('post');
-  const state = { user: null, reportTarget: null, reportBusy: false, draftOwnerId: null, postBusy: false, commentBusy: false, confirmBusy: false, currentPost: null, editorKey: null, editorOriginal: { title: '', body: '' }, deleteAction: null, loadVersion: 0, commentDrafts: new Map() };
+  const state = { user: null, sessionVersion: 0, rewardEligibility: null, rewardPolicy: null, emptyKind: null, reportTarget: null, reportBusy: false, draftOwnerId: null, postBusy: false, commentBusy: false, confirmBusy: false, currentPost: null, editorKey: null, editorOriginal: { title: '', body: '' }, deleteAction: null, loadVersion: 0, commentDrafts: new Map() };
   const url = (board, post, search = query, page = 1) => { const next = new URLSearchParams({ game: gameId, board }); if (post) next.set('post', post); if (search) next.set('q', search); if (page > 1) next.set('page', page); return `/community/?${next}`; };
   const message = (id, text) => { byId(id).textContent = text || ''; byId(id).hidden = !text; };
   const errorText = error => error && error.message ? error.message : '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.';
@@ -93,27 +93,28 @@
     PASSWORD_TOO_SHORT: '비밀번호는 8자 이상으로 입력해 주세요.', PASSWORD_TOO_LONG: '비밀번호는 128자 이하로 입력해 주세요.', UNAUTHORIZED: '로그인이 필요해요. 입력한 내용은 그대로 남아 있어요.', FORBIDDEN: '이 내용을 변경할 권한이 없어요.', NOT_FOUND: '글을 찾을 수 없어요. 삭제되었거나 주소가 바뀌었을 수 있어요.'
   };
   async function request(path, options = {}) {
+    const { background = false, ...fetchOptions } = options;
     if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//') || path.includes('\\')) throw new Error('올바르지 않은 요청이에요.');
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
     let response;
     try {
-      response = await fetch(`/api${path}`, { ...options, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, signal: controller.signal });
+      response = await fetch(`/api${path}`, { ...fetchOptions, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, signal: controller.signal });
     } catch (_) {
-      showConnection();
+      if (!background) showConnection();
       throw new Error('연결이 끊겼거나 응답이 늦어지고 있어요. 입력한 내용은 남아 있어요. 다시 등록하기 전에 목록을 확인해 주세요.');
     } finally { clearTimeout(timer); }
     let data;
-    try { data = await response.json(); } catch (_) { showConnection(); throw new Error('커뮤니티 연결을 확인할 수 없어요. 잠시 후 다시 시도해 주세요.'); }
+    try { data = await response.json(); } catch (_) { if (!background) showConnection(); throw new Error('커뮤니티 연결을 확인할 수 없어요. 잠시 후 다시 시도해 주세요.'); }
     if (!response.ok) {
       const detail = data.error || data;
       const error = new Error(response.status === 429 ? '요청이 많아요. 잠시 쉬었다 다시 시도해 주세요.' : authMessages[detail.code] || (/[가-힣]/.test(detail.message || '') ? detail.message : '요청을 처리하지 못했어요. 입력한 내용을 확인해 주세요.'));
       error.status = response.status;
-      if (response.status === 401) { state.user = null; renderSession(); }
-      if (response.status >= 500) showConnection();
+      if (!background && response.status === 401) { state.user = null; renderSession(); }
+      if (!background && response.status >= 500) showConnection();
       throw error;
     }
-    connectionRestored();
+    if (!background) connectionRestored();
     return data;
   }
   const rewardNotice = make('p', '', 'reward-notice'); rewardNotice.hidden = true; rewardNotice.setAttribute('role', 'status'); rewardNotice.setAttribute('aria-live', 'polite');
@@ -145,7 +146,8 @@
   function busy(form, value) { for (const control of form.querySelectorAll('button,input,textarea')) control.disabled = value; form.setAttribute('aria-busy', String(value)); }
   function openDialog(id) { const dialog = byId(id); if (!dialog.open) dialog.showModal(); }
   function renderSession() {
-    byId('session-label').textContent = state.user ? `${state.user.name}님, 반가워요.` : '누구나 게임 이야기와 공식 안내를 읽을 수 있어요.';
+    byId('member-bar').hidden = !!state.user;
+    byId('session-label').textContent = '로그인하면 글·댓글을 남기고 그레인을 받을 수 있어요.';
     byId('open-signin').hidden = !!state.user;
     byId('open-signup').hidden = !!state.user;
     byId('signout-button').hidden = !state.user;
@@ -154,6 +156,7 @@
     byId('account-permission').hidden = !state.user || !!state.user.canWriteCommunity;
     byId('write-post').hidden = boardId === 'notice' || !!(state.user && !state.user.canWriteCommunity);
     byId('comment-login').hidden = !!state.user;
+    renderEmptyAudience();
   }
   function clearDrafts() {
     state.editorKey = null; state.editorOriginal = { title: '', body: '' }; state.commentDrafts.clear();
@@ -165,8 +168,12 @@
     if (state.currentPost && state.comments) renderComments(state.comments);
   }
   async function loadSession() {
+    const version = ++state.sessionVersion;
+    state.rewardEligibility = null;
+    renderEmptyAudience();
     try {
       const data = await request('/community/session');
+      if (version !== state.sessionVersion) return;
       const nextUser = data.user || null;
       const changedOwner = nextUser && state.draftOwnerId && String(nextUser.id) !== String(state.draftOwnerId);
       state.user = nextUser;
@@ -174,10 +181,26 @@
       if (nextUser) state.draftOwnerId = nextUser.id;
       renderSession();
       if (nextUser) {
-        try { const result = await send('/grain/attendance', 'POST', {}); if (result.awarded) showReward(`오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(result.amount)} 그레인을 받았어요.`); } catch (_) { /* 출석 실패가 게시판 이용을 막지 않는다. */ }
+        await Promise.all([
+          (async () => {
+            try {
+              const grain = await request('/account/grain', { background: true });
+              if (version !== state.sessionVersion || state.user?.id !== nextUser.id) return;
+              state.rewardEligibility = grain.rewardEligibility;
+              renderEmptyAudience();
+            } catch (_) { /* 자격을 확인하지 못했으면 보상 약속을 표시하지 않는다. */ }
+          })(),
+          (async () => {
+            try { const result = await send('/grain/attendance', 'POST', {}); if (version === state.sessionVersion && result.awarded) showReward(`오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(result.amount)} 그레인을 받았어요.`); }
+            catch (_) { /* 출석 실패가 게시판 이용을 막지 않는다. */ }
+          })()
+        ]);
       }
     }
-    catch (_) { state.user = null; renderSession(); byId('session-label').textContent = '로그인 상태를 확인할 수 없어요.'; }
+    catch (_) {
+      if (version !== state.sessionVersion) return;
+      state.user = null; state.rewardEligibility = null; renderSession(); byId('session-label').textContent = '로그인 상태를 확인할 수 없어요.';
+    }
   }
   function showAuth(mode = 'signin') {
     location.href = `/account/?${new URLSearchParams({ view: mode, game: gameId, board: boardId })}`;
@@ -188,13 +211,16 @@
   byId('signout-button').addEventListener('click', async () => {
     const button = byId('signout-button'); if (button.disabled) return; button.disabled = true;
     window.dispatchEvent(new CustomEvent('gracekin-account-change', { detail: { phase: 'clear' } }));
-    try { await send('/auth/sign-out', 'POST'); state.user = null; state.draftOwnerId = null; showReward(''); reportDialog.close(); clearDrafts(); renderSession(); await loadCurrent(); }
+    try { await send('/auth/sign-out', 'POST'); state.sessionVersion++; state.rewardEligibility = null; state.user = null; state.draftOwnerId = null; showReward(''); reportDialog.close(); clearDrafts(); renderSession(); await loadCurrent(); }
     catch (error) { showConnection(); byId('connection-message').textContent = errorText(error); }
     finally { button.disabled = false; window.dispatchEvent(new CustomEvent('gracekin-account-change', { detail: { phase: 'refresh' } })); }
   });
   document.body.dataset.game = gameId;
-  document.querySelector('meta[name="theme-color"]').content = gameId === 'slimeline' ? '#21172e' : '#f3efe6';
-  byId('game-eyebrow').textContent = game.english;
+  document.querySelector('meta[name="theme-color"]').content = gameId === 'slimeline' ? '#101728' : '#f3efe6';
+  byId('game-eyebrow').textContent = game.name;
+  byId('game-eyebrow').hidden = gameId === 'slimeline';
+  for (const id of ['slimeline-hero-art', 'slimeline-title', 'hero-links']) byId(id).hidden = gameId !== 'slimeline';
+  byId('hero-home').href = studioPath(game.home);
   byId('hero-description').textContent = game.description;
   byId('aside-description').textContent = game.aside;
   byId('home-link').href = studioPath(game.home);
@@ -205,19 +231,99 @@
   byId('article-feedback').href = FEEDBACK_URL;
   byId('connection-notice').href = url('notice', null, '');
   for (const [id, [label]] of Object.entries(game.boards)) {
-    const tab = make('a', label); tab.href = url(id, null, ''); if (id === boardId) tab.setAttribute('aria-current', 'page'); byId('board-tabs').append(tab);
+    const tab = make('a'); if (gameId === 'slimeline') tab.append(boardIcon(id)); tab.append(make('span', label)); tab.href = url(id, null, ''); if (id === boardId) tab.setAttribute('aria-current', 'page'); byId('board-tabs').append(tab);
   }
+  // 선택한 게시판이 가로 스크롤 영역 밖에 가려지지 않도록 가로 위치만 맞춘다.
+  const activeTab = byId('board-tabs').querySelector('[aria-current="page"]');
+  if (activeTab) byId('board-tabs').scrollLeft = Math.max(0, activeTab.offsetLeft - byId('board-tabs').offsetLeft - 8);
   const [boardTitle, boardDescription] = game.boards[boardId];
   byId('board-title').textContent = boardTitle;
   byId('board-description').textContent = boardDescription;
   byId('search-input').value = query;
   byId('write-post').hidden = boardId === 'notice';
-  byId('board-help').textContent = boardId === 'gallery' ? '지금은 글로 추억을 나눌 수 있어요. 사진 첨부는 지원하지 않아요.' : '';
+  byId('gallery-notice').hidden = gameId !== 'slimeline' || boardId !== 'gallery';
+  byId('board-help').textContent = '';
   byId('search-form').addEventListener('submit', event => { event.preventDefault(); location.href = url(boardId, null, byId('search-input').value.trim()); });
   byId('back-to-board').href = url(boardId, null, query, pageNumber);
-  byId('retry-connection').addEventListener('click', async () => { byId('retry-connection').disabled = true; try { await loadSession(); await loadCurrent(); } finally { byId('retry-connection').disabled = false; } });
-  function empty(title, description, href = url('notice', null, ''), label = '공식 안내 보기 →') {
+  byId('retry-connection').addEventListener('click', async () => { byId('retry-connection').disabled = true; try { await Promise.all([loadSession(), loadCurrent(), loadGuidance()]); } finally { byId('retry-connection').disabled = false; } });
+  function boardIcon(id) {
+    const paths = {
+      free: '<path d="M29 14c0 8-7 12-15 12l-8 4 1-7C3 21 2 18 2 14 2 6 8 2 16 2s13 4 13 12Z" fill="currentColor"/><circle cx="10" cy="14" r="1.5" fill="var(--tab-cutout,var(--surface))"/><circle cx="16" cy="14" r="1.5" fill="var(--tab-cutout,var(--surface))"/><circle cx="22" cy="14" r="1.5" fill="var(--tab-cutout,var(--surface))"/>',
+      guide: '<path d="M16 6C12 3 7 3 2 5v23c6-2 10-2 14 0 4-2 8-2 14 0V5c-5-2-10-2-14 1Z" fill="currentColor"/><path d="M16 7v19M6 9c3-1 5 0 7 1M6 14c3-1 5 0 7 1M19 10c2-1 4-2 7-1M19 15c2-1 4-2 7-1" fill="none" stroke="var(--tab-cutout,var(--surface))" stroke-width="1.4"/>',
+      gallery: '<path d="M4 9h5l3-5h8l3 5h5c2 0 3 2 3 4v14c0 2-1 3-3 3H4c-2 0-3-1-3-3V13c0-2 1-4 3-4Z" fill="currentColor"/><circle cx="16" cy="19" r="7" fill="var(--tab-cutout,var(--surface))"/><circle cx="16" cy="19" r="4.5" fill="currentColor"/><circle cx="26" cy="13" r="1.5" fill="var(--tab-cutout,var(--surface))"/>',
+      notice: '<path d="M16 29V14M16 20C4 20 3 8 3 8s12-1 13 12ZM16 15C16 4 29 3 29 3s1 13-13 12Z" fill="currentColor"/><path d="m10 13 6 7 6-12" fill="none" stroke="var(--tab-cutout,var(--surface))" stroke-width="1"/>'
+    };
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 32 32'); icon.setAttribute('class', 'board-icon'); icon.setAttribute('aria-hidden', 'true'); icon.setAttribute('focusable', 'false');
+    // 게시판별 고정 도형만 사용하며 서버·사용자 입력을 넣지 않는다.
+    icon.innerHTML = paths[id];
+    return icon;
+  }
+  const number = value => new Intl.NumberFormat('ko-KR').format(value);
+  function rewardActivity() {
+    const activity = state.rewardPolicy?.activity;
+    const values = [activity?.attendance?.amount, activity?.post?.amount, activity?.post?.dailyLimit, activity?.post?.minBodyLength, activity?.comment?.amount, activity?.confirmationDelayMs];
+    return values.every(value => Number.isSafeInteger(value) && value > 0) ? activity : null;
+  }
+  function rewardText(kind) {
+    const activity = rewardActivity();
+    if (!activity || !state.user?.canWriteCommunity || state.rewardEligibility !== 'eligible') return '';
+    return `${kind === 'post' ? '글을 쓰면' : '댓글을 쓰면'} ${number(activity.confirmationDelayMs / 3600000)}시간 뒤 ${number(activity[kind].amount)} 그레인이 적립돼요.`;
+  }
+  async function loadGuidance() {
+    await Promise.all([
+      (async () => {
+        try {
+          const config = await request('/account/config', { background: true }); state.rewardPolicy = config.grainRewardPolicy;
+        } catch (_) { state.rewardPolicy = null; }
+        const activity = rewardActivity();
+        byId('grain-policy-summary').replaceChildren(); byId('grain-policy-summary').hidden = !activity;
+        byId('grain-policy-status').hidden = !!activity;
+        byId('grain-policy-status').textContent = activity ? '' : '받는 방법을 불러오지 못했어요. 계정 페이지에서 다시 확인해 주세요.';
+        byId('grain-policy-delay').hidden = !activity;
+        if (activity) {
+          for (const [key, label] of [['attendance', '출석'], ['post', '글 작성'], ['comment', '댓글 작성']]) byId('grain-policy-summary').append(make('dt', label), make('dd', `${number(activity[key].amount)} 그레인`));
+          byId('grain-policy-delay').textContent = `보상 자격과 지급 조건을 충족하면 받을 수 있어요. 글·댓글은 ${number(activity.confirmationDelayMs / 3600000)}시간 뒤 확인해요.`;
+        }
+        renderEmptyAudience();
+      })(),
+      (async () => {
+        try {
+          // 현재 공개 API에는 게임 필터가 없으므로 전체 게임 수임을 명시한다.
+          const data = await request('/community/known-issues', { background: true });
+          if (!Array.isArray(data.issues)) throw new Error('문제 목록 형식 오류');
+          byId('known-issues-count').textContent = `알려진 문제 ${number(data.issues.length)}개 · 전체 게임`;
+        } catch (_) { byId('known-issues-count').textContent = '알려진 문제 수를 확인하지 못했어요'; }
+      })()
+    ]);
+  }
+  function renderEmptyAudience() {
+    const isBoardEmpty = state.emptyKind === 'board';
+    byId('empty-slime').hidden = !isBoardEmpty || gameId !== 'slimeline';
+    byId('empty-actions').hidden = !isBoardEmpty;
+    byId('empty-write').hidden = !isBoardEmpty || !state.user?.canWriteCommunity;
+    byId('empty-signin').hidden = !isBoardEmpty || !!state.user;
+    byId('empty-signup').hidden = !isBoardEmpty || !!state.user;
+    const reward = isBoardEmpty ? rewardText('post') : '';
+    const activity = rewardActivity();
+    byId('empty-reward').textContent = reward ? `${reward} 본문 ${number(activity.post.minBodyLength)}자 이상·하루 ${number(activity.post.dailyLimit)}회 등 지급 조건이 있어요.` : '';
+    byId('empty-reward').hidden = !reward;
+  }
+  byId('empty-write').addEventListener('click', () => openEditor());
+  byId('empty-signin').addEventListener('click', () => showAuth());
+  byId('empty-signup').addEventListener('click', () => showAuth('signup'));
+  function empty(title, description, href = url('notice', null, ''), label = '공식 안내 보기 →', kind = 'other') {
+    state.emptyKind = kind;
     byId('empty-state').hidden = false; byId('empty-title').textContent = title; byId('empty-description').textContent = description; byId('empty-link').href = href; byId('empty-link').textContent = label;
+    renderEmptyAudience();
+  }
+  function emptyBoard() {
+    const descriptions = gameId === 'slimeline' ? {
+      free: '아직 조용해요. 첫 이야기를 남겨 주세요.',
+      guide: '작은 발견도 좋은 공략이 돼요. 나만의 풀이를 나눠 주세요.',
+      gallery: '슬라임을 향한 마음을 담은 첫 작품을 글로 소개해 주세요.'
+    } : { free: '아직 올라온 이야기가 없습니다. 첫 이야기를 남겨 주세요.', deck: '첫 덱의 조합과 생각을 나눠 주세요.', strategy: '처음 발견한 전략과 공략을 나눠 주세요.' };
+    empty(`${boardTitle}의 첫 글을 기다려요`, descriptions[boardId], url('notice', null, ''), `${game.boards.notice[0]} 보기 →`, 'board');
   }
   function row(item, official = false) {
     const link = make('a', null, 'post-row'); link.href = url(boardId, item.id, query, pageNumber);
@@ -248,6 +354,7 @@
   }
   async function loadCurrent() {
     const version = ++state.loadVersion;
+    state.emptyKind = null; renderEmptyAudience();
     byId('post-list').replaceChildren(); byId('pagination').hidden = true; byId('empty-state').hidden = true;
     byId('article-body').replaceChildren(); byId('post-owner-actions').hidden = true; byId('comments-section').hidden = true; byId('article-actions').hidden = false;
     document.querySelectorAll('.post-report-button').forEach(node => node.remove());
@@ -282,7 +389,11 @@
         for (const item of data.posts) { validatePost(item); byId('post-list').append(row(item)); }
         byId('result-count').textContent = query ? `검색 결과 ${data.total}개` : `글 ${data.total}개`;
         pagination(data);
-        if (!data.posts.length) empty(query ? '검색 결과가 없어요' : '아직 올라온 이야기가 없어요', query ? '다른 검색어를 입력하거나 게시판 목록을 확인해 보세요.' : '이곳에 게임 이야기가 모일 거예요. 공식 소식은 공지사항에서 읽을 수 있어요.', url(boardId, null, ''), '게시판 새로 보기 →');
+        if (!data.posts.length) {
+          if (query) empty('검색 결과가 없어요', '다른 검색어를 입력하거나 게시판 목록을 확인해 보세요.', url(boardId, null, ''), '검색 지우고 목록 보기 →');
+          else if (data.total === 0) emptyBoard();
+          else empty('이 페이지에는 글이 없어요', '앞 페이지에서 이야기를 확인해 주세요.', url(boardId, null, '', 1), '첫 페이지 보기 →');
+        }
       }
     } catch (error) {
       if (version !== state.loadVersion) return;
@@ -372,7 +483,7 @@
       state.editorOriginal = { title, body }; byId('post-title').value = title; byId('post-body').value = body;
       byId('editor-dialog').close();
       state.commentDrafts.clear();
-      if (!editing && data.reward?.pending) { showReward('글이 등록됐어요. 24시간 동안 유지하면 500 그레인이 적립될 예정이에요.'); await new Promise(resolve => setTimeout(resolve, 2000)); }
+      if (!editing && data.reward?.pending) { showReward(`글이 등록됐어요. ${rewardText('post') || '계정 페이지에서 보상 내역을 확인해 주세요.'}`); await new Promise(resolve => setTimeout(resolve, 2000)); }
       location.href = url(boardId, data.post.id, '', 1);
     } catch (error) { message('editor-error', errorText(error)); }
     finally { state.postBusy = false; busy(byId('post-form'), false); }
@@ -401,7 +512,7 @@
     if (!state.user) { showAuth(); return; }
     if (!state.user.canWriteCommunity) return;
     state.commentBusy = true; busy(byId('comment-form'), true); message('comment-error', '');
-    try { const data = await send(`/community/posts/${encodeURIComponent(state.currentPost.id)}/comments`, 'POST', { body }); byId('comment-body').value = ''; await loadCurrent(); if (data.reward?.pending) showReward('댓글이 등록됐어요. 24시간 동안 유지하면 100 그레인이 적립될 예정이에요.'); }
+    try { const data = await send(`/community/posts/${encodeURIComponent(state.currentPost.id)}/comments`, 'POST', { body }); byId('comment-body').value = ''; await loadCurrent(); if (data.reward?.pending) showReward(`댓글이 등록됐어요. ${rewardText('comment') || '계정 페이지에서 보상 내역을 확인해 주세요.'}`); }
     catch (error) { message('comment-error', errorText(error)); }
     finally { state.commentBusy = false; busy(byId('comment-form'), false); }
   });
@@ -410,6 +521,6 @@
     const dirtyComment = byId('comment-body').value.trim() || [...state.commentDrafts.values()].some(item => item.body !== item.original);
     if (dirtyPost || dirtyComment) { event.preventDefault(); event.returnValue = ''; }
   });
-  async function start() { await Promise.all([loadSession(), loadCurrent()]); if (state.currentPost) { byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && state.currentPost.canEdit); renderComments(state.comments); if (!document.querySelector('.post-report-button')) { const report = reportButton('post', state.currentPost); if (report) { report.classList.add('post-report-button'); byId('article-actions').append(report); } } } }
+  async function start() { await Promise.all([loadSession(), loadCurrent(), loadGuidance()]); if (state.currentPost) { byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && state.currentPost.canEdit); renderComments(state.comments); if (!document.querySelector('.post-report-button')) { const report = reportButton('post', state.currentPost); if (report) { report.classList.add('post-report-button'); byId('article-actions').append(report); } } } }
   start();
 })();
