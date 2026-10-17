@@ -35,11 +35,17 @@
 </header>
 <main class="gb-main" id="top">
 <section id="slime-race" aria-labelledby="sr-title">
-<div class="sr-heading"><div><div class="sr-eyebrow">10분마다 열리는 숲속 운동회</div><h1 id="sr-title">슬라임 레이스</h1><p class="sr-subtitle">마음 가는 슬라임에게, 오늘의 응원을.</p></div><div class="sr-round"><span data-round-label>경기 확인 중</span><strong data-timer>—</strong><span data-status>서버에 연결하고 있어요</span></div></div>
-<div class="sr-arena"><canvas role="img" aria-label="경기를 준비하는 달빛 숲의 다섯 직선 레인"></canvas><div class="sr-arena-sign">달빛 숲 경기장</div><section class="sr-result" hidden aria-live="polite"><small data-result-round>경기 결과</small><h2 data-result-winner></h2><p data-result-personal></p><ol data-result-ranks aria-label="최종 순위"></ol><button class="sr-primary" type="button" data-action="history">내 결과 보기</button></section><div class="sr-arena-controls"><button type="button" data-action="sound" aria-pressed="false">소리 꺼짐</button><span data-arena-label>경기를 불러오고 있어요</span><button type="button" data-action="cheer">♡ 응원하기</button></div></div>
-<div class="sr-notice" role="alert" data-public-error hidden><span data-public-message></span><button class="sr-text-button" type="button" data-action="retry">다시 불러오기</button></div>
-<div class="sr-maincta"><button class="sr-primary" type="button" data-action="ticket" aria-haspopup="dialog" aria-controls="sr-ticket">출전 정보·티켓 구매 →</button><span data-ticket-hint>24시간, 10분마다</span></div>
-<p class="sr-message" data-spectator-message aria-live="polite" hidden></p>
+<div class="sr-arena">
+<canvas role="img" aria-label="경기를 준비하는 달빛 숲의 다섯 직선 레인"></canvas>
+<div class="sr-heading">
+<div class="sr-title-sign"><h1 id="sr-title">슬라임 레이스</h1></div>
+<div class="sr-announcer" aria-label="부엉이 경기 사회자"><img src="/assets/slime-race/art/owl-host.png" width="360" height="292" alt="날개를 들어 인사하는 부엉이 사회자"><p class="sr-speech" data-announcer-message role="status" aria-live="polite" aria-atomic="true">경기를 확인하고 있어요.</p></div>
+<div class="sr-round"><span data-round-label>경기 확인 중</span><strong data-timer>—</strong><span data-status>연결 중</span></div>
+</div>
+<section class="sr-result" hidden aria-live="polite"><small data-result-round>경기 결과</small><h2 data-result-winner></h2><p data-result-personal></p><ol data-result-ranks aria-label="최종 순위"></ol><button class="sr-primary" type="button" data-action="history">내 결과 보기</button></section>
+<div class="sr-feedback"><div class="sr-notice" role="alert" data-public-error hidden><span data-public-message></span><button class="sr-text-button" type="button" data-action="retry">다시 불러오기</button></div><p class="sr-message" data-spectator-message aria-live="polite" hidden></p></div>
+<div class="sr-arena-controls"><button type="button" data-action="sound" aria-pressed="false">소리 꺼짐</button><button class="sr-primary" type="button" data-action="ticket" aria-haspopup="dialog" aria-controls="sr-ticket">출전 정보 · 티켓 구매 →</button><button type="button" data-action="cheer">♡ 응원하기</button></div>
+</div>
 <dialog class="sr-ticket" id="sr-ticket" aria-labelledby="sr-ticket-title" aria-modal="true">
 <div class="sr-tickethead"><div><h2 id="sr-ticket-title">출전 정보·티켓 구매</h2><p class="sr-economy-note" data-economy-note>무료 그레인 · 현금 구매·환전·경품 교환 불가</p><span data-dialog-round hidden>경기 확인 중</span></div><button class="sr-close" type="button" data-action="close" aria-label="티켓 창 닫기">×</button></div>
 <div class="sr-ticket-scroll">

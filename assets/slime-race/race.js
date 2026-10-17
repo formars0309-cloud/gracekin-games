@@ -10,14 +10,14 @@
   const amountInput = $('[data-amount]');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const API_BASE = ['https://gracekingames.com', 'https://www.gracekingames.com'].includes(location.origin) ? 'https://community.gracekingames.com' : location.origin;
-  const PHASES = { sales: '티켓 접수 중', countdown: '구매 마감 · 출발 준비', racing: '작은 도약, 시작!', results: '경기 결과' };
+  const PHASES = { sales: '티켓 접수 중', countdown: '구매 마감 · 출발 준비', racing: '경주 진행 중', results: '경기 결과' };
   const CONDITIONS = ['매우나쁨', '나쁨', '보통', '좋음', '매우좋음'];
   const STYLES = ['초반 질주형', '꾸준형', '후반 추격형', '순간 가속형', '변칙형'];
   const names = ['말랑', '딸기', '귤빛', '반짝', '클로', '물방울', '밤별', '보송', '구름', '초코'];
   const spots = [[-4,-31,-.12,30,19.6],[-5,-30.5,-.14,30,22.5],[-3,-32,-.06,38,24.3],[15.6,-13.5,0,20,8],[-8,-27.5,-.35,27,13.5],[-5,-31,-.06,32,22],[15.6,-13.5,0,20,8],[-9,-28.5,-.35,21,13.3],[-3,-33,-.08,30,15.6],[-4,-31,-.12,34,17.6]];
   const assets = Object.fromEntries(spots.map(([x,y,rot,w,h],i) => ['spot'+i,{x,y,rot,w,h}]));
   const images = {}, portraits = new Map();
-  const state = { public: null, publicStatus: 'loading', me: null, meStatus: 'loading', selectedId: null, amount: 100, pending: null, busy: false, history: null, publicSeq: 0, meSeq: 0, historySeq: 0, anchorServer: 0, anchorMono: 0, publicAt: 0, positions: new Map(), previous: new Map(), positionAt: 0, sound: false, soundGeneration: 0, hidden: document.hidden, personalActive: document.hasFocus() && !document.hidden, privateEpoch: 0, raf: 0, particles: [], publicTimer: 0, motionTimer: 0, clockPhase: null, publicController: null, meController: null, closeTimer: 0, returnFocus: null, renderedKey: '', scenery: null, resultKey: null };
+  const state = { public: null, publicStatus: 'loading', me: null, meStatus: 'loading', selectedId: null, amount: 100, pending: null, busy: false, history: null, publicSeq: 0, meSeq: 0, historySeq: 0, anchorServer: 0, anchorMono: 0, publicAt: 0, positions: new Map(), previous: new Map(), positionAt: 0, sound: false, soundGeneration: 0, hidden: document.hidden, personalActive: document.hasFocus() && !document.hidden, privateEpoch: 0, raf: 0, particles: [], publicTimer: 0, motionTimer: 0, clockPhase: null, publicController: null, meController: null, closeTimer: 0, returnFocus: null, renderedKey: '', scenery: null, resultKey: null, announcerRound: null, announcerPhase: null, announcerLeader: null, announcerAt: 0, announcerText: '', spectatorTimer: 0 };
   let bgm = null, effect = null;
   const money = value => {
     try { if (typeof value === 'string' && /^-?\d+$/.test(value)) return BigInt(value).toLocaleString('ko-KR'); }
@@ -54,7 +54,58 @@
   const salesOpen = () => freeEconomyCompatible() && state.publicStatus === 'ready' && performance.now() - state.publicAt < 12000 && currentRound()?.phase === 'sales' && now() < currentRound().salesCloseAt;
   const eligible = () => state.meStatus === 'ready' && state.me?.user && state.me.eligibility.canBet === true && state.me.roundId === currentRound()?.id;
   function message(text) { $('[data-purchase-message]').textContent = text; }
-  function spectator(text) { const target = $('[data-spectator-message]'); target.textContent = text; target.hidden = !text; }
+  function spectator(text) {
+    clearTimeout(state.spectatorTimer);
+    const target = $('[data-spectator-message]'); target.textContent = text; target.hidden = !text;
+    if (text) state.spectatorTimer = setTimeout(() => { target.hidden = true; target.textContent = ''; }, 6500);
+  }
+  const publicFresh = () => state.publicStatus === 'ready' && performance.now() - state.publicAt < 12000;
+  function announce(text) {
+    if (state.announcerText === text) return;
+    state.announcerText = text; state.announcerAt = performance.now();
+    $('[data-announcer-message]').textContent = text;
+  }
+  // 서버 공개 단계와 현재 좌표만 중계한다. 시계가 먼저 넘어가도 우승을 추정하지 않는다.
+  function updateAnnouncer() {
+    const round = currentRound();
+    if (!round) { announce(state.publicStatus === 'error' ? '연결을 다시 확인해 주세요.' : '경기를 확인하고 있어요.'); return; }
+    if (!publicFresh()) {
+      state.announcerLeader = null; state.announcerPhase = null;
+      announce(state.publicStatus === 'error' ? '연결을 다시 확인해 주세요.' : '새 경기 정보를 확인 중이에요.');
+      return;
+    }
+    if (state.announcerRound !== round.id) {
+      state.announcerRound = round.id; state.announcerPhase = null; state.announcerLeader = null;
+    }
+    if (now() >= round.endsAt) { announce('다음 경기를 확인하고 있어요.'); return; }
+    if (round.phase === 'racing' && now() >= round.resultsAt) { state.announcerLeader = null; announce('서버 결과를 확인하고 있어요.'); return; }
+    const stage = phase();
+    if (round.phase + ':' + stage !== state.announcerPhase) {
+      state.announcerPhase = round.phase + ':' + stage; state.announcerLeader = null;
+      if (stage === 'sales') announce('응원할 친구를 골라 주세요!');
+      else if (stage === 'countdown') announce('구매 마감! 곧 출발해요.');
+      else if (stage === 'racing') {
+        const atStart = now() >= round.raceStartsAt && now()-round.raceStartsAt < 3500;
+        announce(round.phase === 'racing' ? atStart ? '출발! 함께 응원해 주세요!' : '경주가 진행 중이에요!' : '경주 출발을 확인하고 있어요.');
+      }
+      else if (stage === 'results') {
+        if (now() < round.resultsAt) { announce('서버 결과를 확인하고 있어요.'); return; }
+        const winner = entrants().find(slime => slime.slimeId === round.winnerId);
+        announce(winner ? winner.name + ', 우승! 박수 주세요!' : '서버 결과를 확인하고 있어요.');
+      }
+      return;
+    }
+    if (round.phase !== 'racing' || stage !== 'racing' || now() < round.raceStartsAt) return;
+    const positions = [...round.animation.positions].sort((a,b) => b.progress-a.progress);
+    // 동률과 출발선의 미세한 차이는 단독 선두로 부르지 않는다.
+    const leader = positions[0].progress > .01 && positions[0].progress-positions[1].progress > .002 ? positions[0].slimeId : null;
+    if (leader !== state.announcerLeader && performance.now()-state.announcerAt >= 4500) {
+      const slime = entrants().find(slime => slime.slimeId === leader);
+      if (slime) announce(slime.name + ' 선두! 힘내요!');
+      else if (state.announcerLeader) announce('나란히 달리고 있어요!');
+      state.announcerLeader = leader;
+    }
+  }
   function validSlime(slime) {
     return slime && typeof slime.slimeId === 'string' && names.includes(slime.name) && ['S','A','B','C'].includes(slime.grade) && STYLES.includes(slime.style);
   }
@@ -99,6 +150,8 @@
     try {
       const data = validatePublic(await request('state', undefined, controller));
       if (sequence !== state.publicSeq || state.hidden) return;
+      // 네트워크 캐시·지연으로 과거 스냅샷이 오면 시계와 중계를 되감지 않는다.
+      if (state.public && data.serverNow < state.public.serverNow) throw new Error('최신 경기 정보를 기다리고 있어요.');
       const changed = currentRound()?.id !== data.round.id;
       const oldPhase = currentRound()?.phase;
       state.anchorServer = data.serverNow; state.anchorMono = performance.now() - (performance.now() - started) / 2;
@@ -113,7 +166,7 @@
       if (dialog.open && (changed || oldPhase !== data.round.phase && data.round.phase === 'results')) void refreshMe();
     } catch (error) {
       if (sequence !== state.publicSeq || state.hidden) return;
-      state.publicStatus = 'error'; $('[data-public-error]').hidden = false; $('[data-public-message]').textContent = error.message + ' 경기 정보를 다시 불러와 주세요.'; render();
+      state.publicStatus = 'error'; $('[data-public-error]').hidden = false; $('[data-public-message]').textContent = '경기 연결을 확인해 주세요.'; render();
     } finally {
       if (sequence === state.publicSeq && !state.hidden) state.publicTimer = setTimeout(refreshPublic, nextPublicDelay());
     }
@@ -188,9 +241,6 @@
     $('[data-round-label]').textContent = label; $('[data-dialog-round]').textContent = label;
     $('[data-phase]').textContent = PHASES[stage] || '경기 확인 중';
     $('[data-economy-note]').textContent = freeEconomyCompatible() ? '무료 그레인 · 현금 구매·환전·경품 교환 불가' : '정책 확인 중 · 티켓 구매 일시 중지';
-    $('[data-ticket-hint]').textContent = !freeEconomyCompatible() ? '정책 확인 중 · 출전 정보와 내 티켓 확인' : stage === 'sales' && salesOpen() ? '24시간, 10분마다 · 티켓 접수 중' : stage ? '구매 마감 · 출전 정보와 내 티켓 확인' : '24시간, 10분마다';
-    $('[data-arena-label]').textContent = stage === 'racing' ? '함께 응원해 주세요!' : stage === 'results' ? '작은 챔피언에게 박수를' : stage === 'countdown' ? '출발 준비!' : '곧, 다섯 개의 작은 도약';
-    if (state.publicStatus === 'error') $('[data-arena-label]').textContent = '경기 연결을 다시 확인해 주세요';
     $('[data-selected]').textContent = slime ? slime.name+' 티켓' : '선수를 선택해 주세요'; $('[data-selected-style]').textContent = slime ? slime.grade+' · '+slime.style : '';
     $('[data-odds]').textContent = slime ? oddsText(slime.oddsCents) : '—';
     const validAmount = Number.isSafeInteger(state.amount) && state.amount >= 100;
@@ -204,20 +254,23 @@
     $('[data-action="buy"]').disabled = locked || !slime || !validAmount; $('[data-action="buy"]').textContent = state.busy ? '확인 중' : bet ? '금액 변경' : '티켓 구매'; $('[data-action="cancel"]').disabled = locked || !bet;
     $('[data-action="retry-purchase"]').hidden = !freeEconomyCompatible() || !state.pending || state.busy || !state.personalActive || state.meStatus !== 'ready' || !state.me?.user || state.pending.userId !== state.me.user.id; $('[data-action="retry-purchase"]').disabled = !freeEconomyCompatible() || state.meStatus !== 'ready' || !state.me?.user || state.pending?.userId !== state.me.user.id;
     root.querySelectorAll('[data-select]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.select === state.selectedId)));
-    renderGate(); renderResult(); updateClock(); draw();
+    renderGate(); renderResult(); updateClock(); updateAnnouncer(); draw();
   }
   function updateClock() {
     const round = currentRound(), stage = phase();
-    if (!round) { $('[data-timer]').textContent = '—'; $('[data-status]').textContent = state.publicStatus === 'error' ? '연결을 확인해 주세요' : '서버에 연결하고 있어요'; return; }
+    if (!round || !publicFresh()) { $('[data-timer]').textContent = '—'; $('[data-status]').textContent = state.publicStatus === 'error' ? '연결 확인' : '정보 확인 중'; return; }
     const end = stage === 'sales' ? round.salesCloseAt : stage === 'countdown' ? round.raceStartsAt : stage === 'racing' ? round.resultsAt : round.endsAt;
-    const seconds = Math.max(0,Math.ceil((end-now())/1000)); $('[data-phase]').textContent=stage==='racing'&&seconds===0?'서버 결과 확인 중':PHASES[stage]; if(stage!==state.clockPhase){state.clockPhase=stage;if(stage==='countdown'||stage==='racing')startAnimation();} $('[data-timer]').textContent = String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0'); $('[data-status]').textContent = stage === 'sales' ? '티켓 구매 마감까지' : stage === 'countdown' ? '출발까지' : stage === 'racing' ? seconds ? '1분 경주 진행 중' : '서버 결과 확인 중' : '다음 경기까지';
+    const seconds = Math.max(0,Math.ceil((end-now())/1000)); $('[data-phase]').textContent=stage==='racing'&&seconds===0?'서버 결과 확인 중':PHASES[stage]; if(stage!==state.clockPhase){state.clockPhase=stage;if(stage==='countdown'||stage==='racing')startAnimation();} $('[data-timer]').textContent = String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0'); $('[data-status]').textContent = stage === 'sales' ? '마감까지' : stage === 'countdown' ? '출발까지' : stage === 'racing' ? seconds ? '경주 진행 중' : '서버 결과 확인 중' : '다음 경기까지';
     if (!salesOpen()) { amountInput.disabled = true; $('[data-action="buy"]').disabled = true; $('[data-action="cancel"]').disabled = true; root.querySelectorAll('[data-add]').forEach(button => { button.disabled = true; }); }
   }
   function renderResult() {
     const round = currentRound(), box = $('.sr-result');
-    const show = round?.phase === 'results' && now() >= round.resultsAt && round.finishOrder?.length === 5;
+    const show = publicFresh() && round?.phase === 'results' && now() >= round.resultsAt && now() < round.endsAt && round.finishOrder?.length === 5;
     box.hidden = !show;
-    if (!show) return;
+    if (!show) { if (state.resultKey) canvas.setAttribute('aria-label','달빛 숲의 다섯 직선 레인. 최신 경기 정보를 확인 중이에요.'); state.resultKey = null; return; }
+    const resultKey = round.id + ':' + round.finishOrder.join(',') + ':' + state.meStatus + ':' + (state.me?.user?.id || '');
+    if (state.resultKey === resultKey) return;
+    state.resultKey = resultKey;
     const winner = entrants().find(s => s.slimeId === round.winnerId);
     $('[data-result-round]').textContent = (roundLabel(round) ? roundLabel(round)+' 경기 결과' : '이번 경기 결과'); $('[data-result-winner]').textContent = winner ? winner.name+', 우승!' : '경기 결과';
     $('[data-result-personal]').textContent = state.meStatus === 'ready' && state.me?.user ? '내 당첨과 손익은 기록에서 확인해 주세요.' : '숲속의 작은 챔피언에게 따뜻한 박수를 보내 주세요.';
@@ -313,7 +366,7 @@
     else if (action === 'history' || action === 'history-retry') openDialog(true);
     else if (action === 'rules' || action === 'roster') { const panel = $(action === 'rules' ? '[data-rules]' : '[data-roster]'); panel.open = !panel.open; if (panel.open) panel.scrollIntoView({block:'nearest'}); }
     else if (action === 'sound') void toggleSound();
-    else if (action === 'cheer') { spectator((selected()?.name || '슬라임 친구들')+'에게 응원을 보냈어요. 응원은 결과에 영향을 주지 않아요.'); if (!reduced.matches) { const t=performance.now(); state.particles.push(...Array.from({length:5},(_,i) => ({start:t+i*55,x:canvas.clientWidth*.5+i*12,y:canvas.clientHeight*.48+i*8,shape:i%2?'✧':'♡',color:i%2?'#fff5c5':'#cd6a85'}))); startAnimation(); } }
+    else if (action === 'cheer') { spectator((selected()?.name || '슬라임 친구들')+'에게 응원을 보냈어요!'); if (!reduced.matches) { const t=performance.now(); state.particles.push(...Array.from({length:5},(_,i) => ({start:t+i*55,x:canvas.clientWidth*.5+i*12,y:canvas.clientHeight*.48+i*8,shape:i%2?'✧':'♡',color:i%2?'#fff5c5':'#cd6a85'}))); startAnimation(); } }
   });
   amountInput.addEventListener('input',() => { state.amount = Number(amountInput.value); message(''); render(); });
   function onHidden() { state.hidden = document.hidden; state.personalActive = !state.hidden && document.hasFocus(); if (state.hidden) { clearTimeout(state.publicTimer); clearTimeout(state.motionTimer); state.publicSeq += 1; state.publicController?.abort(); cancelAnimationFrame(state.raf); pauseSound(); clearPrivate('loading'); } else { void refreshPublic(); void refreshMe(); if (state.sound && bgm) bgm.play().catch(() => {}); } }
@@ -324,7 +377,7 @@
   window.addEventListener('pagehide',() => { state.hidden=true; state.personalActive=false; clearTimeout(state.publicTimer); clearTimeout(state.motionTimer); state.publicController?.abort(); cancelAnimationFrame(state.raf); pauseSound(); clearPrivate('loading'); });
   window.addEventListener('pageshow',event => { if (event.persisted) { state.hidden=false; state.personalActive=document.hasFocus(); void refreshPublic(); void refreshMe(); } });
   window.addEventListener('online',() => { if (!document.hidden) { void refreshPublic(); void refreshMe(); } });
-  setInterval(() => { updateClock(); if (dialog.open && state.meStatus === 'ready' && !salesOpen()) renderGate(); },250);
+  setInterval(() => { updateClock(); updateAnnouncer(); renderResult(); if (dialog.open && state.meStatus === 'ready' && !salesOpen()) renderGate(); },250);
   setInterval(() => { if (!state.hidden && dialog.open && !state.busy) void refreshMe(); },30000);
   new ResizeObserver(() => { state.scenery=null; draw(); }).observe(canvas);
   reduced.addEventListener('change',() => { state.particles=[]; scheduleStartMotion(); draw(); startAnimation(); });
@@ -344,7 +397,7 @@ function sprite(ctx,id,x,y,scale=1,time=0,running=false,prep=false){
 }
 function makePortrait(id){const c=document.createElement('canvas');c.width=144;c.height=112;const ctx=c.getContext('2d');sprite(ctx,id,72,105,1.7);return c.toDataURL('image/png')}
 
-  function geometry(w,h) { const narrow=w<500; const top=narrow?77:94; const laneH=narrow?49:58; const laneStart=narrow?33:53; const finish=w-(narrow?44:78); const raceStart=laneStart+(narrow?26:43); return {narrow,top,laneH,laneStart,finish,raceStart,travel:finish-raceStart,scale:narrow?.94:1.28}; }
+  function geometry(w,h) { const narrow=w<500; const top=w<=900?146:154; const laneH=narrow?46:w<=900?58:62; const laneStart=narrow?33:53; const finish=w-(narrow?44:78); const raceStart=laneStart+(narrow?26:43); return {narrow,top,laneH,laneStart,finish,raceStart,travel:finish-raceStart,scale:narrow?.84:1.28}; }
   function createScenery(w,h,dpr) { const scenery=document.createElement('canvas');scenery.width=Math.round(w*dpr);scenery.height=Math.round(h*dpr);const ctx=scenery.getContext('2d');ctx.scale(dpr,dpr);const {narrow,top,laneH,laneStart,finish,raceStart}=geometry(w,h);
  let grad=ctx.createLinearGradient(0,0,0,h);grad.addColorStop(0,'#d6e4b1');grad.addColorStop(.25,'#b4d092');grad.addColorStop(1,'#8ab766');ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
  // 먼 숲의 실루엣과 실제 원본 나무 그림을 겹쳐 깊이를 만든다.

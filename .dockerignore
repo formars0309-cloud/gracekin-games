@@ -122,6 +122,7 @@ assets/slime-race/art/**
 !assets/slime-race/art/acc9.png
 !assets/slime-race/art/tree.webp
 !assets/slime-race/art/bush.webp
+!assets/slime-race/art/owl-host.png
 
 # 그레인 활동 보상·버그 제보·운영자 도구
 !server/grain-policy.js

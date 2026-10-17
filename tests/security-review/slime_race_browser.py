@@ -193,8 +193,15 @@ def main() -> None:
             page.reload(wait_until='networkidle')
             page.locator('[data-action="ticket"]').click()
             page.locator('.sr-runner').nth(4).wait_for()
-            first_meta = page.locator('.sr-runner-detail').first.bounding_box()
-            visible_list = page.locator('.sr-ticket-scroll').bounding_box()
+            # 개인 응답이 선수 목록을 교체할 수 있어 같은 DOM 순간의 두 좌표를 함께 읽는다.
+            geometry = page.wait_for_function('''() => {
+                const meta = document.querySelector('.sr-runner-detail');
+                const list = document.querySelector('.sr-ticket-scroll');
+                if (!meta?.getClientRects().length || !list?.getClientRects().length) return false;
+                const a = meta.getBoundingClientRect(), b = list.getBoundingClientRect();
+                return {first:{y:a.y,height:a.height},list:{y:b.y,height:b.height}};
+            }''').json_value()
+            first_meta, visible_list = geometry['first'], geometry['list']
             assert first_meta['y'] >= visible_list['y'] and first_meta['y'] + first_meta['height'] <= visible_list['y'] + visible_list['height'], '320px 초기 창에서 첫 선수 세 항목이 가려짐'
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), '320px 초기 창 가로 넘침'
             page.screenshot(path=str(output / 'mobile-320-initial-ticket.png'), full_page=True)
@@ -246,9 +253,16 @@ def main() -> None:
             account_page.on('pageerror', lambda error: errors.append(str(error)))
             account_page.goto(fixture['origin'] + '/account/', wait_until='networkidle')
             account_page.locator('#grain-content').wait_for(state='visible')
-            wallet_note = account_page.locator('#grain-content .description.small').inner_text()
-            assert all(word in wallet_note for word in ['무료', '공용', '충전', '환전', '쿠폰', '유료 아이템', '양도', '유료 재화']), '계정 지갑의 무료 정책 안내 누락'
-            assert account_page.locator('#grain-balance').inner_text() == f"{final['me']['wallet']['balance']:,}", '계정 지갑과 경주 공용 잔액 불일치'
+            wallet_note = account_page.locator('#grain-content > .description.small:not(#grain-pending-description)').inner_text()
+            assert all(word in wallet_note for word in ['무료 화폐', '돈으로 사거나', '현금·상품으로 바꿀 수 없고', '다른 회원에게 줄 수 없어요']), '계정 지갑의 무료 정책 안내 누락'
+            # 계정 진입은 공개 정책의 하루 출석 보상을 지급하므로 추가 원장도 함께 대조한다.
+            policy = context.request.get(fixture['origin'] + '/api/account/config').json()['grainRewardPolicy']
+            after_account = command('ledger')
+            prior_events = {item['eventId'] for item in final['ledger']}
+            added = [item for item in after_account['ledger'] if item['eventId'] not in prior_events]
+            assert len(added) == 1 and added[0]['reason'] == '출석' and added[0]['amount'] == policy['activity']['attendance']['amount'], '계정 진입 추가 원장이 출석 정책과 다름'
+            assert after_account['me']['wallet']['balance'] == final['me']['wallet']['balance'] + added[0]['amount'], '계정 출석 후 공용 잔액 불일치'
+            assert account_page.locator('#grain-balance').inner_text() == f"{after_account['me']['wallet']['balance']:,}", '계정 지갑과 현재 경주 공용 잔액 불일치'
             account_page.screenshot(path=str(output / 'account-free-grain.png'), full_page=True)
             account_page.goto(fixture['origin'] + '/community/privacy/', wait_until='networkidle')
             assert account_page.get_by_role('rowheader', name='슬라임 레이스', exact=True).count() == 1, '방침의 경주 처리 항목 누락'
