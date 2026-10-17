@@ -1,0 +1,10 @@
+/* 사이트 공용 글꼴. 역할·굵기·예외는 docs/기획/글꼴-체계.md를 따르며 글꼴 이름은 이 파일에서만 쓴다. */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400;500;600&display=swap');
+
+:root {
+  --font-brand: "Cinzel", Georgia, serif;
+  --font-display: "Noto Serif KR", "AppleMyungjo", "Batang", serif;
+  --font-body: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  /* 슬라임 라인 소개 페이지와 커뮤니티의 슬라임 라인 테마에서만 쓰는 손글씨 예외 */
+  --font-hand: "Nanum Pen Script", "Noto Sans KR", cursive;
+}

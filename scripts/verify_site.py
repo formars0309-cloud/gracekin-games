@@ -277,6 +277,140 @@ def css_references(source: str) -> list[str]:
     return [url for url in urls if url and not url.startswith('#')]
 
 
+# 커뮤니티 개편이 병합되면 조율자가 비운다. 규칙 1·2·3에만 적용하는 임시 제외 목록이다.
+PENDING_FONT_MIGRATION = frozenset({'community/index.html', 'assets/community/community.css'})
+FONT_STYLESHEET = 'assets/shared/fonts.css'
+FONT_PAGES = frozenset({
+    'index.html', 'account/index.html', 'account/admin/index.html', 'community/index.html',
+    'community/bug-report/index.html', 'community/privacy/index.html', 'community/terms/index.html',
+    'games/slimeline/index.html', 'games/gyeongguk/index.html',
+})
+FONT_VARIABLE = re.compile(r'var\(\s*--font-[a-z][a-z0-9-]*\s*\)', re.I)
+GOOGLE_FONT_HOSTS = {'fonts.googleapis.com', 'fonts.gstatic.com'}
+
+
+def css_segments(source: str) -> list[str]:
+    """주석·문자열·함수 안의 구분자는 건너뛰고 실제 CSS 선언 후보를 나눈다."""
+    segments, current = [], []
+    index, depth, quote = 0, 0, None
+    while index < len(source):
+        char = source[index]
+        if quote:
+            current.append(char)
+            if char == '\\' and index + 1 < len(source):
+                index += 1
+                current.append(source[index])
+            elif char == quote:
+                quote = None
+        elif source.startswith('/*', index):
+            end = source.find('*/', index + 2)
+            index = len(source) if end < 0 else end + 2
+            current.append(' ')
+            continue
+        elif char in "\"'":
+            quote = char
+            current.append(char)
+        elif char == '(':
+            depth += 1
+            current.append(char)
+        elif char == ')':
+            depth = max(0, depth - 1)
+            current.append(char)
+        elif char in ';{}' and depth == 0:
+            segments.append(''.join(current).strip())
+            current = []
+        else:
+            current.append(char)
+        index += 1
+    segments.append(''.join(current).strip())
+    return segments
+
+
+def font_value_allowed(property_name: str, value: str) -> bool:
+    """역할 변수 뒤에 직접 쓴 대체 글꼴까지 거부하고 단축 속성의 크기·행간을 구별한다."""
+    value = re.sub(r'\s*!important\s*$', '', value, flags=re.I).strip()
+    if value.lower() in {'inherit', 'initial'} or FONT_VARIABLE.fullmatch(value):
+        return True
+    if property_name.lower() == 'font-family':
+        return False
+    family = re.search(r'var\(\s*--font-[a-z][a-z0-9-]*\s*\)\s*$', value, re.I)
+    if not family:
+        return False
+    prefix = value[:family.start()].strip()
+    # 함수 안의 공백과 나눗셈은 크기·행간 토큰 안에 그대로 둔다.
+    tokens, current, depth = [], [], 0
+    for char in prefix:
+        if char == '(':
+            depth += 1
+        elif char == ')':
+            depth -= 1
+        if depth == 0 and (char.isspace() or char == '/'):
+            if current:
+                tokens.append(''.join(current))
+                current = []
+            if char == '/':
+                tokens.append('/')
+        else:
+            current.append(char)
+    if current:
+        tokens.append(''.join(current))
+    number = r'(?:\d+(?:\.\d*)?|\.\d+)'
+    length = rf'{number}(?:px|r?em|ex|ch|cap|ic|lh|rlh|vw|vh|vi|vb|vmin|vmax|(?:sv|lv|dv)(?:w|h|i|b|min|max)|cm|mm|q|in|pt|pc|cqw|cqh|cqi|cqb|cqmin|cqmax|%)'
+    # 크기 계산식과 크기 전용 변수를 허용하되 글꼴 이름으로 시작하는 토큰은 허용하지 않는다.
+    numeric_function = r'(?:calc|min|max|clamp|var)\(.+\)'
+    size = rf'(?:0|{length}|xx-small|x-small|small|medium|large|x-large|xx-large|xxx-large|smaller|larger|{numeric_function})'
+    line_height = rf'(?:normal|{number}|{length}|{numeric_function})'
+    before_size = rf'(?:normal|italic|oblique|small-caps|bold|bolder|lighter|[1-9]00|{number}%|{number}deg|ultra-condensed|extra-condensed|condensed|semi-condensed|semi-expanded|expanded|extra-expanded|ultra-expanded)'
+    if '/' in tokens:
+        slash = tokens.index('/')
+        if slash != len(tokens) - 2 or not re.fullmatch(line_height, tokens[-1], re.I):
+            return False
+        tokens = tokens[:slash]
+    return bool(tokens and re.fullmatch(size, tokens[-1], re.I) and all(re.fullmatch(before_size, token, re.I) for token in tokens[:-1]))
+
+
+def font_css_issues(source: str, relative_path: str) -> list[str]:
+    issues = []
+    segments = css_segments(source)
+    if relative_path != FONT_STYLESHEET and relative_path not in PENDING_FONT_MIGRATION:
+        for segment in segments:
+            declaration = re.fullmatch(r'(font(?:-family)?)\s*:\s*(.+)', segment, re.I | re.S)
+            if declaration and not font_value_allowed(*declaration.groups()):
+                issues.append(f'{declaration[1]}에 공용 역할 변수 이외의 글꼴 값 사용')
+        if any(urlsplit(value).hostname in GOOGLE_FONT_HOSTS for value in css_references(source)):
+            issues.append('구글 폰트 요청은 공용 fonts.css에서만 허용')
+    hand_allowed = relative_path == FONT_STYLESHEET or relative_path.startswith('games/slimeline/') or relative_path == 'assets/community/community.css'
+    if not hand_allowed and any(re.search(r'--font-hand\b', segment) for segment in segments):
+        issues.append('--font-hand는 슬라임 라인 소개와 커뮤니티 테마에서만 허용')
+    return list(dict.fromkeys(issues))
+
+
+def verify_fonts(root: Path, pages: dict[Path, Page], report: Report) -> None:
+    for path, page in pages.items():
+        rel = path.relative_to(root).as_posix()
+        links = [attrs for tag, attrs in page.tags if tag == 'link']
+        if rel in FONT_PAGES and rel not in PENDING_FONT_MIGRATION:
+            stylesheets = [attrs.get('href') for attrs in links if 'stylesheet' in attrs.get('rel', '').lower().split()]
+            report.check(bool(stylesheets) and stylesheets[0] == '/' + FONT_STYLESHEET, f'{rel}: 공용 fonts.css를 첫 스타일시트로 불러와야 함')
+        if rel not in PENDING_FONT_MIGRATION:
+            for attrs in links:
+                url = urlsplit(attrs.get('href', ''))
+                if url.hostname in GOOGLE_FONT_HOSTS:
+                    preconnect = attrs.get('rel', '').lower() == 'preconnect' and url.path in {'', '/'} and not url.query and not url.fragment
+                    report.check(preconnect, f'{rel}: 구글 폰트 요청은 공용 fonts.css에서만 허용')
+        for source in page.inline_styles:
+            for issue in font_css_issues(source, rel):
+                report.check(False, f'{rel} (인라인 CSS): {issue}')
+    # 공개 CSS 범위만 순회한다. 서버·설치 모듈·시험 fixture는 검사에 섞지 않는다.
+    css_files = set(root.glob('*.css'))
+    for folder in ('assets', 'games', 'community', 'account'):
+        css_files.update((root / folder).rglob('*.css'))
+    for path in sorted(css_files):
+        rel = path.relative_to(root).as_posix()
+        for issue in font_css_issues(path.read_text(), rel):
+            report.check(False, f'{rel}: {issue}')
+
+
 def production_files(root: Path, pages: dict[Path, Page]) -> list[Path]:
     # 서버 소스·시험 fixture·설치 모듈·DB·로컬 인계 자료를 브라우저 코드로 읽지 않는다.
     files = set(pages)
@@ -308,6 +442,7 @@ def verify(root: Path) -> Report:
     paths = [root / 'index.html'] + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
     pages = {path: Page(path) for path in paths if path.is_file()}
     report.pages = len(pages)
+    verify_fonts(root, pages, report)
 
     def inspect_resource(path: Path, value: str, description: str, *, resource: bool = True) -> None:
         parsed = urlsplit(value)
