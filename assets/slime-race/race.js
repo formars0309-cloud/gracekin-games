@@ -397,27 +397,59 @@ function sprite(ctx,id,x,y,scale=1,time=0,running=false,prep=false){
 }
 function makePortrait(id){const c=document.createElement('canvas');c.width=144;c.height=112;const ctx=c.getContext('2d');sprite(ctx,id,72,105,1.7);return c.toDataURL('image/png')}
 
-  function geometry(w,h) { const narrow=w<500; const top=w<=900?146:154; const laneH=narrow?46:w<=900?58:62; const laneStart=narrow?33:53; const finish=w-(narrow?44:78); const raceStart=laneStart+(narrow?26:43); return {narrow,top,laneH,laneStart,finish,raceStart,travel:finish-raceStart,scale:narrow?.84:1.28}; }
-  function createScenery(w,h,dpr) { const scenery=document.createElement('canvas');scenery.width=Math.round(w*dpr);scenery.height=Math.round(h*dpr);const ctx=scenery.getContext('2d');ctx.scale(dpr,dpr);const {narrow,top,laneH,laneStart,finish,raceStart}=geometry(w,h);
- let grad=ctx.createLinearGradient(0,0,0,h);grad.addColorStop(0,'#d6e4b1');grad.addColorStop(.25,'#b4d092');grad.addColorStop(1,'#8ab766');ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
- // 먼 숲의 실루엣과 실제 원본 나무 그림을 겹쳐 깊이를 만든다.
- for(let i=0;i<16;i++){const x=i*w/14-25;ctx.fillStyle=i%2?'#82a76d45':'#678f6450';ctx.beginPath();ctx.ellipse(x,1+(i%3)*12,55,48,0,0,Math.PI*2);ctx.fill()}
- const tree=images.tree; if(tree){const tw=narrow?100:145;const th=tw*tree.height/tree.width;for(const pos of[-.03,.15,.76,.92])ctx.drawImage(tree,w*pos-tw/2,-th*.37,tw,th)}
- // 낮은 목책과 잔디, 작은 꽃.
- ctx.fillStyle='#c3a470';ctx.fillRect(0,top-12,w,5);ctx.fillStyle='#dfc28c';ctx.fillRect(0,top-14,w,3);for(let i=0;i<w;i+=35){ctx.fillStyle='#a78554';rounded(ctx,i,top-27,7,29,2);ctx.fillStyle='#dfc18a';ctx.fillRect(i+1,top-25,2,25)}
- for(let i=0;i<5;i++){const y=top+i*laneH;ctx.fillStyle='#608b4c';rounded(ctx,laneStart-4,y+3,w-laneStart-15,laneH-3,11);let dirt=ctx.createLinearGradient(0,y,0,y+laneH);dirt.addColorStop(0,'#d9ba86');dirt.addColorStop(.48,'#ecd3a5');dirt.addColorStop(1,'#d4ae75');ctx.fillStyle=dirt;rounded(ctx,laneStart,y,w-laneStart-19,laneH-7,9);ctx.strokeStyle='#f4dfb4';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(laneStart+12,y+3);ctx.lineTo(w-34,y+3);ctx.stroke();
- // 작고 고정된 흙 알갱이.
- for(let k=0;k<26;k++){const px=laneStart+12+(k*67+i*31)%(Math.max(10,w-laneStart-54)),py=y+8+(k*13+i*7)%(laneH-22);ctx.fillStyle=k%2?'#c49b6c55':'#fff4d54d';ctx.fillRect(px,py,k%3?2:3,1)}
- ctx.fillStyle='#8c6b45';rounded(ctx,9,y+laneH/2-10,22,23,4);ctx.fillStyle='#f5e5b8';ctx.font='600 12px system-ui';ctx.textAlign='center';ctx.fillText(String(i+1),20,y+laneH/2+6);
- ctx.fillStyle='#f6ecd6b0';ctx.fillRect(raceStart+10,y+4,2,laneH-15);
- for(let q=0;q<6;q++){ctx.fillStyle=q%2?'#f5edcf':'#776d51';ctx.fillRect(finish,y+q*(laneH-8)/6,7,(laneH-8)/6)}
- }
- // 화면 폭에 맞춰 잔디꽃 밀도를 조정한다.
- const bottom=top+5*laneH;for(let i=0;i<Math.ceil(w/22);i++){const x=13+i*23+(i%2)*7,y=bottom+11+(i*13)%28;ctx.strokeStyle='#6d994b';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(x,y+9);ctx.lineTo(x+2,y);ctx.stroke();ctx.fillStyle=i%3===0?'#f5e9b3':i%3===1?'#fff8e9':'#e6b1c0';for(let p=0;p<5;p++){const a=p*Math.PI*2/5;ctx.beginPath();ctx.ellipse(x+2+Math.cos(a)*2.4,y+Math.sin(a)*2.4,2,2,0,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#d6a547';ctx.fillRect(x+1,y-1,2,2)}
- const bush=images.bush;if(bush){ctx.drawImage(bush,-24,bottom+10,83,70);ctx.drawImage(bush,w-54,bottom+14,86,72)}
- ctx.fillStyle='#638744';ctx.font='11'+'px system-ui';ctx.textAlign='center';ctx.fillText('출발',raceStart+11,top-16);ctx.fillText('결승',finish+4,top-16);
-return scenery;
-}
+  function geometry(w,h) {
+    const narrow=w<=500;
+    const top=w<=900?158:157;
+    const laneH=narrow?46:w<=900?58:62;
+    const laneStart=narrow?30:51;
+    const finish=w-(narrow?29:59);
+    const raceStart=laneStart+(narrow?28:49);
+    return {narrow,top,laneH,laneStart,finish,raceStart,travel:finish-raceStart,scale:narrow?.8:1.12};
+  }
+  // 크기·DPR·이미지 로딩이 바뀔 때만 정적인 풍경을 다시 만든다.
+  function drawCover(ctx,image,w,h) {
+    const scale=Math.max(w/image.width,h/image.height),sw=w/scale,sh=h/scale;
+    ctx.drawImage(image,(image.width-sw)/2,(image.height-sh)*.38,sw,sh,0,0,w,h);
+  }
+  function drawLane(ctx,image,x,y,w,h) {
+    // 둥근 좌우 끝은 비율을 보존하고 흙과 잔디의 중앙은 같은 배율로 반복한다.
+    const cap=Math.min(230,image.width*.13),cropY=32,sourceH=image.height-64,scale=h/sourceH,edge=cap*scale;
+    ctx.drawImage(image,0,cropY,cap,sourceH,x,y,edge,h);
+    const sourceW=image.width-cap*2,tileW=sourceW*scale,right=x+w-edge;
+    for(let left=x+edge;left<right;left+=tileW){const visible=Math.min(tileW,right-left);ctx.drawImage(image,cap,cropY,visible/scale,sourceH,left,y,visible,h);}
+    ctx.drawImage(image,image.width-cap,cropY,cap,sourceH,x+w-edge,y,edge,h);
+  }
+  function drawBadge(ctx,x,y,size,label) {
+    ctx.save();ctx.shadowColor='#40532e55';ctx.shadowBlur=3;ctx.shadowOffsetY=3;
+    const cream=ctx.createLinearGradient(0,y-size/2,0,y+size/2);cream.addColorStop(0,'#fff7df');cream.addColorStop(.6,'#f0dfba');cream.addColorStop(1,'#d8b98b');ctx.fillStyle=cream;rounded(ctx,x-size/2,y-size/2,size,size,size*.35);ctx.restore();
+    ctx.strokeStyle='#fff9e2aa';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x-size/2+1,y-size/2+1,size-2,size-2,size*.35);ctx.stroke();
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=(size*.65)+'px RaceJua, sans-serif';ctx.fillStyle='#fff3d6';ctx.fillText(label,x,y+2);ctx.fillStyle='#6c4830';ctx.fillText(label,x,y);ctx.textBaseline='alphabetic';
+  }
+  function createScenery(w,h,dpr) {
+    const scenery=document.createElement('canvas');scenery.width=Math.round(w*dpr);scenery.height=Math.round(h*dpr);const ctx=scenery.getContext('2d');ctx.scale(dpr,dpr);
+    const {narrow,top,laneH,laneStart,finish,raceStart}=geometry(w,h);
+    if(images.backdrop) drawCover(ctx,images.backdrop,w,h);
+    else {
+      const sky=ctx.createLinearGradient(0,0,0,h);sky.addColorStop(0,'#c7c7e9');sky.addColorStop(.28,'#d8decb');sky.addColorStop(.33,'#9bb77b');sky.addColorStop(1,'#719450');ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
+      for(let i=0;i<9;i++){ctx.fillStyle=i%2?'#a9bbab':'#bac6bb';ctx.beginPath();ctx.ellipse(i*w/7,top*.5,55+(i%3)*25,45,0,0,Math.PI*2);ctx.fill();}
+    }
+    for(let i=0;i<5;i++){
+      const y=top+i*laneH;
+      if(images.lane) drawLane(ctx,images.lane,laneStart-7,y-5,w-laneStart-5,laneH+3);
+      else {
+        ctx.save();ctx.shadowColor='#30452460';ctx.shadowOffsetY=4;ctx.shadowBlur=4;ctx.fillStyle='#789651';rounded(ctx,laneStart-7,y-3,w-laneStart-5,laneH,13);ctx.restore();
+        const dirt=ctx.createLinearGradient(0,y,0,y+laneH);dirt.addColorStop(0,'#d8ad76');dirt.addColorStop(.2,'#f3d7ad');dirt.addColorStop(.8,'#edd0a2');dirt.addColorStop(1,'#d9b280');ctx.fillStyle=dirt;rounded(ctx,laneStart,y+3,w-laneStart-19,laneH-12,11);
+        for(let k=0;k<35;k++){const px=laneStart+10+(k*67+i*31)%Math.max(10,w-laneStart-48),py=y+9+(k*13+i*7)%(laneH-24);ctx.fillStyle=k%2?'#bf93634d':'#fff1d659';ctx.fillRect(px,py,k%3?2:3,1);}
+      }
+      drawBadge(ctx,narrow?15:27,y+laneH*.49,narrow?24:35,String(i+1));
+      // 두 줄 결승 체크는 레인 안쪽 흙길에만 그린다.
+      const lineTop=y+8,lineH=laneH-18,cell=lineH/6,cellW=narrow?4:5;
+      for(let row=0;row<6;row++)for(let col=0;col<2;col++){ctx.fillStyle=(row+col)%2?'#86694b':'#fff2d6';ctx.fillRect(finish+col*cellW,lineTop+row*cell,cellW,cell+.3);}
+      ctx.fillStyle='#fff6df60';ctx.fillRect(raceStart+5,y+8,1.5,laneH-18);
+    }
+    ctx.font=(narrow?'11':'13')+'px RaceJua, sans-serif';ctx.textAlign='center';ctx.fillStyle='#fff7dd';ctx.shadowColor='#314624';ctx.shadowBlur=3;ctx.shadowOffsetY=1;ctx.fillText('출발',raceStart+5,top-9);ctx.fillText('결승',finish+5,top-9);
+    return scenery;
+  }
   function displayedProgress(id) {
     const target=state.positions.get(id) || 0;
     if (reduced.matches) return target;
@@ -436,11 +468,11 @@ return scenery;
     for(const [i,slime] of entrants().entries()){
       const id=names.indexOf(slime.name);if(id<0)continue;
       const p=stage==='racing'||stage==='results'?displayedProgress(slime.slimeId):0;
-      const x=raceStart+p*travel,y=top+i*laneH+laneH-11;
+      const x=raceStart+p*travel,y=top+i*laneH+laneH-17;
       const elapsed=round?(now()-round.raceStartsAt)/1000:0;
       const prep=!reduced.matches&&(stage==='countdown'&&round.raceStartsAt-now()<650||stage==='racing'&&elapsed>=0&&elapsed<.65);
       sprite(ctx,id,x,y,scale,elapsed,stage==='racing'&&!reduced.matches,prep);
-      if(stage==='sales'||stage==='countdown'){ctx.font='11px system-ui';ctx.fillStyle='#6d573c';ctx.textAlign='left';ctx.fillText(slime.name,raceStart+(narrow?43:59),y-11);}
+      if(stage==='sales'||stage==='countdown'){ctx.font=(narrow?'13':'17')+'px RaceJua, sans-serif';ctx.fillStyle='#67472f';ctx.textAlign='left';ctx.fillText(slime.name,raceStart+(narrow?31:47),y-13);}
     }
     state.particles=state.particles.filter(particle=>time-particle.start<850);
     for(const particle of state.particles){const t=(time-particle.start)/850;if(t<0||t>1)continue;ctx.globalAlpha=1-t;ctx.fillStyle=particle.color;ctx.font='18px Georgia';ctx.textAlign='center';ctx.fillText(particle.shape,particle.x+Math.sin(t*3)*12,particle.y-t*42);ctx.globalAlpha=1;}
@@ -452,11 +484,18 @@ return scenery;
     state.raf=requestAnimationFrame(tick);
   }
   async function loadAssets() {
-    const paths=[...names.flatMap((_,i)=>[['slime'+i,'slime'+i+'.png'],['acc'+i,'acc'+i+'.png']]),['tree','tree.webp'],['bush','bush.webp']];
+    const paths=[...names.flatMap((_,i)=>[['slime'+i,'slime'+i+'.png'],['acc'+i,'acc'+i+'.png']]),['backdrop','clay/backdrop.webp'],['lane','clay/lane.webp'],['plaque','clay/title-plaque.png'],['panel','clay/panel.png'],['button','clay/button.png'],['gold','clay/button-gold.png']];
     let failures=0;
-    await Promise.all(paths.map(([key,file])=>new Promise(resolve=>{const image=new Image();image.onload=()=>{images[key]=image;resolve();};image.onerror=()=>{failures++;resolve();};image.src='/assets/slime-race/art/'+file;})));
+    await Promise.all(paths.map(([key,file])=>new Promise(resolve=>{
+      const image=new Image();image.decoding='async';
+      image.onload=()=>{images[key]=image;if(['plaque','panel','button','gold'].includes(key))root.classList.add('sr-art-'+key);state.scenery=null;draw();resolve();};
+      image.onerror=()=>{failures++;resolve();};image.src='/assets/slime-race/art/'+file;
+    })));
     for(const [i,name] of names.entries())if(images['slime'+i])portraits.set(name,makePortrait(i));
     state.scenery=null;
     if(failures)spectator('일부 경기장 그림을 불러오지 못했어요. 연결을 확인하고 새로고침해 주세요.');
   }
+  // 글꼴 교체 뒤 캐시 속 번호·출발/결승·이름도 같은 글꼴로 다시 그린다.
+  if(document.fonts)void document.fonts.load('16px RaceJua').then(()=>{state.scenery=null;draw();}).catch(()=>{});
+
 })();
