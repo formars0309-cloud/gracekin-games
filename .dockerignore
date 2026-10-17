@@ -19,6 +19,9 @@ community/**
 community/privacy/**
 !community/privacy/index.html
 !community/privacy/privacy.css
+!community/terms/
+community/terms/**
+!community/terms/index.html
 !games/
 games/**
 !games/slimeline/
