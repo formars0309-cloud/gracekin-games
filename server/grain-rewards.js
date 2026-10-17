@@ -1,8 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { fail } from './security.js';
+import { GRAIN_REWARD_POLICY } from './grain-policy.js';
 
-export const REWARD_DAY_MS = 86400000;
-export const kstDate = time => new Date(time + 9 * 3600000).toISOString().slice(0, 10);
+// 기존 사용처의 가져오기 경로를 유지합니다.
+export { REWARD_DAY_MS } from './grain-policy.js';
+const { activity, kstOffsetMs } = GRAIN_REWARD_POLICY;
+export const kstDate = time => new Date(time + kstOffsetMs).toISOString().slice(0, 10);
 const fingerprint = (title, body) => createHash('sha256').update(JSON.stringify([title, body].map(value => value.trim().replace(/\s+/gu, ' ')))).digest('hex');
 const transaction = (db, work) => {
   db.exec('BEGIN IMMEDIATE');
@@ -13,8 +16,9 @@ const transaction = (db, work) => {
 // 커뮤니티 INSERT와 같은 트랜잭션에서만 부릅니다. 탈락한 첫 댓글도 남겨 재작성으로 우회하지 못하게 합니다.
 export function reserveCommunityReward(db, rewards, { user, type, row, time }) {
   if (!rewards) return { pending: false, amount: 0 };
-  const eventId = `community-${type}:${row.id}`, date = kstDate(time), amount = type === 'post' ? 500 : 100;
-  let matches = [...row.body.trim()].length >= (type === 'post' ? 30 : 10);
+  const policy = type === 'post' ? activity.post : activity.comment;
+  const eventId = `community-${type}:${row.id}`, date = kstDate(time), amount = policy.amount;
+  let matches = [...row.body.trim()].length >= policy.minBodyLength;
   let hash = null;
   if (type === 'post') {
     hash = fingerprint(row.title, row.body);
@@ -31,9 +35,9 @@ export function reserveCommunityReward(db, rewards, { user, type, row, time }) {
     if (!parent || parent.hiddenAt !== null || parent.authorId === user.id || prior) matches = false;
   }
   const day = db.prepare("SELECT COALESCE(SUM(amount),0) AS total, SUM(CASE WHEN targetType=? THEN 1 ELSE 0 END) AS count FROM grain_activity_rewards WHERE userId=? AND rewardDate=? AND status IN ('pending','confirmed')").get(type, user.id, date);
-  const pending = matches && rewards.rewardEligible(user) && day.count < (type === 'post' ? 3 : 10) && day.total + amount <= 3000;
+  const pending = matches && rewards.rewardEligible(user) && day.count < policy.dailyLimit && day.total + amount <= activity.dailyTotalLimit;
   db.prepare('INSERT INTO grain_activity_rewards(eventId,userId,targetType,targetId,postId,fingerprint,amount,rewardDate,createdAt,confirmsAt,status) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
-    .run(eventId, user.id, type, row.id, row.postId ?? null, hash, amount, date, time, time + REWARD_DAY_MS, pending ? 'pending' : 'ineligible');
+    .run(eventId, user.id, type, row.id, row.postId ?? null, hash, amount, date, time, time + activity.confirmationDelayMs, pending ? 'pending' : 'ineligible');
   return { pending, amount: pending ? amount : 0 };
 }
 
@@ -99,13 +103,13 @@ export function createGrainRewards(db, { now = Date.now, startTimer = true, onTi
       const status = rewardStatus(user);
       if (status !== 'eligible') fail(403, 'REWARD_INELIGIBLE', '이메일 확인, 연령 구분과 보상 이용 상태를 확인해 주세요.');
       const time = now(), date = kstDate(time), eventId = `attendance:${date}`;
-      const prior = db.prepare('SELECT 1 FROM grain_ledger WHERE userId=? AND eventId=?').get(user.id, eventId);
+      const prior = db.prepare('SELECT COUNT(*) AS count FROM grain_ledger WHERE userId=? AND eventId=?').get(user.id, eventId).count;
       const total = db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM grain_activity_rewards WHERE userId=? AND rewardDate=? AND status IN ('pending','confirmed')").get(user.id, date).total;
-      if (prior || total + 300 > 3000) return { awarded: false, amount: 0, date };
-      const awarded = grant(user.id, eventId, 300, '출석');
+      if (prior >= activity.attendance.dailyLimit || total + activity.attendance.amount > activity.dailyTotalLimit) return { awarded: false, amount: 0, date };
+      const awarded = grant(user.id, eventId, activity.attendance.amount, '출석');
       if (awarded) db.prepare("INSERT INTO grain_activity_rewards(eventId,userId,targetType,targetId,amount,rewardDate,createdAt,confirmsAt,status) VALUES(?,?,'attendance',?,?,?,?,?,'confirmed')")
-        .run(`${user.id}:${eventId}`, user.id, date, 300, date, time, time);
-      return { awarded, amount: awarded ? 300 : 0, date };
+        .run(`${user.id}:${eventId}`, user.id, date, activity.attendance.amount, date, time, time);
+      return { awarded, amount: awarded ? activity.attendance.amount : 0, date };
     });
   }
   function tick() {

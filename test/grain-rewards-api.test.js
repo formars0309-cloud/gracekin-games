@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { startServer } from '../server/app.js';
 import { request, cookieFrom, registerAndLogin } from './account-helpers.js';
+import { GRAIN_REWARD_POLICY } from '../server/grain-policy.js';
 
 let nextIP = 100;
 async function scenario(callback, extra = {}) {
@@ -31,6 +32,57 @@ async function scenario(callback, extra = {}) {
 const attendance = (f, cookie, extra = {}) => f.req('/api/grain/attendance', { method: 'POST', cookie, body: {}, ...extra });
 const post = (f, cookie, title = '활동 보상 글', body = '가'.repeat(30)) => f.req('/api/community/posts', { method: 'POST', cookie, body: { game: 'slimeline', board: 'free', title, body } });
 const wallet = (f, cookie) => f.req('/api/account/grain', { cookie });
+
+test('공개 설정은 비로그인·로그인 모두 같은 정책만 제공하고 세션·지갑·예정 보상을 바꾸지 않음', async () => scenario(async f => {
+  const login = await f.login(), cookie = cookieFrom(login);
+  await post(f, cookie);
+  f.db.prepare('UPDATE session SET expiresAt=?,updatedAt=?').run(Date.now() + 5 * 86400000, Date.now() - 2 * 86400000);
+  f.setTime(f.time() + GRAIN_REWARD_POLICY.activity.confirmationDelayMs);
+  const snapshot = () => f.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(({ name }) => [name, f.db.prepare(`SELECT * FROM "${name}" ORDER BY rowid`).all()]);
+  const before = snapshot();
+  for (const viewer of [undefined, cookie, 'invalid-session=invalid']) {
+    const config = await f.req('/api/account/config', { cookie: viewer });
+    assert.equal(config.status, 200);
+    assert.deepEqual(config.body.grainRewardPolicy, GRAIN_REWARD_POLICY);
+    assert.equal(config.body.registrationAvailable, true);
+    assert.equal(config.body.emailAvailable, true);
+    assert.equal(config.headers['set-cookie'], undefined);
+    assert.match(config.headers['cache-control'], /no-store/);
+    assert.deepEqual(Object.keys(config.body).sort(), ['emailAvailable', 'grainRewardPolicy', 'guardianConsentAvailable', 'guardianConsentMethod', 'registrationAvailable', 'socialProviders', 'socialSignupAvailable']);
+    assert.doesNotMatch(JSON.stringify(config.body), /@example\.test|"(?:user|email|balance|entries|pending|adminUserIds)"/);
+  }
+  assert.deepEqual(snapshot(), before);
+  assert.equal((await f.req('/api/account/config', { method: 'POST', body: {} })).status, 405);
+  assert.deepEqual(snapshot(), before);
+}));
+
+test('공개 정책의 출석·본문 길이·횟수·지급량·확정 지연은 실제 HTTP 적립과 일치', async () => scenario(async f => {
+  const policy = (await f.req('/api/account/config')).body.grainRewardPolicy.activity;
+  const alice = cookieFrom(await f.login('alice')), bob = cookieFrom(await f.login('bob'));
+  assert.equal((await attendance(f, alice)).body.amount, policy.attendance.amount);
+  assert.equal((await attendance(f, alice)).body.awarded, false);
+  assert.equal((await post(f, alice, '최소 길이 직전', '가'.repeat(policy.post.minBodyLength - 1))).body.reward.pending, false);
+  for (let i = 0; i <= policy.post.dailyLimit; i++) {
+    const result = await post(f, alice, `정책 글 ${i}`, '가'.repeat(policy.post.minBodyLength));
+    assert.deepEqual(result.body.reward, { pending: i < policy.post.dailyLimit, amount: i < policy.post.dailyLimit ? policy.post.amount : 0 });
+  }
+  // 댓글 길이 미달 첫 댓글은 재작성으로 보상받을 수 없으므로 별도 부모 글을 사용합니다.
+  for (let i = -1; i <= policy.comment.dailyLimit; i++) {
+    const parent = (await post(f, bob, `댓글 부모 ${i}`, '짧은 본문')).body.post.id;
+    const result = await f.req(`/api/community/posts/${parent}/comments`, { method: 'POST', cookie: alice, body: { body: '나'.repeat(policy.comment.minBodyLength - (i === -1 ? 1 : 0)) } });
+    const eligible = i >= 0 && i < policy.comment.dailyLimit;
+    assert.deepEqual(result.body.reward, { pending: eligible, amount: eligible ? policy.comment.amount : 0 });
+  }
+  const pending = (await wallet(f, alice)).body;
+  assert.equal(pending.pendingTotal, policy.post.amount * policy.post.dailyLimit + policy.comment.amount * policy.comment.dailyLimit);
+  assert.equal(pending.balance, 30000 + policy.attendance.amount);
+  assert.ok(pending.pending.every(row => Date.parse(row.confirmsAt) - Date.parse(row.createdAt) === policy.confirmationDelayMs));
+  // 합계 한도는 활동 종류별 횟수와 별개로 출석도 차단해야 합니다.
+  f.db.prepare("INSERT INTO grain_activity_rewards VALUES('정책한도',?,'post','없는글',NULL,NULL,?,'2026-10-17',0,0,'confirmed')").run(f.db.prepare('SELECT id FROM user WHERE email=?').get('rewardbob@example.test').id, policy.dailyTotalLimit - policy.attendance.amount + 1);
+  assert.equal((await attendance(f, bob)).body.awarded, false);
+  f.setTime(f.time() + policy.confirmationDelayMs); await f.restart();
+  assert.equal((await wallet(f, alice)).body.balance, pending.balance + pending.pendingTotal);
+}));
 
 // 별도 운영 모듈과 app의 연결까지 검증하는 실제 HTTP 시험입니다.
 test('출석 HTTP: 로그인·Origin·본문변조 방어와 동시 KST 출석, 계정 GET 무지급·무갱신', async () => scenario(async f => {

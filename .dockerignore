@@ -121,6 +121,7 @@ assets/slime-race/art/**
 !assets/slime-race/art/bush.webp
 
 # 그레인 활동 보상·버그 제보·운영자 도구
+!server/grain-policy.js
 !server/grain-rewards.js
 !server/grain-admin.js
 !community/bug-report/
