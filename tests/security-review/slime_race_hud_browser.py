@@ -83,6 +83,18 @@ def main():
                     assert a['w']>=42 and a['h']>=42,f'{width}: 버튼 터치 영역 부족 {a}'
                     for b in buttons[i+1:]: assert not overlaps(a,b),f'{width}: 조작 버튼 겹침'
                 assert layout['arena']['h'] <= 1000,f'{width}: 한 경기장 높이 1000px 초과'
+                if page.locator('.sr-result').is_visible():
+                    result=page.locator('.sr-result').evaluate('(el)=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom}}')
+                    for key in ['title','clock','owl','speech','controls','feedback']:
+                        if key=='feedback' and not page.locator('.sr-feedback > :visible').count(): continue
+                        assert not overlaps(result,layout[key]),f'{width}: 결과판/{key} 겹침'
+                    arena=layout['arena']
+                    assert result['x']>=arena['x'] and result['right']<=arena['right'] and result['y']>=arena['y'] and result['bottom']<=arena['bottom'],f'{width}: 결과판 경기장 밖'
+                    result_text=page.locator('.sr-result, .sr-result small, .sr-result h2, .sr-result p, .sr-result ol, .sr-result li, .sr-result button').evaluate_all('els=>els.map(el=>({text:el.textContent,width:el.clientWidth,height:el.clientHeight,scrollWidth:el.scrollWidth,scrollHeight:el.scrollHeight}))')
+                    for item in result_text:
+                        assert item['scrollWidth']<=item['width']+1 and item['scrollHeight']<=item['height']+1,f'{width}: 결과판 텍스트 넘침 {item}'
+                    assert page.locator('.sr-arena-controls button').evaluate_all('els=>els.every(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})'),f'{width}: 결과 표시 중 하단 버튼 입력 가림'
+
             def verify_phase_layout(label):
                 for width in widths:
                     verify_layout(width)
@@ -149,6 +161,13 @@ def main():
             page.clock.run_for(900)
             assert page.evaluate('window.__hudWrites.length')==0,'같은 결과·중계 상태에서 DOM 반복 쓰기 발생'
             checks.append('정지한 결과 상태 900ms 동안 결과/중계 DOM 반복 쓰기 0회')
+            page.locator('.sr-result button').click()
+            page.locator('#sr-ticket').wait_for(state='visible')
+            page.keyboard.press('Escape')
+            page.locator('#sr-ticket').wait_for(state='hidden')
+            assert page.locator('.sr-result button').evaluate('(el)=>document.activeElement===el'),'내 결과 닫기 초점 복귀'
+            checks.append('17개 너비 결과판 텍스트·HUD/조작부 비겹침·세 버튼 hit-test·내 결과 열기/Escape 초점 복귀')
+
             # 뒤늦은 과거 스냅샷은 오류로 격리하고 과거 승자·선두를 중계하지 않는다.
             control['body']=racing;refresh()
             page.locator('[data-public-error]').wait_for(state='visible')
