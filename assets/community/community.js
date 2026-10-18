@@ -33,12 +33,12 @@
       name: '경국지계', home: '/games/gyeongguk/', privacy: 'https://gyeongguk.gracekingames.com/privacy',
       description: '한 장의 계략, 한 판의 이야기가 모이는 곳.',
       aside: '미인과 계략의 삼국 카드 대전, 경국지계의 공식 소식과 이용 안내입니다.',
-      boards: { free: ['자유게시판', '한 판을 마친 소감과 자유로운 이야기를 위한 자리입니다.'], deck: ['덱 연구', '카드의 조합과 덱에 대한 생각을 위한 자리입니다.'], strategy: ['전략·공략', '대전에서 발견한 수와 계략을 위한 자리입니다.'], notice: ['공지사항', '경국지계의 공식 소식과 게임 이용 안내를 확인하세요.'] },
+      boards: { free: ['자유 게시판', '한 판을 마친 소감과 다양한 이야기를 나누는 곳입니다.'], deck: ['덱 연구', '더 강한 한 수를 위해 카드 조합과 덱을 연구합니다.'], strategy: ['전략 이야기', '대전에서 찾은 수와 계략, 천하를 보는 또 다른 시선을 나눕니다.'], notice: ['새 소식', '경국지계의 공식 소식과 게임 이용 안내를 확인하세요.'] },
       posts: [
         { id: 'welcome', title: '경국지계에 오신 것을 환영합니다', excerpt: '덮어 둔 카드 한 장이 판을 뒤집는 삼국 카드 대전.', sections: [
           ['미인과 계략의 삼국 카드 대전', '경국지계는 실시간 카드 대전 게임입니다. 게임 홈페이지에서 소개를 살펴보고 START를 눌러 대전에 들어가세요.'],
           ['현재는 테스트 기간입니다', '테스트 기간에는 전설을 포함한 모든 카드를 사용할 수 있습니다. 플레이 기록은 정식 시즌 전에 초기화될 수 있습니다.'],
-          ['공식 소식과 이용 안내', '이곳에서는 공식 소식과 이용 안내를 읽을 수 있습니다. 글·댓글 작성이 가능한 계정으로 로그인하면 자유게시판, 덱 연구, 전략·공략에서 이야기를 나눌 수 있습니다. 버그·보안 문제는 비공개 버그 제보로 보내 주세요.']
+          ['공식 소식과 이용 안내', '이곳에서는 공식 소식과 이용 안내를 읽을 수 있습니다. 글·댓글 작성이 가능한 계정으로 로그인하면 자유 게시판, 덱 연구, 전략 이야기에서 이야기를 나눌 수 있습니다. 버그·보안 문제는 비공개 버그 제보로 보내 주세요.']
         ] },
         { id: 'play-guide', title: '경국지계, 대전에 들어가기 전에', excerpt: '게임 시작 방법과 테스트 기간의 이용 안내입니다.', sections: [
           ['게임 홈페이지에서 START', '경국지계 홈페이지의 START를 누르면 게임으로 이동합니다. 브라우저에서 설치 없이 시작할 수 있습니다.'],
@@ -216,11 +216,26 @@
     finally { button.disabled = false; window.dispatchEvent(new CustomEvent('gracekin-account-change', { detail: { phase: 'refresh' } })); }
   });
   document.body.dataset.game = gameId;
-  document.querySelector('meta[name="theme-color"]').content = gameId === 'slimeline' ? '#101728' : '#f3efe6';
-  byId('game-eyebrow').textContent = game.name;
-  byId('game-eyebrow').hidden = gameId === 'slimeline';
-  for (const id of ['slimeline-hero-art', 'slimeline-title', 'hero-links']) byId(id).hidden = gameId !== 'slimeline';
+  byId('game-eyebrow').hidden = true;
+  const heroArt = byId('game-hero-art');
+  heroArt.width = gameId === 'slimeline' ? 1736 : 1756;
+  heroArt.height = gameId === 'slimeline' ? 906 : 896;
+  heroArt.alt = gameId === 'slimeline' ? '달빛 마을의 돌다리를 함께 걷는 분홍·하늘·노랑·연두 슬라임' : '매화와 산수 풍경을 배경으로 함께 선 여포와 초선';
+  heroArt.setAttribute('fetchpriority', 'high');
+  heroArt.src = `/assets/${gameId}/hero.webp`;
+  heroArt.hidden = false;
+  const titleArt = byId('game-title');
+  titleArt.width = gameId === 'slimeline' ? 2171 : 2048;
+  titleArt.height = gameId === 'slimeline' ? 724 : 768;
+  titleArt.alt = game.name;
+  titleArt.src = `/assets/${gameId}/title.png`;
+  titleArt.hidden = false;
+  byId('hero-links').hidden = false;
   byId('hero-home').href = studioPath(game.home);
+  byId('hero-start').href = `https://${gameId}.gracekingames.com/`;
+  byId('hero-start').setAttribute('data-umami-event', `play-${gameId}`);
+  if (gameId === 'gyeongguk') byId('hero-links').prepend(byId('hero-start'));
+  byId('board-group-title').textContent = gameId === 'gyeongguk' ? '천하의 이야기' : '우리들의 이야기';
   byId('hero-description').textContent = game.description;
   byId('aside-description').textContent = game.aside;
   byId('home-link').href = studioPath(game.home);
@@ -231,7 +246,7 @@
   byId('article-feedback').href = FEEDBACK_URL;
   byId('connection-notice').href = url('notice', null, '');
   for (const [id, [label]] of Object.entries(game.boards)) {
-    const tab = make('a'); if (gameId === 'slimeline') tab.append(boardIcon(id)); tab.append(make('span', label)); tab.href = url(id, null, ''); if (id === boardId) tab.setAttribute('aria-current', 'page'); byId('board-tabs').append(tab);
+    const tab = make('a'); tab.append(gameId === 'slimeline' ? boardIcon(id) : boardTile(id)); tab.append(make('span', label)); tab.href = url(id, null, ''); if (id === boardId) tab.setAttribute('aria-current', 'page'); byId('board-tabs').append(tab);
   }
   // 선택한 게시판이 가로 스크롤 영역 밖에 가려지지 않도록 가로 위치만 맞춘다.
   const activeTab = byId('board-tabs').querySelector('[aria-current="page"]');
@@ -246,6 +261,11 @@
   byId('search-form').addEventListener('submit', event => { event.preventDefault(); location.href = url(boardId, null, byId('search-input').value.trim()); });
   byId('back-to-board').href = url(boardId, null, query, pageNumber);
   byId('retry-connection').addEventListener('click', async () => { byId('retry-connection').disabled = true; try { await Promise.all([loadSession(), loadCurrent(), loadGuidance()]); } finally { byId('retry-connection').disabled = false; } });
+  function boardTile(id) {
+    const tile = make('span', null, `board-tile tile-${id}`);
+    tile.setAttribute('aria-hidden', 'true');
+    return tile;
+  }
   function boardIcon(id) {
     const paths = {
       free: '<path d="M29 14c0 8-7 12-15 12l-8 4 1-7C3 21 2 18 2 14 2 6 8 2 16 2s13 4 13 12Z" fill="currentColor"/><circle cx="10" cy="14" r="1.5" fill="var(--tab-cutout,var(--surface))"/><circle cx="16" cy="14" r="1.5" fill="var(--tab-cutout,var(--surface))"/><circle cx="22" cy="14" r="1.5" fill="var(--tab-cutout,var(--surface))"/>',
@@ -299,12 +319,19 @@
   }
   function renderEmptyAudience() {
     const isBoardEmpty = state.emptyKind === 'board';
-    byId('empty-slime').hidden = !isBoardEmpty || gameId !== 'slimeline';
+    const emptyArt = byId('empty-art');
+    emptyArt.hidden = !isBoardEmpty;
+    if (isBoardEmpty) {
+      if (gameId === 'slimeline') { byId('empty-image').src = '/assets/slime-front.png'; byId('empty-image').hidden = false; }
+      else {
+        emptyArt.className = `empty-art tile-${boardId}`;
+      }
+    }
     byId('empty-actions').hidden = !isBoardEmpty;
-    byId('empty-write').hidden = !isBoardEmpty || !state.user?.canWriteCommunity;
+    byId('empty-write').hidden = !isBoardEmpty || boardId === 'notice' || !state.user?.canWriteCommunity;
     byId('empty-signin').hidden = !isBoardEmpty || !!state.user;
     byId('empty-signup').hidden = !isBoardEmpty || !!state.user;
-    const reward = isBoardEmpty ? rewardText('post') : '';
+    const reward = isBoardEmpty && boardId !== 'notice' ? rewardText('post') : '';
     const activity = rewardActivity();
     byId('empty-reward').textContent = reward ? `${reward} 본문 ${number(activity.post.minBodyLength)}자 이상·하루 ${number(activity.post.dailyLimit)}회 등 지급 조건이 있어요.` : '';
     byId('empty-reward').hidden = !reward;
@@ -322,9 +349,17 @@
       free: '아직 조용해요. 첫 이야기를 남겨 주세요.',
       guide: '작은 발견도 좋은 공략이 돼요. 나만의 풀이를 나눠 주세요.',
       gallery: '슬라임을 향한 마음을 담은 첫 작품을 글로 소개해 주세요.'
-    } : { free: '아직 올라온 이야기가 없습니다. 첫 이야기를 남겨 주세요.', deck: '첫 덱의 조합과 생각을 나눠 주세요.', strategy: '처음 발견한 전략과 공략을 나눠 주세요.' };
-    empty(`${boardTitle}의 첫 글을 기다려요`, descriptions[boardId], url('notice', null, ''), `${game.boards.notice[0]} 보기 →`, 'board');
+    } : {};
+    const gyeonggukEmpty = {
+      free: ['아직 고요합니다', '첫 이야기를 남겨 주세요.'],
+      deck: ['아직 펼쳐진 덱이 없습니다', '당신의 첫 조합을 보여 주세요.'],
+      strategy: ['아직 드러난 계략이 없습니다', '대전에서 찾은 한 수를 들려주세요.'],
+      notice: ['새 소식을 준비하고 있습니다', '곧 천하의 소식을 전하겠습니다.']
+    };
+    const [title, description] = gameId === 'gyeongguk' ? gyeonggukEmpty[boardId] : [`${boardTitle}의 첫 글을 기다려요`, descriptions[boardId]];
+    empty(title, description, url('notice', null, ''), `${game.boards.notice[0]} 보기 →`, 'board');
   }
+
   function row(item, official = false) {
     const link = make('a', null, 'post-row'); link.href = url(boardId, item.id, query, pageNumber);
     const meta = make('div', null, 'post-meta'); meta.append(make('span', official ? '공식 안내' : boardTitle, 'post-badge'), make('span', official ? '그레이스킨 게임즈' : item.author.name));
@@ -369,7 +404,10 @@
       const posts = game.posts.filter(item => [item.title, item.excerpt, ...item.sections.flat()].join(' ').toLocaleLowerCase('ko').includes(needle));
       byId('result-count').textContent = query ? `검색 결과 ${posts.length}개` : `공식 안내 ${posts.length}개`;
       for (const item of posts) byId('post-list').append(row(item, true));
-      if (!posts.length) empty('검색 결과가 없어요', '다른 검색어를 입력하거나 공식 안내를 살펴보세요.');
+      if (!posts.length) {
+        if (!query && gameId === 'gyeongguk') emptyBoard();
+        else empty('검색 결과가 없어요', '다른 검색어를 입력하거나 공식 안내를 살펴보세요.');
+      }
       return;
     }
     byId('list-status').hidden = false; byId('board-view').hidden = false; byId('article-view').hidden = true;

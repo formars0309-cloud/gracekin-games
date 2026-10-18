@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>커뮤니티 · 그레이스킨 게임즈</title>
 <meta name="description" content="슬라임 라인과 경국지계의 공식 소식과 게임 이용 안내를 확인하세요.">
-<meta name="theme-color" content="#101728">
+<meta name="theme-color" content="#17131f">
+<script src="/assets/community/host.js"></script>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <link rel="stylesheet" href="/assets/shared/fonts.css">
 <link rel="stylesheet" href="/assets/community/community.css">
-<script src="/assets/community/host.js"></script>
 <script defer src="https://cloud.umami.is/script.js" data-website-id="262268ac-4e27-49fa-862a-c911f4d38993" data-domains="gracekingames.com" data-do-not-track="true"></script>
 <script defer src="/assets/community/community.js"></script>
 <link rel="stylesheet" href="/assets/shared/account-header.css">
 <script defer src="/assets/shared/account-header.js"></script>
 </head>
-<body data-game="slimeline">
+<body>
 <a class="skip-link" href="#main-content">본문으로 바로가기</a>
 <div class="community-shell">
 <header class="topbar">
@@ -26,15 +26,14 @@
 </header>
 <main id="main-content">
 <section class="community-hero" aria-labelledby="community-title">
-<img id="slimeline-hero-art" class="slimeline-hero-art" src="/assets/slimeline/hero.webp" width="1736" height="906" alt="달빛 마을의 돌다리를 함께 걷는 분홍·하늘·노랑·연두 슬라임" fetchpriority="high" hidden>
+<img id="game-hero-art" class="game-hero-art" width="1736" height="906" alt="달빛 마을의 돌다리를 함께 걷는 분홍·하늘·노랑·연두 슬라임" hidden>
 <div class="hero-copy">
-<img id="slimeline-title" class="slimeline-title" src="/assets/slimeline/title.png" width="2171" height="724" alt="슬라임 라인" hidden>
+<img id="game-title" class="game-title" width="2171" height="724" alt="슬라임 라인" hidden>
 <p id="game-eyebrow" class="eyebrow">게임 이야기</p>
 <h1 id="community-title">커뮤니티</h1>
 <p id="hero-description" class="hero-description">함께 즐기는 게임, 함께 나누는 이야기.</p>
-<div id="hero-links" class="hero-links" hidden><a id="hero-home" class="hero-home" href="/games/slimeline/">게임 소개로 돌아가기 <span aria-hidden="true">↗</span></a><a class="small-button" href="https://slimeline.gracekingames.com/" data-umami-event="play-slimeline" data-umami-event-from="community-start">게임 START <span aria-hidden="true">↗</span></a></div>
+<div id="hero-links" class="hero-links" hidden><a id="hero-home" class="hero-home" href="/games/slimeline/">게임 소개로 돌아가기 <span aria-hidden="true">↗</span></a><a id="hero-start" class="small-button" href="https://slimeline.gracekingames.com/" data-umami-event="play-slimeline" data-umami-event-from="community-start">게임 START <span aria-hidden="true">↗</span></a></div>
 </div>
-<div class="hero-ornament" aria-hidden="true"><span></span><span></span><span></span></div>
 </section>
 <div id="game-picker" class="game-picker" hidden>
 <h2>어느 게임의 이야기를 찾으세요?</h2>
@@ -51,7 +50,7 @@
 <nav id="board-tabs" class="board-tabs" aria-label="게시판"></nav>
 <div class="board-layout">
 <section id="board-view" class="board-surface" aria-labelledby="board-title">
-<div class="board-heading"><div><p class="section-label">우리들의 이야기</p><h2 id="board-title">공지사항</h2></div><span id="result-count" class="result-count" aria-live="polite"></span></div>
+<div class="board-heading"><div><p id="board-group-title" class="section-label">우리들의 이야기</p><h2 id="board-title">공지사항</h2></div><span id="result-count" class="result-count" aria-live="polite"></span></div>
 <p id="board-description" class="board-description"></p>
 <p id="gallery-notice" class="gallery-notice" hidden>그림 올리기는 준비 중이에요. 지금은 글로 소개해 주세요.</p>
 <div class="board-toolbar"><button id="write-post" class="small-button" type="button" hidden>글쓰기 <span aria-hidden="true">＋</span></button><span id="board-help" class="board-help"></span></div>
@@ -63,7 +62,7 @@
 <p id="list-status" class="list-status" role="status" hidden>이야기를 불러오고 있어요.</p>
 <div id="post-list" class="post-list"></div>
 <nav id="pagination" class="pagination" aria-label="게시판 페이지" hidden></nav>
-<div id="empty-state" class="empty-state" hidden><img id="empty-slime" class="empty-slime" src="/assets/slime-front.png" width="96" height="96" alt="" hidden><h3 id="empty-title"></h3><p id="empty-description"></p><p id="empty-reward" class="empty-reward" hidden></p><div id="empty-actions" class="empty-actions" hidden><button id="empty-write" class="small-button" type="button" hidden>글쓰기</button><button id="empty-signin" class="quiet-button" type="button" hidden>로그인</button><button id="empty-signup" class="small-button" type="button" hidden>회원가입</button></div><a id="empty-link" href="?game=slimeline&board=notice">공식 안내 보기 →</a></div>
+<div id="empty-state" class="empty-state" hidden><div id="empty-art" class="empty-art" aria-hidden="true" hidden><img id="empty-image" width="96" height="96" alt="" hidden></div><h3 id="empty-title"></h3><p id="empty-description"></p><p id="empty-reward" class="empty-reward" hidden></p><div id="empty-actions" class="empty-actions" hidden><button id="empty-write" class="small-button" type="button" hidden>글쓰기</button><button id="empty-signin" class="quiet-button" type="button" hidden>로그인</button><button id="empty-signup" class="small-button" type="button" hidden>회원가입</button></div><a id="empty-link" href="?game=slimeline&board=notice">공식 안내 보기 →</a></div>
 </section>
 <article id="article-view" class="board-surface article-view" hidden aria-labelledby="article-title">
 <a id="back-to-board" class="text-link" href="?game=slimeline&board=notice">← 목록으로</a>
