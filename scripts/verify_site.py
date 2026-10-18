@@ -533,6 +533,24 @@ def verify(root: Path) -> Report:
 
     community_script = root / 'assets/community/community.js'
     check(community_script.is_file(), '커뮤니티 동작 파일 없음')
+    community_page = pages.get(root / 'community/index.html')
+    if community_page:
+        # 숨긴 그림도 브라우저가 미리 받으므로 게임 판별 전에는 주소를 두지 않는다.
+        for tag, attrs in community_page.tags:
+            if tag == 'img':
+                for attr in ('src', 'srcset'):
+                    check(not re.search(r'/assets/(?:slimeline/|gyeongguk/|slime-front)', attrs.get(attr, '')), '커뮤니티: 게임별 그림의 선행 요청 주소가 있음')
+        tags = community_page.tags
+        host_index = next((i for i, (tag, attrs) in enumerate(tags) if tag == 'script' and attrs.get('src') == '/assets/community/host.js'), len(tags))
+        style_index = next((i for i, (tag, attrs) in enumerate(tags) if tag == 'link' and attrs.get('rel') == 'stylesheet'), -1)
+        check(host_index < style_index, '커뮤니티: 테마 판별은 첫 스타일시트보다 먼저 실행해야 함')
+        check(any(tag == 'meta' and attrs.get('name') == 'theme-color' and attrs.get('content') == '#17131f' for tag, attrs in tags), '커뮤니티: 게임 선택 화면의 기본 테마 색 누락')
+        for game in GAME_URLS:
+            for name in ('hero.webp', 'title.png'):
+                resource = Path(f'assets/{game}/{name}')
+                check((root / resource).is_file() and docker_allows(resource, docker_allowed), f'커뮤니티: {resource} 자산 또는 운영 패키지 허용 누락')
+        resource = Path('assets/gyeongguk/tiles.webp')
+        check((root / resource).is_file() and docker_allows(resource, docker_allowed), '커뮤니티: 경국지계 게시판 타일 또는 운영 패키지 허용 누락')
     account_script = root / 'assets/account/account.js'
     account_entry = root / 'assets/account/entry.js'
     check(account_script.is_file() and account_entry.is_file(), '공통 계정 동작 파일 없음')
