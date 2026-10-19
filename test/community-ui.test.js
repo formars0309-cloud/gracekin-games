@@ -9,12 +9,12 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 const member = { id: '시험회원', name: '말랑이', canWriteCommunity: true };
 const contents = node => [node.textContent, ...node.children.map(contents)].join('');
 
-function screen({ game = 'slimeline', board = 'free', post = '', query = '', user = null, eligibility = 'eligible', policy = GRAIN_REWARD_POLICY, fail = [], delayed = [], total = 0, noOfficial = false } = {}) {
+function screen({ game = 'slimeline', board = 'free', post = '', query = '', user = null, eligibility = 'eligible', policy = GRAIN_REWARD_POLICY, fail = [], delayed = [], total = 0, noOfficial = false, notices = [] } = {}) {
   const nodes = new Map(), calls = [], pending = new Map();
   function element(id = '') {
     if (id && nodes.has(id)) return nodes.get(id);
     const node = {
-      id, textContent: '', value: '', hidden: true, disabled: false, open: false, children: [], events: {}, attributes: {}, dataset: {},
+      id, textContent: '', value: '', hidden: true, disabled: false, open: false, children: [], events: {}, attributes: {}, dataset: {}, style: {},
       classList: { add() {} },
       setAttribute(name, value) { this.attributes[name] = value; },
       addEventListener(name, callback) { this.events[name] = callback; },
@@ -38,8 +38,8 @@ function screen({ game = 'slimeline', board = 'free', post = '', query = '', use
   };
   async function fetch(path) {
     calls.push(path);
-    const key = path.startsWith('/api/community/posts?') ? '/api/community/posts' : path;
-    const data = key === '/api/community/posts' ? { posts: [], page: 1, pageSize: 20, total } : routes[key];
+    const key = path.startsWith('/api/community/posts?') ? (board !== 'notice' && new URLSearchParams(path.split('?')[1]).get('board') === 'notice' ? '/api/community/notices' : '/api/community/posts') : path;
+    const data = ['/api/community/posts', '/api/community/notices'].includes(key) ? { posts: key === '/api/community/notices' || board === 'notice' ? notices : [], page: 1, pageSize: 20, total: notices.length || total } : routes[key];
     const response = () => {
       if (fail.includes(key)) throw new Error('시험용 연결 실패');
       return { ok: true, json: async () => data };
@@ -290,7 +290,7 @@ test('두 게임의 제보 양식과 규칙 요약은 기존 비공개 제보·�
     const rules = screen({ game, board: 'notice', post: 'rules' }); await flush();
     assert.match(contents(rules.node('article-body')), /대상 계정, 조치 내용과 이의 사유/);
     assert.deepEqual(rules.node('article-body').children.at(-1).children.map(link => link.href), ['/community/terms/#community', '/community/terms/#restrictions', 'mailto:support@gracekingames.com']);
-    assert.match(rules.node('article-author').textContent, /공개 전 초안/);
+    assert.equal(rules.node('article-author').textContent, '그레이스킨 게임즈');
   }
 });
 
@@ -336,4 +336,55 @@ test('커뮤니티 장식 화살표를 없애고 방향이 필요한 세 문구�
       assert.equal(ui.node('empty-link').textContent, label);
     }
   }
+});
+
+
+test('두 게임의 서버 새 소식은 고정 안내보다 앞에 표시하고 한국 날짜·말머리·운영자·상태를 제공함', async () => {
+  for (const game of ['gyeongguk', 'slimeline']) {
+    const notices = [{ id: '시험소식', game, board: 'notice', title: '개발 중인 새 소식', body: '시험 본문', category: 'devnote', cover: game === 'gyeongguk' ? 'tile-notice' : 'hero', status: 'applied', author: { name: '시험운영', isOperator: true }, createdAt: '2026-10-19T16:00:00Z' }];
+    for (const board of ['notice', 'free']) {
+      const ui = screen({ game, board, notices }); await flush();
+      const cards = board === 'notice' ? ui.node('post-list').children[0].children : ui.node('news-cards').children;
+      assert.equal(cards.length, 3);
+      assert.match(cards[0].href, /post=시험소식|post=%EC%8B%9C%ED%97%98%EC%86%8C%EC%8B%9D/);
+      assert.match(contents(cards[0]), /개발 노트2026-10-20개발 중인 새 소식시험운영운영자반영됨/);
+    }
+    const offline = screen({ game, board: 'notice', fail: ['/api/community/posts'] }); await flush();
+    assert.equal(offline.node('post-list').children[0].children.length, 3);
+    assert.match(contents(offline.node('post-list')), /공식 안내/);
+  }
+});
+
+test('새 소식 글쓰기는 운영자에게만 열리고 말머리·그림 선택을 제공하며 보상을 숨김', async () => {
+  for (const game of ['gyeongguk', 'slimeline']) {
+    for (const isOperator of [false, true]) {
+      const ui = screen({ game, board: 'notice', user: { ...member, isOperator } }); await flush();
+      assert.equal(ui.node('write-post').hidden, !isOperator);
+      ui.click('write-post');
+      assert.equal(ui.node('editor-dialog').open, isOperator);
+      assert.equal(ui.node('notice-fields').hidden, !isOperator);
+      assert.equal(ui.node('empty-reward').hidden, true);
+      if (isOperator) {
+        assert.equal(ui.node('notice-covers').children.length, game === 'gyeongguk' ? 8 : 3);
+        ui.node('post-category').value = 'event';
+        const chosen = ui.node('notice-covers').children[1].children[0]; chosen.checked = true; chosen.events.change();
+        ui.click('editor-cancel'); ui.click('write-post');
+        assert.equal(ui.node('post-category').value, 'event');
+        assert.equal(ui.node('notice-covers').children[1].children[0].checked, true);
+        await ui.click('signout-button'); await flush();
+        assert.equal(ui.node('post-category').value, '');
+        assert.equal(ui.node('notice-covers').children.length, 0);
+        assert.equal(ui.node('notice-fields').hidden, true);
+      }
+    }
+  }
+});
+
+test('화면 대표 그림·말머리·상태 계약은 서버와 일치하며 공개 작성자 ID를 참조하지 않음', async () => {
+  const { NOTICE_COVERS, NOTICE_CATEGORIES, POST_STATUSES } = await import('../server/community.js');
+  const contract = runInNewContext(source.slice(source.indexOf('  const NOTICE_CATEGORIES ='), source.indexOf('  const params =')) + '; ({ NOTICE_COVERS, NOTICE_CATEGORIES, POST_STATUSES })');
+  for (const game of ['gyeongguk', 'slimeline']) assert.deepEqual(Object.keys(contract.NOTICE_COVERS[game]), NOTICE_COVERS[game]);
+  assert.deepEqual(Object.keys(contract.NOTICE_CATEGORIES), NOTICE_CATEGORIES);
+  assert.deepEqual(Object.keys(contract.POST_STATUSES), POST_STATUSES);
+  assert.doesNotMatch(source, /author\??\.id/);
 });

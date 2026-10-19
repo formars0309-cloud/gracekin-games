@@ -70,6 +70,21 @@
       ]
     }
   };
+  const NOTICE_CATEGORIES = { devnote: '개발 노트', changes: '바뀐 점', event: '행사', guide: '안내' };
+  const POST_STATUSES = { checking: '확인 중', solved: '해결됨', applied: '반영됨' };
+  // 서버 NOTICE_COVERS와 같은 키만 사용한다. 타일 좌표는 기존 게시판과 같다.
+  const NOTICE_COVERS = {
+    gyeongguk: {
+      'tile-free': ['자유 이야기 그림', '/assets/gyeongguk/tiles.webp', '0% 0%'],
+      'tile-deck': ['덱 연구 그림', '/assets/gyeongguk/tiles.webp', '50% 0%'],
+      'tile-strategy': ['전략 이야기 그림', '/assets/gyeongguk/tiles.webp', '100% 0%'],
+      'tile-notice': ['새 소식 그림', '/assets/gyeongguk/tiles.webp', '0% 100%'],
+      'card-lubu': ['여포', '/assets/gyeongguk/card-lubu.webp'],
+      'card-diaochan': ['초선', '/assets/gyeongguk/card-diaochan.webp'],
+      'card-zhugeliang': ['제갈량', '/assets/gyeongguk/card-zhugeliang.webp']
+    },
+    slimeline: { tiles: ['슬라임 모음', '/assets/slimeline/tiles.webp'], hero: ['달빛 마을', '/assets/slimeline/hero.webp'] }
+  };
   const params = new URLSearchParams(location.search);
   const gameId = params.get('game');
   const game = Object.prototype.hasOwnProperty.call(GAMES, gameId) ? GAMES[gameId] : null;
@@ -98,23 +113,61 @@
   const query = (params.get('q') || '').slice(0, 80).trim();
   const pageNumber = Math.min(10000, Math.max(1, Number.parseInt(params.get('page'), 10) || 1));
   const requestedPost = params.get('post');
-  const state = { user: null, sessionVersion: 0, rewardEligibility: null, rewardPolicy: null, emptyKind: null, reportTarget: null, reportBusy: false, draftOwnerId: null, postBusy: false, commentBusy: false, confirmBusy: false, currentPost: null, editorKey: null, editorOriginal: { title: '', body: '' }, deleteAction: null, loadVersion: 0, commentDrafts: new Map() };
+  const state = { user: null, sessionVersion: 0, rewardEligibility: null, rewardPolicy: null, emptyKind: null, reportTarget: null, reportBusy: false, draftOwnerId: null, postBusy: false, commentBusy: false, confirmBusy: false, currentPost: null, editorKey: null, editorCover: '', editorOriginal: { title: '', body: '', category: '', cover: '' }, deleteAction: null, loadVersion: 0, commentDrafts: new Map() };
   const url = (board, post, search = query, page = 1) => { const next = new URLSearchParams({ game: gameId, board }); if (post) next.set('post', post); if (search) next.set('q', search); if (page > 1) next.set('page', page); return `/community/?${next}`; };
   // 기존 안내의 날짜는 최초 추가 커밋 946ddf3(2026-10-15) 기준이다.
   // 새 규칙 글은 공개 전이므로 date를 비워 두고 실제 공개 때 확정한다.
-  // 다음 단계의 서버 글도 같은 카드 형태로 변환해 이 함수에 합칠 수 있다.
+  const noticeDate = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+    return ['year', 'month', 'day'].map(type => parts.find(part => part.type === type).value).join('-');
+  };
   function newsItems(additionalItems = []) {
     const official = game.posts.map(post => ({ ...post, source: 'official', href: url('notice', post.id, '') }));
-    return [...additionalItems, ...official].filter(item => item.date)
-      .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+    const notices = [...additionalItems].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(post => ({ ...post, source: 'server', date: noticeDate(post.createdAt), href: url('notice', post.id, '') }));
+    return [...notices, ...official].filter(item => item.date).slice(0, 3);
+  }
+  function coverArt(key) {
+    const cover = NOTICE_COVERS[gameId][key] || ['게임 기본 그림', `/assets/${gameId}/hero.webp`];
+    const frame = make('span', null, 'notice-cover');
+    const image = make('img'); image.src = cover[1]; image.alt = ''; image.loading = 'lazy';
+    if (cover[2]) { frame.classList.add('notice-tile'); image.style.left = `${-2 * parseFloat(cover[2])}%`; image.style.top = cover[2].endsWith('100%') ? '-100%' : '0'; }
+    frame.append(image); return frame;
+  }
+  const categoryLabel = post => NOTICE_CATEGORIES[post.category] || '새 소식';
+  function appendAuthor(target, author) {
+    target.append(make('span', author.name, 'author-name'));
+    if (author.isOperator) target.append(make('span', '운영자', 'operator-badge'));
+  }
+  function appendStatus(target, post) {
+    if (POST_STATUSES[post.status]) target.append(make('span', POST_STATUSES[post.status], 'post-badge status-badge'));
   }
   function newsCard(item) {
     const card = make('a', null, 'news-card'); card.href = item.href;
-    const cover = make('img'); cover.src = item.cover; cover.alt = ''; cover.width = 360; cover.height = 180; cover.loading = 'lazy';
+    let cover;
+    if (item.source === 'server') cover = coverArt(item.cover);
+    else { cover = make('img'); cover.src = item.cover; cover.alt = ''; cover.width = 360; cover.height = 180; cover.loading = 'lazy'; }
     const copy = make('div', null, 'news-card-copy');
     const date = make('time', item.date); date.dateTime = item.date;
-    copy.append(make('span', '공식 안내', 'post-badge'), date, make('h3', item.title));
+    copy.append(make('span', item.source === 'official' ? '공식 안내' : categoryLabel(item), 'post-badge'), date, make('h3', item.title));
+    if (item.source === 'server') { const author = make('div', null, 'news-author'); appendAuthor(author, item.author); copy.append(author); appendStatus(copy, item); }
     card.append(cover, copy); return card;
+  }
+  function renderRecentNews(posts = []) {
+    const cards = byId('news-cards'); cards.replaceChildren();
+    const items = newsItems(posts);
+    byId('latest-news').hidden = boardId === 'notice' || !!requestedPost || !items.length;
+    if (!byId('latest-news').hidden) for (const item of items) cards.append(newsCard(item));
+  }
+  async function loadRecentNews() {
+    if (boardId === 'notice' || requestedPost) return;
+    try {
+      const data = await request(`/community/posts?${new URLSearchParams({ game: gameId, board: 'notice' })}`, { background: true });
+      if (!Array.isArray(data.posts)) throw new Error('새 소식 형식 오류');
+      for (const post of data.posts) validatePost(post, 'notice');
+      renderRecentNews(data.posts);
+    } catch (_) { renderRecentNews(); }
   }
   const message = (id, text) => { byId(id).textContent = text || ''; byId(id).hidden = !text; };
   const errorText = error => error && error.message ? error.message : '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.';
@@ -164,7 +217,7 @@
   const reportSubmit = make('button', '신고 접수', 'primary-button'); reportSubmit.type = 'submit'; reportForm.append(reportHeading, make('p', '신고는 운영자만 확인해요. 비밀번호·인증 코드와 불필요한 개인정보는 적지 마세요.', 'dialog-description'), reasonField, detailField, reportResult, reportSubmit); reportDialog.append(reportForm); document.body.append(reportDialog);
   reportDialog.addEventListener('cancel', event => { if (state.reportBusy) event.preventDefault(); });
   function reportButton(type, item) {
-    if (!state.user?.canWriteCommunity || item.author.id === state.user.id) return null;
+    if (!state.user?.canWriteCommunity || item.canEdit) return null;
     const button = make('button', '신고', 'quiet-button report-button'); button.type = 'button'; button.addEventListener('click', () => { state.reportTarget = { targetType: type, targetId: item.id }; reportDescription.value = ''; reportResult.hidden = true; reportSubmit.hidden = false; reportTitle.textContent = type === 'post' ? '글 신고' : '댓글 신고'; reportDialog.showModal(); reasonSelect.focus(); }); return button;
   }
   reportForm.addEventListener('submit', async event => {
@@ -175,8 +228,8 @@
     finally { state.reportBusy = false; busy(reportForm, false); reasonSelect.disabled = false; }
   });
   const send = (path, method, data) => request(path, { method, body: JSON.stringify(data || {}) });
-  const formatDate = value => { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date); };
-  function busy(form, value) { for (const control of form.querySelectorAll('button,input,textarea')) control.disabled = value; form.setAttribute('aria-busy', String(value)); }
+  const formatDate = value => { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' }).format(date); };
+  function busy(form, value) { for (const control of form.querySelectorAll('button,input,textarea,select')) control.disabled = value; form.setAttribute('aria-busy', String(value)); }
   function openDialog(id) { const dialog = byId(id); if (!dialog.open) dialog.showModal(); }
   function renderSession() {
     byId('member-bar').hidden = !!state.user;
@@ -187,12 +240,13 @@
     byId('comment-form').hidden = !state.user?.canWriteCommunity;
     byId('comment-restricted').hidden = !state.user || !!state.user.canWriteCommunity;
     byId('account-permission').hidden = !state.user || !!state.user.canWriteCommunity;
-    byId('write-post').hidden = boardId === 'notice' || !!(state.user && !state.user.canWriteCommunity);
+    byId('write-post').hidden = boardId === 'notice' ? !state.user?.isOperator : !!(state.user && !state.user.canWriteCommunity);
+    renderStatusControl();
     byId('comment-login').hidden = !!state.user;
     renderEmptyAudience();
   }
   function clearDrafts() {
-    state.editorKey = null; state.editorOriginal = { title: '', body: '' }; state.commentDrafts.clear();
+    state.editorKey = null; state.editorOriginal = { title: '', body: '', category: '', cover: '' }; state.editorCover = ''; byId('post-category').value = ''; byId('notice-fields').hidden = true; byId('notice-covers').replaceChildren(); state.commentDrafts.clear();
     byId('post-title').value = ''; byId('post-body').value = ''; byId('comment-body').value = '';
     message('editor-error', ''); message('comment-error', '');
     if (byId('editor-dialog').open) byId('editor-dialog').close();
@@ -313,11 +367,7 @@
     if (label === '게임 시작') link.setAttribute('data-umami-event', `play-${gameId}`);
     link.append(icon, make('span', label)); byId('quick-links').append(link);
   }
-  const recentNews = newsItems();
-  if (boardId !== 'notice' && !requestedPost && recentNews.length) {
-    byId('latest-news').hidden = false;
-    for (const item of recentNews) byId('news-cards').append(newsCard(item));
-  }
+  renderRecentNews();
   for (const id of ['notice', ...Object.keys(game.boards).filter(id => id !== 'notice')]) {
     const [label] = game.boards[id];
     const tab = make('a'); tab.append(gameId === 'slimeline' ? boardIcon(id) : boardTile(id)); tab.append(make('span', label)); tab.href = url(id, null, ''); if (id === boardId) tab.setAttribute('aria-current', 'page'); byId('board-tabs').append(tab);
@@ -338,7 +388,7 @@
   byId('board-help').textContent = '';
   byId('search-form').addEventListener('submit', event => { event.preventDefault(); location.href = url(boardId, null, byId('search-input').value.trim()); });
   byId('back-to-board').href = url(boardId, null, query, pageNumber);
-  byId('retry-connection').addEventListener('click', async () => { byId('retry-connection').disabled = true; try { await Promise.all([loadSession(), loadCurrent(), loadGuidance()]); } finally { byId('retry-connection').disabled = false; } });
+  byId('retry-connection').addEventListener('click', async () => { byId('retry-connection').disabled = true; try { await Promise.all([loadSession(), loadCurrent(), loadGuidance(), loadRecentNews()]); } finally { byId('retry-connection').disabled = false; } });
   function boardTile(id) {
     const tile = make('span', null, `board-tile tile-${id}`);
     tile.setAttribute('aria-hidden', 'true');
@@ -365,6 +415,7 @@
   }
   function rewardText(kind) {
     const activity = rewardActivity();
+    if (kind === 'post' && boardId === 'notice') return '';
     if (!activity || !state.user?.canWriteCommunity || state.rewardEligibility !== 'eligible') return '';
     return `${kind === 'post' ? '글을 쓰면' : '댓글을 쓰면'} ${number(activity.confirmationDelayMs / 3600000)}시간 뒤 ${number(activity[kind].amount)} 그레인이 적립돼요.`;
   }
@@ -406,7 +457,7 @@
       }
     }
     byId('empty-actions').hidden = !isBoardEmpty;
-    byId('empty-write').hidden = !isBoardEmpty || boardId === 'notice' || !state.user?.canWriteCommunity;
+    byId('empty-write').hidden = !isBoardEmpty || (boardId === 'notice' && !state.user?.isOperator) || !state.user?.canWriteCommunity;
     byId('empty-signin').hidden = !isBoardEmpty || !!state.user;
     byId('empty-signup').hidden = !isBoardEmpty || !!state.user;
     const reward = isBoardEmpty && boardId !== 'notice' ? rewardText('post') : '';
@@ -440,15 +491,17 @@
 
   function row(item, official = false) {
     const link = make('a', null, 'post-row'); link.href = url(boardId, item.id, query, pageNumber);
-    const meta = make('div', null, 'post-meta'); meta.append(make('span', official ? '공식 안내' : boardTitle, 'post-badge'), make('span', official ? '그레이스킨 게임즈' : item.author.name));
-    if (official) { const date = make(item.date ? 'time' : 'span', item.date || '공개 전 초안'); if (item.date) date.dateTime = item.date; meta.append(date); }
+    const meta = make('div', null, 'post-meta'); meta.append(make('span', official ? '공식 안내' : boardId === 'notice' ? categoryLabel(item) : boardTitle, 'post-badge'));
+    if (official) meta.append(make('span', '그레이스킨 게임즈'));
+    else { appendAuthor(meta, item.author); appendStatus(meta, item); }
+    if (official) { if (item.date) { const date = make('time', item.date); date.dateTime = item.date; meta.append(date); } }
     else meta.append(make('span', formatDate(item.createdAt)));
     link.append(meta, make('h3', item.title), make('p', official ? item.excerpt : item.body.replace(/\s+/g, ' ').slice(0, 160)));
     if (!official) link.append(make('span', `댓글 ${item.commentCount || 0}`, 'comment-count'));
     return link;
   }
   function validatePost(post, expectedBoard = boardId) {
-    if (!post || post.game !== gameId || post.board !== expectedBoard || expectedBoard === 'notice' || !game.boards[post.board] || !post.author || typeof post.title !== 'string' || typeof post.body !== 'string') throw new Error('이 게시판의 글을 찾을 수 없어요. 목록으로 돌아가 주세요.');
+    if (!post || post.game !== gameId || post.board !== expectedBoard || !game.boards[post.board] || !post.author || typeof post.title !== 'string' || typeof post.body !== 'string') throw new Error('이 게시판의 글을 찾을 수 없어요. 목록으로 돌아가 주세요.');
   }
   function pagination(data) {
     const nav = byId('pagination'); nav.replaceChildren();
@@ -463,7 +516,7 @@
   function showOfficial(post) {
     document.title = `${post.title} · ${game.name} 커뮤니티`;
     byId('board-view').hidden = true; byId('article-view').hidden = false;
-    byId('article-title').textContent = post.title; byId('article-badge').textContent = '공식 안내'; byId('article-author').textContent = `그레이스킨 게임즈 · ${post.date || '공개 전 초안'}`;
+    byId('article-title').textContent = post.title; byId('article-badge').textContent = '공식 안내'; byId('article-author').textContent = `그레이스킨 게임즈${post.date ? ` · ${post.date}` : ''}`;
     for (const [heading, body] of post.sections) {
       byId('article-body').append(make('h3', heading));
       if (Array.isArray(body)) { const list = make('ul'); for (const text of body) list.append(make('li', text)); byId('article-body').append(list); }
@@ -481,26 +534,10 @@
     byId('post-list').replaceChildren(); byId('pagination').hidden = true; byId('empty-state').hidden = true;
     byId('article-body').replaceChildren(); byId('post-owner-actions').hidden = true; byId('comments-section').hidden = true; byId('article-actions').hidden = false;
     document.querySelectorAll('.post-report-button').forEach(node => node.remove());
-    state.currentPost = null; message('article-status', '');
-    if (boardId === 'notice') {
+    state.currentPost = null; message('article-status', ''); byId('article-state-badge').replaceChildren(); byId('article-cover').hidden = true; renderStatusControl();
+    if (boardId === 'notice' && requestedPost) {
       const post = game.posts.find(item => item.id === requestedPost);
       if (post) { showOfficial(post); return; }
-      byId('board-view').hidden = false; byId('article-view').hidden = true;
-      document.title = `${boardTitle} · ${game.name} 커뮤니티`;
-      if (requestedPost) { empty('이 안내를 찾을 수 없어요', '공식 안내 목록에서 찾으시는 내용을 확인해 주세요.'); return; }
-      const needle = query.toLocaleLowerCase('ko');
-      const posts = game.posts.filter(item => [item.title, item.excerpt, ...item.sections.flat()].join(' ').toLocaleLowerCase('ko').includes(needle));
-      byId('result-count').textContent = query ? `검색 결과 ${posts.length}개` : `공식 안내 ${posts.length}개`;
-      // 새 소식 탭은 같은 글을 카드와 목록에 중복으로 놓지 않는다. 검색은 전체 글을 대상으로 한다.
-      const cards = make('div', null, 'news-cards'); cards.tabIndex = 0; cards.setAttribute('role', 'region'); cards.setAttribute('aria-label', '최근 새 소식 카드, 가로로 넘겨 보기');
-      if (!query) for (const item of recentNews) cards.append(newsCard(item));
-      if (cards.children.length) byId('post-list').append(cards);
-      for (const item of posts) if (query || !recentNews.some(news => news.id === item.id)) byId('post-list').append(row(item, true));
-      if (!posts.length) {
-        if (!query && gameId === 'gyeongguk') emptyBoard();
-        else empty('검색 결과가 없어요', '다른 검색어를 입력하거나 공식 안내를 살펴보세요.');
-      }
-      return;
     }
     byId('list-status').hidden = false; byId('board-view').hidden = false; byId('article-view').hidden = true;
     document.title = `${boardTitle} · ${game.name} 커뮤니티`;
@@ -516,10 +553,14 @@
         const data = await request(`/community/posts?${search}`);
         if (version !== state.loadVersion) return;
         if (!Array.isArray(data.posts) || !Number.isFinite(data.total) || !(data.pageSize > 0)) throw new Error('글 목록을 확인할 수 없어요. 다시 시도해 주세요.');
-        for (const item of data.posts) { validatePost(item); byId('post-list').append(row(item)); }
-        byId('result-count').textContent = query ? `검색 결과 ${data.total}개` : `글 ${data.total}개`;
+        for (const item of data.posts) validatePost(item);
+        if (boardId === 'notice') { renderNoticeList(data.posts, data.total); }
+        else {
+          for (const item of data.posts) byId('post-list').append(row(item));
+          byId('result-count').textContent = query ? `검색 결과 ${data.total}개` : `글 ${data.total}개`;
+        }
         pagination(data);
-        if (!data.posts.length) {
+        if (!data.posts.length && boardId !== 'notice') {
           if (query) empty('검색 결과가 없어요', '다른 검색어를 입력하거나 게시판 목록을 확인해 보세요.', url(boardId, null, ''), '검색 지우고 목록 보기');
           else if (data.total === 0) emptyBoard();
           else empty('이 페이지에는 글이 없어요', '앞 페이지에서 이야기를 확인해 주세요.', url(boardId, null, '', 1), '첫 페이지 보기');
@@ -527,16 +568,51 @@
       }
     } catch (error) {
       if (version !== state.loadVersion) return;
+      if (boardId === 'notice' && !requestedPost) { renderNoticeList([], 0); return; }
       byId('result-count').textContent = '';
       empty(requestedPost ? '글을 열 수 없어요' : '이야기를 불러오지 못했어요', errorText(error));
     } finally { if (version === state.loadVersion) byId('list-status').hidden = true; }
   }
+  function renderNoticeList(posts, total) {
+    const needle = query.toLocaleLowerCase('ko');
+    const official = game.posts.filter(item => [item.title, item.excerpt, ...item.sections.flat()].join(' ').toLocaleLowerCase('ko').includes(needle));
+    const recent = !query && pageNumber === 1 ? newsItems(posts) : [];
+    const cards = make('div', null, 'news-cards'); cards.tabIndex = 0; cards.setAttribute('role', 'region'); cards.setAttribute('aria-label', '최근 새 소식 카드, 가로로 넘겨 보기');
+    for (const item of recent) cards.append(newsCard(item));
+    if (cards.children.length) byId('post-list').append(cards);
+    for (const item of [...posts].sort((a, b) => b.createdAt.localeCompare(a.createdAt))) if (!recent.some(news => news.source === 'server' && news.id === item.id)) byId('post-list').append(row(item));
+    for (const item of official) if (!recent.some(news => news.source === 'official' && news.id === item.id)) byId('post-list').append(row(item, true));
+    byId('result-count').textContent = query ? `검색 결과 ${total + official.length}개` : `새 소식 ${total}개 · 공식 안내 ${game.posts.length}개`;
+    if (!total && !official.length) {
+      if (!query) emptyBoard();
+      else empty('검색 결과가 없어요', '다른 검색어를 입력하거나 공식 안내를 살펴보세요.');
+    }
+  }
+  function renderStatusControl() {
+    byId('post-status-form').hidden = !state.currentPost || !state.user?.isOperator;
+    if (state.currentPost) byId('post-status-select').value = state.currentPost.status || '';
+  }
+  byId('post-status-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!state.currentPost || !state.user?.isOperator || state.statusBusy) return;
+    state.statusBusy = true; busy(byId('post-status-form'), true); message('article-status', '');
+    try {
+      const data = await send(`/community/posts/${encodeURIComponent(state.currentPost.id)}/status?game=${gameId}`, 'PATCH', { status: byId('post-status-select').value || null });
+      validatePost(data.post); state.currentPost = data.post;
+      byId('article-state-badge').replaceChildren(); appendStatus(byId('article-state-badge'), data.post);
+      renderStatusControl(); message('article-status', '처리 상태를 저장했어요.');
+    } catch (error) { message('article-status', errorText(error)); }
+    finally { state.statusBusy = false; busy(byId('post-status-form'), false); }
+  });
   function showMemberPost(post, comments) {
     state.currentPost = post; state.comments = comments;
     document.title = `${post.title} · ${game.name} 커뮤니티`;
     byId('board-view').hidden = true; byId('article-view').hidden = false;
-    byId('article-title').textContent = post.title; byId('article-badge').textContent = boardTitle;
-    byId('article-author').textContent = `${post.author.name} · ${formatDate(post.createdAt)}${post.updatedAt !== post.createdAt ? ' · 수정됨' : ''}`;
+    byId('article-title').textContent = post.title; byId('article-badge').textContent = boardId === 'notice' ? categoryLabel(post) : boardTitle;
+    appendStatus(byId('article-state-badge'), post);
+    if (boardId === 'notice') { byId('article-cover').replaceChildren(coverArt(post.cover)); byId('article-cover').hidden = false; }
+    byId('article-author').replaceChildren(); appendAuthor(byId('article-author'), post.author);
+    byId('article-author').append(make('span', ` · ${formatDate(post.createdAt)}${post.updatedAt !== post.createdAt ? ' · 수정됨' : ''}`));
     byId('article-body').append(make('p', post.body, 'member-body'));
     byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && post.canEdit);
     byId('comments-section').hidden = false;
@@ -549,7 +625,7 @@
     comments.forEach((comment, index) => {
       if (String(comment.postId) !== String(state.currentPost.id) || !comment.author || typeof comment.body !== 'string') return;
       const card = make('article', null, 'comment-card');
-      const meta = make('p', null, 'comment-meta'); meta.append(make('strong', comment.author.name), make('span', `${formatDate(comment.createdAt)}${comment.updatedAt !== comment.createdAt ? ' · 수정됨' : ''}`)); card.append(meta);
+      const meta = make('p', null, 'comment-meta'); appendAuthor(meta, comment.author); meta.append(make('span', `${formatDate(comment.createdAt)}${comment.updatedAt !== comment.createdAt ? ' · 수정됨' : ''}`)); card.append(meta);
       const draft = state.commentDrafts.get(comment.id);
       if (draft && draft.editing && state.user?.canWriteCommunity && comment.canEdit) {
         const form = make('form', null, 'comment-edit-form');
@@ -581,15 +657,27 @@
       list.append(card);
     });
   }
+  function renderCoverChoices() {
+    const choices = byId('notice-covers'); choices.replaceChildren();
+    for (const [key, label] of [['', '게임 기본 그림'], ...Object.entries(NOTICE_COVERS[gameId]).map(([key, cover]) => [key, cover[0]])]) {
+      const option = make('label', null, 'cover-choice');
+      const radio = make('input'); radio.type = 'radio'; radio.name = 'cover'; radio.value = key; radio.checked = state.editorCover === key;
+      radio.addEventListener('change', () => { if (radio.checked) state.editorCover = key; });
+      option.append(radio, coverArt(key), make('span', label)); choices.append(option);
+    }
+  }
   function openEditor(post = null) {
     if (!state.user) { showAuth(); return; }
-    if (!state.user.canWriteCommunity) return;
+    if (!state.user.canWriteCommunity || (boardId === 'notice' && !state.user.isOperator)) return;
     const key = post ? `post:${post.id}` : `new:${boardId}`;
     if (state.editorKey !== key) {
       state.editorKey = key;
-      state.editorOriginal = { title: post ? post.title : '', body: post ? post.body : '' };
+      state.editorOriginal = { title: post ? post.title : '', body: post ? post.body : '', category: post?.category || '', cover: post?.cover || '' };
+      byId('post-category').value = state.editorOriginal.category; state.editorCover = state.editorOriginal.cover;
       byId('post-title').value = state.editorOriginal.title; byId('post-body').value = state.editorOriginal.body;
     }
+    byId('notice-fields').hidden = boardId !== 'notice';
+    if (boardId === 'notice') renderCoverChoices();
     byId('editor-title').textContent = post ? '글 수정' : '글쓰기'; byId('post-submit').textContent = post ? '저장' : '등록';
     byId('editor-board').textContent = `${game.name} · ${boardTitle} · ${state.user.name}`;
     message('editor-error', ''); openDialog('editor-dialog'); byId('post-title').focus();
@@ -605,15 +693,17 @@
     if (title.length < 2 || title.length > 100 || !body || body.length > 10000) { message('editor-error', '제목은 2~100자, 내용은 1~10,000자로 입력해 주세요.'); return; }
     if (!state.user) { message('editor-error', '로그인이 필요해요. 입력한 내용은 남아 있어요.'); showAuth(); return; }
     if (!state.user.canWriteCommunity) { message('editor-error', '이 계정은 커뮤니티를 읽기만 이용할 수 있어요.'); return; }
+    if (boardId === 'notice' && !state.user.isOperator) { message('editor-error', '새 소식은 운영자만 작성할 수 있어요.'); return; }
     state.postBusy = true; busy(byId('post-form'), true); message('editor-error', '');
     try {
       const editing = state.editorKey.startsWith('post:');
-      const data = editing ? await send(`/community/posts/${encodeURIComponent(state.editorKey.slice(5))}`, 'PATCH', { title, body }) : await send('/community/posts', 'POST', { game: gameId, board: boardId, title, body });
+      const fields = { title, body, ...(boardId === 'notice' ? { category: byId('post-category').value || null, cover: state.editorCover || null } : {}) };
+      const data = editing ? await send(`/community/posts/${encodeURIComponent(state.editorKey.slice(5))}`, 'PATCH', fields) : await send('/community/posts', 'POST', { game: gameId, board: boardId, ...fields });
       validatePost(data.post);
-      state.editorOriginal = { title, body }; byId('post-title').value = title; byId('post-body').value = body;
+      state.editorOriginal = { title, body, category: byId('post-category').value, cover: state.editorCover }; byId('post-title').value = title; byId('post-body').value = body;
       byId('editor-dialog').close();
       state.commentDrafts.clear();
-      if (!editing && data.reward?.pending) { showReward(`글이 등록됐어요. ${rewardText('post') || '계정 페이지에서 보상 내역을 확인해 주세요.'}`); await new Promise(resolve => setTimeout(resolve, 2000)); }
+      if (!editing && boardId !== 'notice' && data.reward?.pending) { showReward(`글이 등록됐어요. ${rewardText('post') || '계정 페이지에서 보상 내역을 확인해 주세요.'}`); await new Promise(resolve => setTimeout(resolve, 2000)); }
       location.href = url(boardId, data.post.id, '', 1);
     } catch (error) { message('editor-error', errorText(error)); }
     finally { state.postBusy = false; busy(byId('post-form'), false); }
@@ -624,7 +714,7 @@
   byId('delete-post').addEventListener('click', () => {
     if (!state.currentPost) return;
     const id = state.currentPost.id;
-    confirmDelete('이 글을 삭제할까요?', async () => { await send(`/community/posts/${encodeURIComponent(id)}`, 'DELETE'); state.editorOriginal = { title: byId('post-title').value, body: byId('post-body').value }; state.commentDrafts.clear(); byId('comment-body').value = ''; location.href = url(boardId, null, '', 1); });
+    confirmDelete('이 글을 삭제할까요?', async () => { await send(`/community/posts/${encodeURIComponent(id)}`, 'DELETE'); state.editorKey = null; state.commentDrafts.clear(); byId('comment-body').value = ''; location.href = url(boardId, null, '', 1); });
   });
   byId('confirm-cancel').addEventListener('click', () => byId('confirm-dialog').close());
   byId('confirm-dialog').addEventListener('cancel', event => { if (state.confirmBusy) event.preventDefault(); });
@@ -647,10 +737,10 @@
     finally { state.commentBusy = false; busy(byId('comment-form'), false); }
   });
   window.addEventListener('beforeunload', event => {
-    const dirtyPost = state.editorKey && (byId('post-title').value !== state.editorOriginal.title || byId('post-body').value !== state.editorOriginal.body);
+    const dirtyPost = state.editorKey && (byId('post-title').value !== state.editorOriginal.title || byId('post-body').value !== state.editorOriginal.body || (boardId === 'notice' && (byId('post-category').value !== state.editorOriginal.category || state.editorCover !== state.editorOriginal.cover)));
     const dirtyComment = byId('comment-body').value.trim() || [...state.commentDrafts.values()].some(item => item.body !== item.original);
     if (dirtyPost || dirtyComment) { event.preventDefault(); event.returnValue = ''; }
   });
-  async function start() { await Promise.all([loadSession(), loadCurrent(), loadGuidance()]); if (state.currentPost) { byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && state.currentPost.canEdit); renderComments(state.comments); if (!document.querySelector('.post-report-button')) { const report = reportButton('post', state.currentPost); if (report) { report.classList.add('post-report-button'); byId('article-actions').append(report); } } } }
+  async function start() { await Promise.all([loadSession(), loadCurrent(), loadGuidance(), loadRecentNews()]); if (state.currentPost) { byId('post-owner-actions').hidden = !(state.user?.canWriteCommunity && state.currentPost.canEdit); renderComments(state.comments); if (!document.querySelector('.post-report-button')) { const report = reportButton('post', state.currentPost); if (report) { report.classList.add('post-report-button'); byId('article-actions').append(report); } } } }
   start();
 })();

@@ -201,3 +201,33 @@ textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outl
   .news-card>img{height:140px}
   .latest-news{margin-bottom:26px}
 }
+
+/* 말머리·운영자·처리 상태는 각 게임의 본문 강조색을 공유한다. */
+.operator-badge{display:inline-block;border:1px solid var(--accent);border-radius:6px;padding:1px 6px;color:var(--accent-strong);font-size:12px;line-height:1.7;white-space:nowrap}
+.news-author,.article-author{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.news-author{margin-top:10px;font-size:13px;color:var(--muted)}
+.status-badge{display:inline-block;margin:4px 0;color:var(--accent-strong);border:1px solid var(--accent);background:var(--surface-soft)}
+.article-state-badge:empty{display:none}
+.notice-cover{display:block;position:relative;overflow:hidden;background:var(--surface-soft);aspect-ratio:2/1}
+.notice-cover>img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 25%}
+.notice-tile>img{position:absolute;max-width:none;width:300%;height:200%;object-fit:fill}
+.news-card>.notice-cover{width:100%;height:125px;flex:none}
+.article-cover{margin:24px 0;max-width:640px}
+.post-status-form{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:20px 0}
+.post-status-form label{font-size:13px}
+.post-status-form select{min-height:44px;max-width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}
+.cover-fieldset{min-width:0;border:0;padding:0;margin:20px 0 0}
+.cover-fieldset legend{font-size:14px;margin-bottom:12px}
+.notice-covers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.cover-choice{position:relative;display:flex;flex-direction:column;gap:8px;padding:8px;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;overflow-wrap:anywhere}
+.cover-choice>input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+.cover-choice:has(input:checked){border-color:var(--accent);background:var(--surface-soft)}
+.cover-choice:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:3px}
+.cover-choice .notice-cover{border-radius:5px}
+:root[data-game=gyeongguk] :is(.cover-choice,.cover-choice .notice-cover,.operator-badge,.post-status-form select){border-radius:2px}
+:root[data-game=slimeline] .editor-dialog{border-radius:20px}
+:root[data-game=gyeongguk] .editor-dialog{border-radius:2px}
+@media(max-width:650px){.notice-covers{grid-template-columns:repeat(2,minmax(0,1fr))}.news-card>.notice-cover{height:140px}.post-status-form select{font-size:16px}}
+
+.post-meta>span,.comment-meta>span,.article-author>span,.news-author>span{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.comment-meta .author-name{color:var(--ink);font-weight:600}
