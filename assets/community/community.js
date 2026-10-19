@@ -245,12 +245,17 @@
   byId('article-home').href = studioPath(game.home);
   byId('article-feedback').href = FEEDBACK_URL;
   byId('connection-notice').href = url('notice', null, '');
-  for (const [id, [label]] of Object.entries(game.boards)) {
+  for (const id of ['notice', ...Object.keys(game.boards).filter(id => id !== 'notice')]) {
+    const [label] = game.boards[id];
     const tab = make('a'); tab.append(gameId === 'slimeline' ? boardIcon(id) : boardTile(id)); tab.append(make('span', label)); tab.href = url(id, null, ''); if (id === boardId) tab.setAttribute('aria-current', 'page'); byId('board-tabs').append(tab);
   }
-  // 선택한 게시판이 가로 스크롤 영역 밖에 가려지지 않도록 가로 위치만 맞춘다.
-  const activeTab = byId('board-tabs').querySelector('[aria-current="page"]');
-  if (activeTab) byId('board-tabs').scrollLeft = Math.max(0, activeTab.offsetLeft - byId('board-tabs').offsetLeft - 8);
+  // 이미 보이는 탭은 움직이지 않고, 오른쪽에 가려진 선택 탭만 안쪽으로 옮긴다.
+  const boardTabs = byId('board-tabs');
+  const activeTab = boardTabs.querySelector('[aria-current="page"]');
+  if (activeTab) {
+    const rightEdge = activeTab.offsetLeft - boardTabs.offsetLeft + activeTab.offsetWidth;
+    if (rightEdge > boardTabs.clientWidth) boardTabs.scrollLeft = rightEdge - boardTabs.clientWidth + 8;
+  }
   const [boardTitle, boardDescription] = game.boards[boardId];
   byId('board-title').textContent = boardTitle;
   byId('board-description').textContent = boardDescription;

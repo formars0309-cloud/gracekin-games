@@ -53,12 +53,16 @@ function screen({ game = 'slimeline', board = 'free', query = '', user = null, e
 }
 
 test('게임별 이름·탭 그림·첫 화면을 분리하고 기존 게시판 주소를 보존함', async () => {
-  for (const [game, expected] of [['slimeline', ['자유 이야기', '공략 나누기', '작품 자랑', '새 소식']], ['gyeongguk', ['자유 게시판', '덱 연구', '전략 이야기', '새 소식']]]) {
+  for (const [game, expected] of [['slimeline', ['새 소식', '자유 이야기', '공략 나누기', '작품 자랑']], ['gyeongguk', ['새 소식', '자유 게시판', '덱 연구', '전략 이야기']]]) {
     const ui = screen({ game }); await flush();
     assert.deepEqual(ui.node('board-tabs').children.map(tab => contents(tab)), expected);
     const tabs = ui.node('board-tabs').children;
-    assert.equal(tabs[0].href, `/community/?game=${game}&board=free`);
-    assert.equal(tabs[0].attributes['aria-current'], 'page');
+    assert.equal(tabs[0].href, `/community/?game=${game}&board=notice`);
+    assert.equal(tabs[1].href, `/community/?game=${game}&board=free`);
+    assert.equal(tabs[1].attributes['aria-current'], 'page');
+    const initial = screen({ game, board: '' }); await flush();
+    assert.equal(initial.node('board-tabs').children[0].attributes['aria-current'], 'page');
+    assert.equal(initial.node('board-title').textContent, '새 소식');
     assert.equal(tabs[0].children[0].attributes['aria-hidden'], 'true');
     assert.equal(ui.node('game-title').hidden, false);
     assert.equal(ui.node('game-title').src, `/assets/${game}/title.png`);
