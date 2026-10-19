@@ -119,7 +119,7 @@ test('커뮤니티 HTTP: 생성 예정 안내·계정 예정 목록·재시작 �
   assert.deepEqual(Object.keys(pending.pending[0]).sort(), ['amount','confirmsAt','createdAt','eventId','targetId','targetType']);
   assert.equal(pending.pending[0].eventId, `community-post:${response.body.post.id}`);
   const session = (await f.req('/api/community/session', { cookie })).body.user;
-  assert.deepEqual(Object.keys(session).sort(), ['canWriteCommunity','id','name']); assert.equal(session.id, id);
+  assert.deepEqual(Object.keys(session).sort(), ['canWriteCommunity','id','isOperator','name']); assert.equal(session.id, id);
   f.setTime(f.time() + 86400000); await f.restart();
   const confirmed = (await wallet(f, cookie)).body;
   assert.equal(confirmed.pendingTotal, 0); assert.equal(confirmed.balance, 30500);

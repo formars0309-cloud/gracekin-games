@@ -108,8 +108,8 @@ export function createGrainAdmin(db, auth, { rewards, now = Date.now, adminUserI
     return { table, row };
   }
   function contentData(type, row) {
-    return { id: row.id, ...(type === 'post' ? { game: row.game, board: row.board, title: row.title } : { postId: row.postId }), body: row.body,
-      author: { id: row.authorId, name: db.prepare('SELECT name FROM user WHERE id=?').get(row.authorId)?.name }, hiddenAt: iso(row.hiddenAt), createdAt: row.createdAt, updatedAt: row.updatedAt };
+    return { id: row.id, ...(type === 'post' ? { game: row.game, board: row.board, category: row.category, cover: row.cover, status: row.status, title: row.title } : { postId: row.postId }), body: row.body,
+      author: { name: db.prepare('SELECT name FROM user WHERE id=?').get(row.authorId)?.name, isOperator: isAdmin({ id: row.authorId }) }, hiddenAt: iso(row.hiddenAt), createdAt: row.createdAt, updatedAt: row.updatedAt };
   }
   function setHidden(actor, type, id, hidden, reason, reportId = null) {
     const { table, row } = content(type, id);
