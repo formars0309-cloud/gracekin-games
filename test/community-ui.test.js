@@ -254,3 +254,27 @@ test('공용 호스트 스크립트는 관리자·제보 페이지의 문서 테
     assert.equal(window.gracekinCommunityRedirecting, false);
   }
 });
+
+
+test('커뮤니티 장식 화살표를 없애고 방향이 필요한 세 문구만 보존함', async () => {
+  const html = await readFile(new URL('../community/index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../assets/community/community.css', import.meta.url), 'utf8');
+  const subpages = await Promise.all(['bug-report', 'terms', 'privacy'].map(path => readFile(new URL(`../community/${path}/index.html`, import.meta.url), 'utf8')));
+  const allowed = ['← 이전', '다음 →', '← 목록으로'];
+  let remaining = [html, source, ...subpages].join('\n');
+  for (const label of allowed) {
+    assert.ok(remaining.includes(label));
+    remaining = remaining.replaceAll(label, '');
+  }
+  assert.doesNotMatch(remaining, /[↗→＋←]/);
+  assert.doesNotMatch(source + css, /post-arrow/);
+  for (const game of ['slimeline', 'gyeongguk']) {
+    const official = screen({ game, board: 'notice' }); await flush();
+    assert.equal(official.node('post-list').children.length, 3);
+    assert.doesNotMatch(contents(official.node('post-list')), /[↗→＋←]/);
+    for (const [options, label] of [[{}, '새 소식 보기'], [{ query: '없는말' }, '검색 지우고 목록 보기'], [{ total: 21 }, '첫 페이지 보기'], [{ fail: ['/api/community/posts'] }, '공식 안내 보기']]) {
+      const ui = screen({ game, ...options }); await flush();
+      assert.equal(ui.node('empty-link').textContent, label);
+    }
+  }
+});

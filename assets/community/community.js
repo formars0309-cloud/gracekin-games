@@ -339,7 +339,7 @@
   byId('empty-write').addEventListener('click', () => openEditor());
   byId('empty-signin').addEventListener('click', () => showAuth());
   byId('empty-signup').addEventListener('click', () => showAuth('signup'));
-  function empty(title, description, href = url('notice', null, ''), label = '공식 안내 보기 →', kind = 'other') {
+  function empty(title, description, href = url('notice', null, ''), label = '공식 안내 보기', kind = 'other') {
     state.emptyKind = kind;
     byId('empty-state').hidden = false; byId('empty-title').textContent = title; byId('empty-description').textContent = description; byId('empty-link').href = href; byId('empty-link').textContent = label;
     renderEmptyAudience();
@@ -357,14 +357,14 @@
       notice: ['새 소식을 준비하고 있습니다', '곧 천하의 소식을 전하겠습니다.']
     };
     const [title, description] = gameId === 'gyeongguk' ? gyeonggukEmpty[boardId] : [`${boardTitle}의 첫 글을 기다려요`, descriptions[boardId]];
-    empty(title, description, url('notice', null, ''), `${game.boards.notice[0]} 보기 →`, 'board');
+    empty(title, description, url('notice', null, ''), `${game.boards.notice[0]} 보기`, 'board');
   }
 
   function row(item, official = false) {
     const link = make('a', null, 'post-row'); link.href = url(boardId, item.id, query, pageNumber);
     const meta = make('div', null, 'post-meta'); meta.append(make('span', official ? '공식 안내' : boardTitle, 'post-badge'), make('span', official ? '그레이스킨 게임즈' : item.author.name));
     if (!official) meta.append(make('span', formatDate(item.createdAt)));
-    link.append(make('span', '↗', 'post-arrow'), meta, make('h3', item.title), make('p', official ? item.excerpt : item.body.replace(/\s+/g, ' ').slice(0, 160)));
+    link.append(meta, make('h3', item.title), make('p', official ? item.excerpt : item.body.replace(/\s+/g, ' ').slice(0, 160)));
     if (!official) link.append(make('span', `댓글 ${item.commentCount || 0}`, 'comment-count'));
     return link;
   }
@@ -428,9 +428,9 @@
         byId('result-count').textContent = query ? `검색 결과 ${data.total}개` : `글 ${data.total}개`;
         pagination(data);
         if (!data.posts.length) {
-          if (query) empty('검색 결과가 없어요', '다른 검색어를 입력하거나 게시판 목록을 확인해 보세요.', url(boardId, null, ''), '검색 지우고 목록 보기 →');
+          if (query) empty('검색 결과가 없어요', '다른 검색어를 입력하거나 게시판 목록을 확인해 보세요.', url(boardId, null, ''), '검색 지우고 목록 보기');
           else if (data.total === 0) emptyBoard();
-          else empty('이 페이지에는 글이 없어요', '앞 페이지에서 이야기를 확인해 주세요.', url(boardId, null, '', 1), '첫 페이지 보기 →');
+          else empty('이 페이지에는 글이 없어요', '앞 페이지에서 이야기를 확인해 주세요.', url(boardId, null, '', 1), '첫 페이지 보기');
         }
       }
     } catch (error) {
