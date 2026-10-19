@@ -7,6 +7,16 @@
   if (['/community/', '/community/index.html'].includes(location.pathname)) {
     document.documentElement.dataset.game = game;
     document.querySelector('meta[name="theme-color"]').content = game === 'gyeongguk' ? '#f8f6f1' : game === 'slimeline' ? '#101728' : '#17131f';
+    if (game !== 'picker') {
+      for (const name of ['hero.webp', 'title.png']) {
+        const preload = document.createElement('link');
+        preload.rel = 'preload';
+        preload.as = 'image';
+        preload.href = `/assets/${game}/${name}`;
+        preload.setAttribute('fetchpriority', 'high');
+        document.head.append(preload);
+      }
+    }
   }
   const COMMUNITY_ORIGIN = 'https://community.gracekingames.com';
   const isPages = location.hostname === 'gracekingames.com' || location.hostname === 'www.gracekingames.com';

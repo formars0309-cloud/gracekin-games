@@ -12,20 +12,28 @@
       aside: '선을 그려 길을 잇는 슬라임 라인의 소식과 이용 안내예요.',
       boards: { free: ['자유 이야기', '슬라임과 함께한 순간과 일상의 이야기를 자유롭게 나누어요.'], guide: ['공략 나누기', '길을 잇는 작은 발견과 나만의 풀이를 함께 나누어요.'], gallery: ['작품 자랑', '슬라임을 좋아하는 마음으로 만든 작품과 모험의 추억을 소개해 주세요.'], notice: ['새 소식', '슬라임 라인의 새 소식과 게임 이용 안내를 확인하세요.'] },
       posts: [
-        { id: 'welcome', title: '슬라임 라인에 오신 것을 환영해요', excerpt: '선을 그려, 작은 슬라임의 다음 걸음을 이어 주세요.', sections: [
+        { id: 'welcome', date: '2026-10-15', cover: '/assets/slimeline/hero.webp', title: '슬라임 라인에 오신 것을 환영해요', excerpt: '선을 그려, 작은 슬라임의 다음 걸음을 이어 주세요.', sections: [
           ['작은 선에서 시작되는 모험', '슬라임 라인은 선을 그려 슬라임의 길을 만드는 퍼즐 게임이에요. 사계절 모험, 우리 마을과 봄 산책 섬을 만나 보세요.'],
           ['모험을 시작하려면', '슬라임 라인 홈페이지의 START를 누르면 게임으로 이동해요. 게임을 시작하기 전에 홈페이지에서 소개와 이용 안내를 살펴볼 수 있어요.'],
           ['이곳에서 만나요', '커뮤니티에서는 공식 소식과 이용 안내를 읽을 수 있어요. 글·댓글 작성이 가능한 계정으로 로그인하면 자유 이야기와 공략 나누기, 작품 자랑에서 이야기를 나눌 수 있어요. 버그·보안 문제는 비공개 버그 제보로 보내 주세요.']
         ] },
-        { id: 'play-guide', title: '슬라임 라인, 처음 시작하는 분께', excerpt: '게임을 여는 방법과 문제가 생겼을 때 확인할 곳을 모았어요.', sections: [
+        { id: 'play-guide', date: '2026-10-15', cover: '/assets/slimeline/tiles.webp', title: '슬라임 라인, 처음 시작하는 분께', excerpt: '게임을 여는 방법과 문제가 생겼을 때 확인할 곳을 모았어요.', sections: [
           ['게임 홈페이지에서 START', '게임 홈페이지의 START를 누르면 슬라임 라인이 열려요. 설치 없이 브라우저에서 즐기는 게임이며, 현재 테스트 중이에요.'],
           ['선을 그려 길을 이어요', '슬라임이 지나갈 길을 선으로 만들어 주세요. 게임 화면에 나오는 안내를 보며 한 걸음씩 시작하면 돼요.'],
           ['막히거나 오류를 만났다면', '화면이 멈추거나 예상과 다르게 움직인다면 비공개 버그 제보로 알려 주세요. 이용한 기기와 브라우저, 문제가 생긴 화면과 상황을 함께 적어 주시면 확인에 도움이 돼요.']
         ] },
-        { id: 'feedback', title: '버그 제보와 의견은 여기로 보내 주세요', excerpt: '플레이하다 만난 문제나 떠오른 생각을 편지로 받습니다.', sections: [
+        { id: 'feedback', date: '2026-10-15', cover: '/assets/slime-front.png', title: '문제 신고와 소감을 보내는 방법', excerpt: '플레이하다 만난 문제나 떠오른 생각을 편지로 받습니다.', sections: [
           ['로그인한 계정으로 비공개 제보해요', '비공개 버그 제보에서 알려진 문제를 먼저 확인해 주세요. 로그인한 계정으로 제보하면 본인은 제보 목록과 처리 상태를 볼 수 있어요. 원문은 운영자만 확인해요.'],
-          ['어떤 상황이었는지 알려 주세요', '게임 이름을 슬라임 라인으로 적고, 어떤 화면에서 무슨 일이 있었는지 알려 주세요. 기기와 브라우저, 오류가 반복되는 순서가 있으면 함께 적어 주세요. 비밀번호나 인증 코드 등 민감한 정보는 적지 마세요.'],
+          ['제보 전에 해 볼 것', '화면을 새로고침하고, 다른 브라우저에서도 같은 문제가 생기는지 살펴봐 주세요. 비공개 버그 제보의 알려진 문제도 확인해 주세요.'],
+          ['문제 설명에 적을 칸', ['게임 이름: 슬라임 라인', '어느 화면: 문제가 생긴 화면과 주소', '무엇을 했는지: 문제가 반복되는 순서', '기대한 결과와 실제 결과: 각각 어떻게 달랐는지', '기기와 브라우저: 기기 이름, 운영체제, 브라우저 이름과 버전']],
+          ['소감과 제안 보내기', '일반 의견은 아래 의견 보내기로 들려주세요. 버그·보안 문제는 비공개 버그 제보로 보내 주세요. 비밀번호·인증 코드·개인 키는 적지 마세요.'],
           ['다른 문의가 있다면', '이메일 문의는 support@gracekingames.com으로 보내 주세요.']
+        ] },
+        { id: 'rules', date: null, cover: '/assets/slimeline/tiles.webp', title: '커뮤니티 규칙 한 장', excerpt: '함께 이야기하기 전에 이용약관의 주요 내용을 살펴봐요.', sections: [
+          ['서로를 지키며 이야기해요', ['도배와 무관한 광고·홍보를 올리지 않아요.', '욕설·협박·차별과 특정인을 괴롭히는 내용을 올리지 않아요.', '본인이나 다른 사람의 비밀번호·연락처 등 공개하면 안 되는 개인정보를 올리지 않아요.', '불법 정보나 타인의 권리를 침해하는 내용을 올리지 않아요.', '계정·그레인의 거래·대여·대리 이용과 외부 거래 알선 글을 올리지 않아요.', '버그·보안 취약점과 악용 방법은 공개 게시판에 쓰지 않고 비공개 버그 제보로 보내요.']],
+          ['신고와 운영 조치', '게시물 신고 기능으로 대상과 사유를 알려 주세요. 운영자는 위반 내용·정도·반복 여부·피해를 확인해 게시물 숨김, 부당 획득 그레인 회수, 보상 정지, 일부 기능 또는 계정 이용 제한을 필요한 범위에서 적용해요. 피해 확산이나 보안상 긴급한 사유가 있으면 먼저 조치하고 뒤에 안내할 수 있어요.'],
+          ['제재가 억울할 때', '조치 사유·종류·범위·기간과 이의 제기 방법은 계정 이메일이나 본인이 확인할 수 있는 화면으로 안내해요. support@gracekingames.com으로 대상 계정, 조치 내용과 이의 사유를 보내 재검토를 요청할 수 있어요. 운영자는 기록을 확인해 결과와 이유를 알리고, 처리가 길어지면 이유와 예상 일정을 안내해요. 잘못된 조치가 확인되면 해제·복구 등 필요한 정정을 해요.'],
+          ['이용약관의 요약이에요', '이 안내는 커뮤니티 이용약관 5절과 9절의 요약이에요. 자세한 기준과 절차는 이용약관에서 확인해 주세요.']
         ] }
       ]
     },
@@ -35,20 +43,29 @@
       aside: '미인과 계략의 삼국 카드 대전, 경국지계의 공식 소식과 이용 안내입니다.',
       boards: { free: ['자유 게시판', '한 판을 마친 소감과 다양한 이야기를 나누는 곳입니다.'], deck: ['덱 연구', '더 강한 한 수를 위해 카드 조합과 덱을 연구합니다.'], strategy: ['전략 이야기', '대전에서 찾은 수와 계략, 천하를 보는 또 다른 시선을 나눕니다.'], notice: ['새 소식', '경국지계의 공식 소식과 게임 이용 안내를 확인하세요.'] },
       posts: [
-        { id: 'welcome', title: '경국지계에 오신 것을 환영합니다', excerpt: '덮어 둔 카드 한 장이 판을 뒤집는 삼국 카드 대전.', sections: [
+        { id: 'welcome', date: '2026-10-15', cover: '/assets/gyeongguk/hero.webp', title: '경국지계에 오신 것을 환영합니다', excerpt: '덮어 둔 카드 한 장이 판을 뒤집는 삼국 카드 대전.', sections: [
           ['미인과 계략의 삼국 카드 대전', '경국지계는 실시간 카드 대전 게임입니다. 게임 홈페이지에서 소개를 살펴보고 START를 눌러 대전에 들어가세요.'],
           ['현재는 테스트 기간입니다', '테스트 기간에는 전설을 포함한 모든 카드를 사용할 수 있습니다. 플레이 기록은 정식 시즌 전에 초기화될 수 있습니다.'],
           ['공식 소식과 이용 안내', '이곳에서는 공식 소식과 이용 안내를 읽을 수 있습니다. 글·댓글 작성이 가능한 계정으로 로그인하면 자유 게시판, 덱 연구, 전략 이야기에서 이야기를 나눌 수 있습니다. 버그·보안 문제는 비공개 버그 제보로 보내 주세요.']
         ] },
-        { id: 'play-guide', title: '경국지계, 대전에 들어가기 전에', excerpt: '게임 시작 방법과 테스트 기간의 이용 안내입니다.', sections: [
+        { id: 'play-guide', date: '2026-10-15', cover: '/assets/gyeongguk/card-zhugeliang.webp', title: '경국지계, 대전에 들어가기 전에', excerpt: '게임 시작 방법과 테스트 기간의 이용 안내입니다.', sections: [
           ['게임 홈페이지에서 START', '경국지계 홈페이지의 START를 누르면 게임으로 이동합니다. 브라우저에서 설치 없이 시작할 수 있습니다.'],
           ['게임 안의 안내를 확인하세요', '게임에 들어가면 화면에 표시된 안내를 따라 진행하세요. 테스트 기간에는 전설을 포함한 모든 카드를 사용할 수 있으며, 기록은 정식 시즌 전에 초기화될 수 있습니다.'],
           ['플레이 중 도움이 필요하다면', '게임 안의 문제 신고와 소감 남기기로 의견을 보낼 수 있습니다. 버그는 비공개 버그 제보로, 일반 의견은 홈페이지의 의견 보내기로 보낼 수 있습니다.']
         ] },
-        { id: 'feedback', title: '문제 신고와 소감을 보내는 방법', excerpt: '대전 중 만난 문제와 카드에 대한 생각을 들려주세요.', sections: [
+        { id: 'feedback', date: '2026-10-15', cover: '/assets/gyeongguk/card-diaochan.webp', title: '문제 신고와 소감을 보내는 방법', excerpt: '대전 중 만난 문제와 카드에 대한 생각을 들려주세요.', sections: [
           ['게임 안에서 바로 보내기', '경국지계 안의 문제 신고와 소감 남기기를 이용할 수 있습니다. 문제가 생긴 상황과 화면을 함께 알려 주시면 확인에 도움이 됩니다.'],
           ['홈페이지에서 보내기', '비공개 버그 제보에서 알려진 문제를 확인하고 로그인한 계정으로 제보할 수 있습니다. 본인은 제보 목록과 처리 상태를 확인할 수 있고 원문은 운영자만 확인합니다. 게임 이름을 경국지계로 적어 주세요. 비밀번호나 인증 코드는 보내지 마세요.'],
+          ['제보 전에 해 볼 것', '화면을 새로고침하고, 다른 브라우저에서도 같은 문제가 생기는지 확인합니다. 비공개 버그 제보의 알려진 문제도 확인합니다.'],
+          ['문제 설명에 적을 칸', ['게임 이름: 경국지계', '어느 화면: 문제가 생긴 화면과 주소', '무엇을 했는지: 문제가 반복되는 순서', '기대한 결과와 실제 결과: 각각 어떻게 달랐는지', '기기와 브라우저: 기기 이름, 운영체제, 브라우저 이름과 버전']],
+          ['소감과 제안 보내기', '일반 의견은 아래 의견 보내기로 보낼 수 있습니다. 버그·보안 문제는 비공개 버그 제보로 접수합니다. 비밀번호·인증 코드·개인 키는 적지 않습니다.'],
           ['이메일로 문의하기', '다른 문의는 support@gracekingames.com으로 보내 주세요.']
+        ] },
+        { id: 'rules', date: null, cover: '/assets/gyeongguk/tiles.webp', title: '커뮤니티 규칙 한 장', excerpt: '이용약관의 주요 내용과 이의 제기 절차를 안내합니다.', sections: [
+          ['서로를 지키며 이야기합니다', ['도배와 무관한 광고·홍보를 게시하지 않습니다.', '욕설·협박·차별과 특정인을 괴롭히는 내용을 게시하지 않습니다.', '본인이나 다른 사람의 비밀번호·연락처 등 공개하면 안 되는 개인정보를 게시하지 않습니다.', '불법 정보나 타인의 권리를 침해하는 내용을 게시하지 않습니다.', '계정·그레인의 거래·대여·대리 이용과 외부 거래 알선 글을 게시하지 않습니다.', '버그·보안 취약점과 악용 방법은 공개 게시판에 쓰지 않고 비공개 버그 제보로 접수합니다.']],
+          ['신고와 운영 조치', '게시물 신고 기능으로 대상과 사유를 알릴 수 있습니다. 운영자는 위반 내용·정도·반복 여부·피해를 확인해 게시물 숨김, 부당 획득 그레인 회수, 보상 정지, 일부 기능 또는 계정 이용 제한을 필요한 범위에서 적용합니다. 피해 확산이나 보안상 긴급한 사유가 있으면 먼저 조치하고 뒤에 안내할 수 있습니다.'],
+          ['제재가 억울할 때', '조치 사유·종류·범위·기간과 이의 제기 방법은 계정 이메일이나 본인이 확인할 수 있는 화면으로 안내합니다. support@gracekingames.com으로 대상 계정, 조치 내용과 이의 사유를 보내 재검토를 요청할 수 있습니다. 운영자는 기록을 확인해 결과와 이유를 알리고, 처리가 길어지면 이유와 예상 일정을 안내합니다. 잘못된 조치가 확인되면 해제·복구 등 필요한 정정을 합니다.'],
+          ['이용약관의 요약입니다', '이 안내는 커뮤니티 이용약관 5절과 9절의 요약입니다. 자세한 기준과 절차는 이용약관에서 확인할 수 있습니다.']
         ] }
       ]
     }
@@ -83,6 +100,22 @@
   const requestedPost = params.get('post');
   const state = { user: null, sessionVersion: 0, rewardEligibility: null, rewardPolicy: null, emptyKind: null, reportTarget: null, reportBusy: false, draftOwnerId: null, postBusy: false, commentBusy: false, confirmBusy: false, currentPost: null, editorKey: null, editorOriginal: { title: '', body: '' }, deleteAction: null, loadVersion: 0, commentDrafts: new Map() };
   const url = (board, post, search = query, page = 1) => { const next = new URLSearchParams({ game: gameId, board }); if (post) next.set('post', post); if (search) next.set('q', search); if (page > 1) next.set('page', page); return `/community/?${next}`; };
+  // 기존 안내의 날짜는 최초 추가 커밋 946ddf3(2026-10-15) 기준이다.
+  // 새 규칙 글은 공개 전이므로 date를 비워 두고 실제 공개 때 확정한다.
+  // 다음 단계의 서버 글도 같은 카드 형태로 변환해 이 함수에 합칠 수 있다.
+  function newsItems(additionalItems = []) {
+    const official = game.posts.map(post => ({ ...post, source: 'official', href: url('notice', post.id, '') }));
+    return [...additionalItems, ...official].filter(item => item.date)
+      .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+  }
+  function newsCard(item) {
+    const card = make('a', null, 'news-card'); card.href = item.href;
+    const cover = make('img'); cover.src = item.cover; cover.alt = ''; cover.width = 360; cover.height = 180; cover.loading = 'lazy';
+    const copy = make('div', null, 'news-card-copy');
+    const date = make('time', item.date); date.dateTime = item.date;
+    copy.append(make('span', '공식 안내', 'post-badge'), date, make('h3', item.title));
+    card.append(cover, copy); return card;
+  }
   const message = (id, text) => { byId(id).textContent = text || ''; byId(id).hidden = !text; };
   const errorText = error => error && error.message ? error.message : '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.';
   const showConnection = () => { byId('connection-status').hidden = false; byId('connection-message').textContent = '지금 커뮤니티에 연결할 수 없어요. 글이 저장되었다면 다시 등록하기 전에 목록을 확인해 주세요. 공식 안내는 계속 읽을 수 있어요.'; };
@@ -245,6 +278,46 @@
   byId('article-home').href = studioPath(game.home);
   byId('article-feedback').href = FEEDBACK_URL;
   byId('connection-notice').href = url('notice', null, '');
+  byId('rules-link').href = url('notice', 'rules', '');
+  for (const targetId of ['gyeongguk', 'slimeline']) {
+    const target = GAMES[targetId];
+    const link = make('a');
+    link.href = `/community/?${new URLSearchParams({ game: targetId, board: target.boards[boardId] ? boardId : 'notice' })}`;
+    if (targetId === gameId) link.setAttribute('aria-current', 'page');
+    // 두 게임의 성과 슬라임을 선 그림으로 표시해 반대 게임 자산을 요청하지 않는다.
+    const picture = make('span', null, `switch-picture switch-${targetId}`); picture.setAttribute('aria-hidden', 'true');
+    picture.innerHTML = targetId === 'gyeongguk'
+      ? '<svg viewBox="0 0 32 32" focusable="false"><path d="M4 28V13h7v15m10 0V13h7v15M2 13l5-7 6 7m6 0 6-7 5 7M11 28V18h10v10M11 18l5-8 5 8M16 10V3h6l-2 2 2 2h-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'
+      : '<svg viewBox="0 0 32 32" focusable="false"><path d="M4 22C4 10 11 5 16 5s12 5 12 17c0 5-6 6-12 6S4 27 4 22Z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="17" r="1.5" fill="currentColor"/><circle cx="21" cy="17" r="1.5" fill="currentColor"/><path d="M13 21q3 3 6 0" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    link.append(picture, make('span', target.name)); byId('game-switcher').append(link);
+  }
+  const firstVisit = byId('first-visit');
+  const firstNews = make('a', '새 소식'); firstNews.href = url('notice', null, '');
+  const firstFree = make('a', game.boards.free[0]); firstFree.href = url('free', null, '');
+  const firstBug = make('a', '버그 제보'); firstBug.href = '/community/bug-report/';
+  firstVisit.append(make('span', '처음이라면 '), firstNews, make('span', '부터, 한 판 소감은 '), firstFree, make('span', '에, 문제는 '), firstBug, make('span', gameId === 'gyeongguk' ? '로 전합니다.' : '로 알려 주세요.'));
+  firstVisit.hidden = false;
+  const shortcuts = [
+    ['출석 / 그레인', '/account/', 'M5 4h14v16H5z M8 2v4 M16 2v4 M5 9h14 M8 14l3 3 5-6'],
+    ['게임 시작', `https://${gameId}.gracekingames.com/`, 'M8 4l12 8-12 8z'],
+    ['버그 제보', '/community/bug-report/', 'M12 4v9 M12 17v1 M12 2L2 21h20z'],
+    ['의견 보내기', FEEDBACK_URL, 'M3 5h18v14H3z M3 5l9 8 9-8']
+  ];
+  for (const [label, href, path] of shortcuts) {
+    const link = make('a'); link.href = href;
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24'); icon.setAttribute('aria-hidden', 'true'); icon.setAttribute('focusable', 'false');
+    // 고정된 선 그림만 사용한다.
+    icon.innerHTML = `<path d="${path}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    if (href === FEEDBACK_URL) link.setAttribute('data-umami-event', 'feedback-form');
+    if (label === '게임 시작') link.setAttribute('data-umami-event', `play-${gameId}`);
+    link.append(icon, make('span', label)); byId('quick-links').append(link);
+  }
+  const recentNews = newsItems();
+  if (boardId !== 'notice' && !requestedPost && recentNews.length) {
+    byId('latest-news').hidden = false;
+    for (const item of recentNews) byId('news-cards').append(newsCard(item));
+  }
   for (const id of ['notice', ...Object.keys(game.boards).filter(id => id !== 'notice')]) {
     const [label] = game.boards[id];
     const tab = make('a'); tab.append(gameId === 'slimeline' ? boardIcon(id) : boardTile(id)); tab.append(make('span', label)); tab.href = url(id, null, ''); if (id === boardId) tab.setAttribute('aria-current', 'page'); byId('board-tabs').append(tab);
@@ -368,7 +441,8 @@
   function row(item, official = false) {
     const link = make('a', null, 'post-row'); link.href = url(boardId, item.id, query, pageNumber);
     const meta = make('div', null, 'post-meta'); meta.append(make('span', official ? '공식 안내' : boardTitle, 'post-badge'), make('span', official ? '그레이스킨 게임즈' : item.author.name));
-    if (!official) meta.append(make('span', formatDate(item.createdAt)));
+    if (official) { const date = make(item.date ? 'time' : 'span', item.date || '공개 전 초안'); if (item.date) date.dateTime = item.date; meta.append(date); }
+    else meta.append(make('span', formatDate(item.createdAt)));
     link.append(meta, make('h3', item.title), make('p', official ? item.excerpt : item.body.replace(/\s+/g, ' ').slice(0, 160)));
     if (!official) link.append(make('span', `댓글 ${item.commentCount || 0}`, 'comment-count'));
     return link;
@@ -389,8 +463,17 @@
   function showOfficial(post) {
     document.title = `${post.title} · ${game.name} 커뮤니티`;
     byId('board-view').hidden = true; byId('article-view').hidden = false;
-    byId('article-title').textContent = post.title; byId('article-badge').textContent = '공식 안내'; byId('article-author').textContent = '그레이스킨 게임즈';
-    for (const [heading, body] of post.sections) byId('article-body').append(make('h3', heading), make('p', body));
+    byId('article-title').textContent = post.title; byId('article-badge').textContent = '공식 안내'; byId('article-author').textContent = `그레이스킨 게임즈 · ${post.date || '공개 전 초안'}`;
+    for (const [heading, body] of post.sections) {
+      byId('article-body').append(make('h3', heading));
+      if (Array.isArray(body)) { const list = make('ul'); for (const text of body) list.append(make('li', text)); byId('article-body').append(list); }
+      else byId('article-body').append(make('p', body));
+    }
+    const links = make('p', null, 'official-links');
+    for (const [text, href] of post.id === 'rules' ? [['이용약관 5절 · 커뮤니티 이용과 신고', '/community/terms/#community'], ['이용약관 9절 · 운영 조치와 이의 제기', '/community/terms/#restrictions'], ['이의 제기 메일 보내기', 'mailto:support@gracekingames.com']] : [['비공개 버그 제보', '/community/bug-report/'], ['알려진 문제 확인', '/community/bug-report/#known-issues']]) {
+      const link = make('a', text); link.href = href; links.append(link);
+    }
+    byId('article-body').append(links);
   }
   async function loadCurrent() {
     const version = ++state.loadVersion;
@@ -408,7 +491,11 @@
       const needle = query.toLocaleLowerCase('ko');
       const posts = game.posts.filter(item => [item.title, item.excerpt, ...item.sections.flat()].join(' ').toLocaleLowerCase('ko').includes(needle));
       byId('result-count').textContent = query ? `검색 결과 ${posts.length}개` : `공식 안내 ${posts.length}개`;
-      for (const item of posts) byId('post-list').append(row(item, true));
+      // 새 소식 탭은 같은 글을 카드와 목록에 중복으로 놓지 않는다. 검색은 전체 글을 대상으로 한다.
+      const cards = make('div', null, 'news-cards'); cards.tabIndex = 0; cards.setAttribute('role', 'region'); cards.setAttribute('aria-label', '최근 새 소식 카드, 가로로 넘겨 보기');
+      if (!query) for (const item of recentNews) cards.append(newsCard(item));
+      if (cards.children.length) byId('post-list').append(cards);
+      for (const item of posts) if (query || !recentNews.some(news => news.id === item.id)) byId('post-list').append(row(item, true));
       if (!posts.length) {
         if (!query && gameId === 'gyeongguk') emptyBoard();
         else empty('검색 결과가 없어요', '다른 검색어를 입력하거나 공식 안내를 살펴보세요.');

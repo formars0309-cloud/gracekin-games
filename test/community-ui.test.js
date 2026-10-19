@@ -9,7 +9,7 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 const member = { id: '시험회원', name: '말랑이', canWriteCommunity: true };
 const contents = node => [node.textContent, ...node.children.map(contents)].join('');
 
-function screen({ game = 'slimeline', board = 'free', query = '', user = null, eligibility = 'eligible', policy = GRAIN_REWARD_POLICY, fail = [], delayed = [], total = 0, noOfficial = false } = {}) {
+function screen({ game = 'slimeline', board = 'free', post = '', query = '', user = null, eligibility = 'eligible', policy = GRAIN_REWARD_POLICY, fail = [], delayed = [], total = 0, noOfficial = false } = {}) {
   const nodes = new Map(), calls = [], pending = new Map();
   function element(id = '') {
     if (id && nodes.has(id)) return nodes.get(id);
@@ -28,7 +28,7 @@ function screen({ game = 'slimeline', board = 'free', query = '', user = null, e
   }
   const body = element('body');
   const document = { body, title: '', getElementById: element, createElement: () => element(), createElementNS: () => element(), querySelectorAll: () => [], querySelector: selector => selector.startsWith('meta') ? element('theme') : null };
-  const address = new URL(`http://127.0.0.1/community/?${new URLSearchParams({ game, board, ...(query ? { q: query } : {}) })}`);
+  const address = new URL(`http://127.0.0.1/community/?${new URLSearchParams({ game, board, ...(post ? { post } : {}), ...(query ? { q: query } : {}) })}`);
   const location = { hostname: address.hostname, search: address.search, href: address.href };
   const routes = {
     '/api/community/session': { user }, '/api/account/config': { grainRewardPolicy: policy },
@@ -233,10 +233,64 @@ test('게임 그림은 주소 없이 시작하고 머리말에서 테마를 먼�
   assert.ok(html.indexOf('/assets/community/host.js') < html.indexOf('rel="stylesheet"'));
   assert.doesNotMatch(html, /<img[^>]+(?:src|srcset)="[^\"]*(?:slimeline|gyeongguk|slime-front)/);
   for (const [query, game, color] of [['gyeongguk', 'gyeongguk', '#f8f6f1'], ['slimeline', 'slimeline', '#101728'], ['', 'picker', '#17131f'], ['__proto__', 'picker', '#17131f']]) {
-    const root = { dataset: {} }, meta = {};
-    runInNewContext(host, { document: { documentElement: root, querySelector: () => meta }, location: { pathname: '/community/', search: `?game=${query}`, hostname: '127.0.0.1' }, window: {}, URLSearchParams });
+    const root = { dataset: {} }, meta = {}, preloads = [];
+    const document = { documentElement: root, querySelector: () => meta, head: { append: node => preloads.push(node) }, createElement: () => ({ setAttribute(name, value) { this[name] = value; } }) };
+    runInNewContext(host, { document, location: { pathname: '/community/', search: `?game=${query}`, hostname: '127.0.0.1' }, window: {}, URLSearchParams });
     assert.equal(root.dataset.game, game);
     assert.equal(meta.content, color);
+    assert.deepEqual(preloads.map(node => node.href), game === 'picker' ? [] : [`/assets/${game}/hero.webp`, `/assets/${game}/title.png`]);
+    for (const node of preloads) { assert.equal(node.rel, 'preload'); assert.equal(node.as, 'image'); assert.equal(node.fetchpriority, 'high'); }
+  }
+});
+
+test('모든 게시판은 날짜·그림 카드 세 개를 제공하고 새 소식에서는 중복하지 않음', async () => {
+  for (const game of ['slimeline', 'gyeongguk']) {
+    for (const board of game === 'slimeline' ? ['notice', 'free', 'guide', 'gallery'] : ['notice', 'free', 'deck', 'strategy']) {
+      const ui = screen({ game, board }); await flush();
+      const cards = board === 'notice' ? ui.node('post-list').children[0].children : ui.node('news-cards').children;
+      assert.equal(cards.length, 3);
+      assert.equal(ui.node('latest-news').hidden, board === 'notice');
+      assert.equal(new Set(cards.map(card => card.href)).size, 3);
+      for (const card of cards) {
+        assert.ok(card.href.includes(`game=${game}&board=notice&post=`));
+        assert.ok(card.children[0].src.startsWith(`/assets/${game}/`) || game === 'slimeline' && card.children[0].src === '/assets/slime-front.png');
+        assert.equal(card.children[1].children[1].dateTime, '2026-10-15');
+      }
+    }
+    const search = screen({ game, board: 'notice', query: '제재가 억울' }); await flush();
+    assert.equal(search.node('post-list').children.length, 1);
+    assert.match(contents(search.node('post-list')), /커뮤니티 규칙 한 장/);
+  }
+});
+
+test('게임 전환은 공통 게시판을 유지하고 전용 게시판에서는 새 소식으로 이동함', async () => {
+  for (const [game, board, targetBoard] of [['slimeline', 'free', 'free'], ['slimeline', 'guide', 'notice'], ['gyeongguk', 'deck', 'notice']]) {
+    const ui = screen({ game, board }); await flush();
+    const links = ui.node('game-switcher').children;
+    assert.deepEqual(links.map(link => contents(link)), ['경국지계', '슬라임 라인']);
+    for (const link of links) {
+      const target = link.href.includes('game=gyeongguk') ? 'gyeongguk' : 'slimeline';
+      assert.equal(link.attributes['aria-current'], target === game ? 'page' : undefined);
+      assert.ok(link.href.endsWith(`board=${target === game ? board : targetBoard}`));
+    }
+    assert.equal(ui.node('first-visit').children.filter(child => child.href).length, 3);
+    assert.equal(ui.node('quick-links').children.length, 4);
+    assert.equal(ui.node('quick-links').children[0].href, '/account/');
+    assert.equal(ui.node('quick-links').children[1].href, `https://${game}.gracekingames.com/`);
+    assert.equal(ui.node('rules-link').href, `/community/?game=${game}&board=notice&post=rules`);
+  }
+});
+
+test('두 게임의 제보 양식과 규칙 요약은 기존 비공개 제보·약관 경로로 이어짐', async () => {
+  for (const game of ['slimeline', 'gyeongguk']) {
+    const feedback = screen({ game, board: 'notice', post: 'feedback' }); await flush();
+    const body = contents(feedback.node('article-body'));
+    for (const text of ['제보 전에 해 볼 것', '새로고침', '다른 브라우저', '알려진 문제', '어느 화면', '무엇을 했는지', '기대한 결과와 실제 결과', '기기와 브라우저', '원문은 운영자만']) assert.ok(body.includes(text), text);
+    assert.equal(feedback.node('latest-news').hidden, true);
+    const rules = screen({ game, board: 'notice', post: 'rules' }); await flush();
+    assert.match(contents(rules.node('article-body')), /대상 계정, 조치 내용과 이의 사유/);
+    assert.deepEqual(rules.node('article-body').children.at(-1).children.map(link => link.href), ['/community/terms/#community', '/community/terms/#restrictions', 'mailto:support@gracekingames.com']);
+    assert.match(rules.node('article-author').textContent, /공개 전 초안/);
   }
 });
 
@@ -274,7 +328,8 @@ test('커뮤니티 장식 화살표를 없애고 방향이 필요한 세 문구�
   assert.doesNotMatch(source + css, /post-arrow/);
   for (const game of ['slimeline', 'gyeongguk']) {
     const official = screen({ game, board: 'notice' }); await flush();
-    assert.equal(official.node('post-list').children.length, 3);
+    assert.equal(official.node('post-list').children.length, 2);
+    assert.equal(official.node('post-list').children[0].children.length, 3);
     assert.doesNotMatch(contents(official.node('post-list')), /[↗→＋←]/);
     for (const [options, label] of [[{}, '새 소식 보기'], [{ query: '없는말' }, '검색 지우고 목록 보기'], [{ total: 21 }, '첫 페이지 보기'], [{ fail: ['/api/community/posts'] }, '공식 안내 보기']]) {
       const ui = screen({ game, ...options }); await flush();

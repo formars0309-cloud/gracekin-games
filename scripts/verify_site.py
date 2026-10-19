@@ -533,6 +533,10 @@ def verify(root: Path) -> Report:
 
     community_script = root / 'assets/community/community.js'
     check(community_script.is_file(), '커뮤니티 동작 파일 없음')
+    if community_script.is_file():
+        for cover in re.findall(r"cover:\s*'(/assets/[^']+)'", community_script.read_text()):
+            resource = Path(cover.lstrip('/'))
+            check((root / resource).is_file() and docker_allows(resource, docker_allowed), f'커뮤니티: 새 소식 대표 그림 {resource} 또는 운영 패키지 허용 누락')
     community_page = pages.get(root / 'community/index.html')
     if community_page:
         # 숨긴 그림도 브라우저가 미리 받으므로 게임 판별 전에는 주소를 두지 않는다.
