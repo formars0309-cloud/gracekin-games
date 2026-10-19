@@ -16,6 +16,8 @@ const transaction = (db, work) => {
 // 커뮤니티 INSERT와 같은 트랜잭션에서만 부릅니다. 탈락한 첫 댓글도 남겨 재작성으로 우회하지 못하게 합니다.
 export function reserveCommunityReward(db, rewards, { user, type, row, time }) {
   if (!rewards) return { pending: false, amount: 0 };
+  // 새 소식은 활동 보상과 일일 한도·중복 판정 기록에서 제외합니다.
+  if (type === 'post' && db.prepare('SELECT board FROM community_posts WHERE id=?').get(row.id)?.board === 'notice') return { pending: false, amount: 0 };
   const policy = type === 'post' ? activity.post : activity.comment;
   const eventId = `community-${type}:${row.id}`, date = kstDate(time), amount = policy.amount;
   let matches = [...row.body.trim()].length >= policy.minBodyLength;
@@ -25,7 +27,7 @@ export function reserveCommunityReward(db, rewards, { user, type, row, time }) {
     const previous = db.prepare("SELECT targetId,fingerprint FROM grain_activity_rewards WHERE userId=? AND targetType='post' ORDER BY rowid DESC LIMIT 1").get(user.id);
     const source = previous
       ? db.prepare('SELECT title,body FROM community_posts WHERE id=?').get(previous.targetId)
-      : db.prepare('SELECT title,body FROM community_posts WHERE authorId=? AND id<>? ORDER BY rowid DESC LIMIT 1').get(user.id, row.id);
+      : db.prepare("SELECT title,body FROM community_posts WHERE authorId=? AND id<>? AND board<>'notice' ORDER BY rowid DESC LIMIT 1").get(user.id, row.id);
     const priorHash = source ? fingerprint(source.title, source.body) : previous?.fingerprint;
     if (hash === priorHash) matches = false;
   } else {

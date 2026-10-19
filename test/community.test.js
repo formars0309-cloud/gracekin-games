@@ -119,7 +119,7 @@ test('두 계정 댓글 공유·소유권·수정/삭제 권한', async () => {
 
 test('notice 위조·게임별 게시판·타게임 접근·페이지 한도 차단', async () => {
   for (const input of [{ game: 'slimeline', board: 'notice' }, { game: 'slimeline', board: 'deck' }, { game: 'gyeongguk', board: 'gallery' }, { game: 'other', board: 'free' }]) {
-    assert.equal((await request(app, '/api/community/posts', { method: 'POST', cookie: alice, body: { ...input, title: '공지 위조', body: '본문' } })).status, 422);
+    assert.equal((await request(app, '/api/community/posts', { method: 'POST', cookie: alice, body: { ...input, title: '공지 위조', body: '본문' } })).status, input.board === 'notice' ? 403 : 422);
   }
   for (const method of ['GET', 'PATCH', 'DELETE']) {
     assert.equal((await request(app, `/api/community/posts/${postId}?game=gyeongguk`, { method, cookie: alice, body: method === 'GET' ? undefined : { title: '수정 내용', body: '본문' } })).status, 404);
