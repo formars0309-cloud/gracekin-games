@@ -195,7 +195,7 @@ export function createCommunity(db, auth, { rewards, isAdmin = () => false, now 
       const row = post(statusMatch[1], expectedGame, user), body = await readJson(request);
       if (Object.keys(body).length !== 1 || !Object.hasOwn(body, 'status')) fail(422, 'INVALID_INPUT', '처리 상태만 입력해 주세요.');
       const status = valueOf(body.status, POST_STATUSES, '처리 상태');
-      db.prepare('UPDATE community_posts SET status=?,updatedAt=? WHERE id=?').run(status, new Date(now()).toISOString(), row.id);
+      db.prepare('UPDATE community_posts SET status=? WHERE id=?').run(status, row.id);
       return json({ post: postData(post(row.id, null, user), user) });
     }
     let match = path.match(/^\/api\/community\/posts\/([a-zA-Z0-9-]{1,80})$/);

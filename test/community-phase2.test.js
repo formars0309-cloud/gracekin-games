@@ -247,6 +247,29 @@ test('처리 상태는 모든 게시판에서 운영자만 전용 PATCH로 설�
   } finally { f.close(); }
 });
 
+test('처리 상태 변경·해제 뒤에도 본문 updatedAt은 응답과 DB에서 불변', async () => {
+  const f = fixture();
+  try {
+    for (const board of ['free', 'notice']) {
+      const created = (await create(f, notice('gyeongguk', { board }))).body.post;
+      f.advance();
+      const path = `/api/community/posts/${created.id}`;
+      const edited = (await f.api(path, { title: '본문 수정 시각 확인', body: '수정한 본문' }, undefined, 'PATCH')).body.post;
+      assert.notEqual(edited.updatedAt, created.updatedAt);
+      for (const status of ['checking', 'solved', 'applied', null]) {
+        f.advance();
+        const response = await f.api(`${path}/status`, { status }, undefined, 'PATCH');
+        assert.equal(response.status, 200);
+        assert.equal(response.body.post.status, status);
+        assert.equal(response.body.post.updatedAt, edited.updatedAt);
+        assert.equal(f.db.prepare('SELECT updatedAt FROM community_posts WHERE id=?').get(created.id).updatedAt, edited.updatedAt);
+        assert.equal((await f.api(`${path}?game=gyeongguk`, undefined, null)).body.post.updatedAt, edited.updatedAt);
+        assert.equal((await f.api(`/api/community/posts?game=gyeongguk&board=${board}`, undefined, null)).body.posts[0].updatedAt, edited.updatedAt);
+      }
+    }
+  } finally { f.close(); }
+});
+
 test('운영자 새 소식은 예약·확정·일일 한도·중복 판정에서 제외하고 일반 글·새 소식 댓글 보상은 유지', async () => {
   const f = fixture();
   try {
