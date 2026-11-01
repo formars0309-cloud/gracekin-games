@@ -36,23 +36,31 @@ function call(server, path, { method = 'GET', body, cookie, origin = server.orig
   });
 }
 try {
-  app = await startServer({ port: 0, dataDir: join(directory, 'db'), rateLimit: { authMax: 80, writeMax: 120 } });
+  // 2026-10-16 공통 계정 이후 가입은 연령 구분(ageBand)과 이메일 확인을 거친 뒤 로그인한다. 메일은 임시 배열로만 받는다.
+  const mailbox = [];
+  app = await startServer({ port: 0, dataDir: join(directory, 'db'), mailer: async message => mailbox.push(message), rateLimit: { authMax: 80, writeMax: 120 } });
   status(await call(app, '/api/community/session'), 200, '비회원 세션');
-  for (const ageConfirmed of [undefined, false, 'true']) {
-    status(await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '연령확인검수', email: `${randomBytes(8).toString('hex')}@review.invalid`, password, ...(ageConfirmed === undefined ? {} : { ageConfirmed }) } }), 422, '가입 연령 자기확인 필수값 검증');
+  for (const ageFields of [{}, { ageConfirmed: true }, { ageBand: 'adult' }]) {
+    status(await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '연령확인검수', email: `${randomBytes(8).toString('hex')}@review.invalid`, password, ...ageFields } }), 422, '가입 연령 자기확인 필수값 검증');
   }
 
-  const signA = await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '검수회원하나', email: emailA, password, ageConfirmed: true } });
-  status(signA, 200, '실제 회원가입 A');
+  const tokenFrom = mail => new URL(mail.text.match(/https?:\/\/[^\s]+#token=[^\s]+/)[0]).hash.slice('#token='.length);
+  async function register(name, email) {
+    status(await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name, email, password, ageBand: '14plus' } }), 200, `실제 회원가입 ${name}`);
+    const mail = mailbox.findLast(item => item.to === email); assert.ok(mail, `${name} 확인 메일 발송`); checks += 1;
+    status(await call(app, '/api/account/verify-email', { method: 'POST', body: { token: tokenFrom(mail) } }), 200, `${name} 이메일 확인`);
+    const login = await call(app, '/api/auth/sign-in/email', { method: 'POST', body: { email, password } }); status(login, 200, `${name} 확인 후 로그인`);
+    return login;
+  }
+  const signA = await register('검수회원하나', emailA);
   const cookieA = cookieFrom(signA); assert.ok(cookieA, 'A 세션 쿠키 설정');
   assert.ok(signA.headers['set-cookie'].every(value => /HttpOnly/i.test(value) && /SameSite=Lax/i.test(value)), '쿠키 보호 속성'); checks += 1;
-  const signB = await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: '검수회원둘', email: emailB, password, ageConfirmed: true } });
-  status(signB, 200, '실제 회원가입 B'); const cookieB = cookieFrom(signB); assert.ok(cookieB, 'B 세션 쿠키 설정');
+  const signB = await register('검수회원둘', emailB); const cookieB = cookieFrom(signB); assert.ok(cookieB, 'B 세션 쿠키 설정');
   const session = await call(app, '/api/community/session', { cookie: cookieA }); status(session, 200, '가입 후 실제 세션'); publicBody(session); assert.equal(session.body.user.name, '검수회원하나');
   const input = { game: 'slimeline', board: 'free', title: '독립 검수 글', body: '<img src=x onerror=alert(1)><script>window.__review=1</script>', authorId: signB.body.user.id };
   status(await call(app, '/api/community/posts', { method: 'POST', body: input }), 401, '비회원 글쓰기 차단');
   const created = await call(app, '/api/community/posts', { method: 'POST', cookie: cookieA, body: input }); status(created, 201, '회원 글 작성'); publicBody(created);
-  const postId = created.body.post.id; assert.match(postId, /^[a-f0-9-]{36}$/i); assert.equal(created.body.post.author.id, session.body.user.id, '클라이언트 작성자 위조 무시'); checks += 2;
+  const postId = created.body.post.id; assert.match(postId, /^[a-f0-9-]{36}$/i); assert.equal(created.body.post.author.name, session.body.user.name, '클라이언트 작성자 위조 무시'); assert.equal(created.body.post.canEdit, true, '작성자 본인 수정 권한'); assert.ok(!('id' in created.body.post.author), '공개 응답에 작성자 ID 미포함'); checks += 4;
   const comment = await call(app, `/api/community/posts/${postId}/comments?game=slimeline`, { method: 'POST', cookie: cookieB, body: { body: '독립 검수 댓글', authorId: session.body.user.id } }); status(comment, 201, '다른 계정 댓글 작성'); publicBody(comment); const commentId = comment.body.comment.id;
   for (const method of ['PATCH', 'DELETE']) {
     status(await call(app, `/api/community/posts/${postId}?game=slimeline`, { method, cookie: cookieB, body: { title: '권한 위조', body: '변경' } }), 403, '다른 회원의 글 변경 차단');
@@ -70,8 +78,8 @@ try {
   status(await call(app, '/api/community/session', { headers: { host: 'other.invalid' } }), 403, 'Host 위조 차단');
   status(await call(app, '/api/community/posts', { method: 'POST', cookie: cookieA, headers: { 'content-type': 'text/plain' }, body: input }), 415, '본문 형식 제한');
   status(await call(app, '/api/community/posts', { method: 'POST', cookie: cookieA, body: JSON.stringify({ body: 'a'.repeat(70000) }), chunked: true }), 413, '길이 헤더 없는 대형 본문 차단');
-  status(await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: ' ', email: `${randomBytes(8).toString('hex')}@review.invalid`, password, ageConfirmed: true } }), 422, '서버 닉네임 검증');
-  status(await call(app, '/api/community/posts', { method: 'POST', cookie: cookieA, body: { ...input, board: 'notice' } }), 422, '회원 공지 위조 차단');
+  status(await call(app, '/api/auth/sign-up/email', { method: 'POST', body: { name: ' ', email: `${randomBytes(8).toString('hex')}@review.invalid`, password, ageBand: '14plus' } }), 422, '서버 닉네임 검증');
+  status(await call(app, '/api/community/posts', { method: 'POST', cookie: cookieA, body: { ...input, board: 'notice' } }), 403, '회원 공지 위조 차단(운영자 전용)');
   for (const path of ['/.env', '/.data/community.sqlite', '/server/app.js', '/test/community.test.js', '/node_modules/better-auth/package.json', '/package-lock.json', '/README.md', '/.handoff/private.md', '/assets/%2e%2e/server/app.js', '/assets/%252e%252e/server/app.js']) status(await call(app, path), 404, '정적 비공개 경로 차단');
   const db = new DatabaseSync(join(directory, 'db/community.sqlite'), { readOnly: true });
   try { assert.ok(db.prepare('SELECT password FROM account LIMIT 1').get().password !== password, '비밀번호는 평문 저장하지 않음'); checks += 1; } finally { db.close(); }
