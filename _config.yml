@@ -8,6 +8,8 @@ exclude:
   - docs
   - README.md
   - AGENTS.md
+  - CLAUDE.md
+  - reports
   - Dockerfile
   - fly.toml
   - "package*.json"
