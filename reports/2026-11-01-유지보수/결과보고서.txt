@@ -1,0 +1,73 @@
+# gracekin-games 유지보수 결과 보고서 (2026-11-01)
+
+## ① 프로젝트·브랜치·시작 커밋·최종 상태
+- 프로젝트: /Users/app/orca/projects/gracekin-games (origin: github.com/formars0309-cloud/gracekin-games.git)
+- 브랜치: main. 시작 커밋 8d4ed0e. 시작 시점 추적 파일 변경 없음(미추적: 없음, 로컬 제외 .handoff/만 존재).
+- 최종 커밋: 2b919cd(오류 수정) → 6e37795(지침·문서 통일) → 보고서 커밋. 푸시하지 않음.
+- 다른 워크트리 4개(/Users/app/orca/workspaces/gracekin-games/slime-race-*)와 브랜치 backup-before-squash는 건드리지 않음.
+
+## ② 발견한 오류와 원인·수정 파일
+1. npm test 전체 실패(시작 시점): node_modules에 @better-auth/oauth-provider@1.7.10이 설치되어 있지 않아
+   server/oidc.js import에서 ERR_MODULE_NOT_FOUND. 테스트 파일 11개가 로드 단계에서 실패.
+   → `npm ci`(package-lock 기준)로 의존성을 맞춤. 코드 변경 없음. 재실행 197/197 통과.
+2. tests/security-review/review_http.mjs 실패("가입 연령 자기확인 필수값 검증"): 2026-10-15 당시 API
+   (ageConfirmed 필드, 가입 즉시 세션 발급)를 전제한 스크립트가 2026-10-16 공통 계정 개편(ageBand,
+   이메일 확인 후 로그인, 메일 미설정 시 가입 503) 이후 맞지 않았음. docs/보고-G34.md에 "별도 정리
+   대상"으로 남아 있던 기존 실패.
+   → 수정 파일: tests/security-review/review_http.mjs. 임시 메일함(mailer 옵션)으로 확인 메일 수신 →
+   verify-email → sign-in 순서로 바꾸고, 연령 검사 3사례를 ageBand 기준으로, 작성자 위조 검사를 현재
+   공개 응답 형태(author.name·canEdit, 작성자 ID 미포함)로, 회원 공지 작성 차단 기대값을 403(운영자
+   전용)으로 맞춤. 서버 코드는 변경하지 않음. 결과 70개 확인 통과(이전 59개 기준보다 4개 추가 검사).
+3. 그 외 깨진 import·링크 없음: 문서 내부 링크 0개 깨짐, node --check 56개 파일 통과,
+   .dockerignore 허용 121항목 모두 존재, 화면이 참조하는 로컬 자산 중 Docker 허용 목록 누락 없음.
+
+## ③ 비효율 정리 내역
+- README.md(137줄→50줄): 날짜별 결정·공개 배포·정책 기록 절 94줄을 docs/사이트-운영-기록.md로 그대로
+  옮기고(링크 경로만 docs/ 기준으로 조정) README에는 주소 표·문서 안내·로컬 실행과 검증만 남김.
+- AGENTS.md(11줄→18줄): 실행·배포 경로, 검증 명령, .dockerignore 허용 목록 주의, 기록 위치를 지속
+  규칙으로 추가. 기존 규칙은 유지.
+- CLAUDE.md 신규(`@AGENTS.md` 1줄). .gitignore에 .claude/settings.local.json 추가.
+- 중복 코드·미사용 의존성: package.json 의존성 6개 모두 server/에서 import 확인. assets 안 JS·CSS 전부
+  HTML에서 참조됨. test/community-phase2-fixture.mjs와 tests/security-review/slime-race-fixture.mjs는
+  용도(2단계 커뮤니티 시험 / 레이스 시험)가 달라 중복으로 보지 않음. 정리할 죽은 코드 없음.
+
+## ④ 이동·삭제한 파일과 증거·보존처
+- 이동: README.md 22~115행 → docs/사이트-운영-기록.md (커밋 6e37795, 원문은 8d4ed0e README에 보존).
+- 삭제: 없음. .DS_Store·빈 파일·편집기 임시 파일도 없었음.
+
+## ⑤ 검증 전후 결과
+| 검사 | 전 | 후 |
+| --- | --- | --- |
+| npm test | 11개 파일 로드 실패(ERR_MODULE_NOT_FOUND) | 197/197 통과, 60.4초 |
+| python3 scripts/verify_site.py | 2950개 확인·9페이지 통과 | 동일 통과 |
+| python3 -m unittest discover -s tests/security-review | 23개 통과 | 23개 통과 |
+| node tests/security-review/review_http.mjs . | 실패(첫 항목) | 70개 확인 통과 |
+| 린트·타입검사 | 설정 없음 → node --check 56개 파일 통과 | 동일 |
+| 빌드 | build 스크립트 없음, docker 미설치, 배포 명령 미실행 | .dockerignore 허용 121항목 존재 확인 |
+| git diff --check | - | 통과 |
+로그: 린트.txt, 타입검사.txt, 전체테스트.txt, 빌드.txt (이 폴더).
+
+## ⑥ 보류 후보와 이유
+1. 브랜치 backup-before-squash(6ec8244, main에 없는 커밋 4개): 이름대로 스쿼시 전 백업. 원격에는 없음.
+   공통 규칙상 브랜치 삭제는 하지 않음. 사용자가 보존 가치를 판단한 뒤 삭제 결정.
+2. 원격 작업 브랜치 formars0309-cloud/slime-race-{clay-art,clay-qa,clay-ui,hud}와 대응 워크트리 4개:
+   다른 작업자 경로라 손대지 않음. main에 병합 완료 여부는 조율자가 확인.
+3. docs/보고-G34.md의 "review_http 기존 실패는 별도 정리 대상" 문구: 과거 보고서라 원문 유지.
+   갱신 메모는 tests/security-review/검수-2026-10-15.md에만 추가.
+4. docs/커뮤니티-배포.md(382줄)·docs/공통계정-운영.md(461줄): 길지만 운영·검증 정본이라 분할하지 않음.
+5. test/community-phase1-browser.mjs: 문서 참조 없음(커밋 15852f1에서 1단계 화면 검수용으로 추가).
+   Playwright 수동 스크립트라 보존. 2단계 스크립트로 대체됐는지는 조율자 판단.
+
+## ⑦ 시작 시점 미커밋 변경의 분류와 권고
+- 추적 파일 변경·미추적 파일 없음.
+- .handoff/ (git/info/exclude로 로컬 제외, 미추적): 인계 문서 4건·배포 기록 2건·법령 원문 9건·화면 PNG 1장.
+  분류: 기록 자료(완성). 권고: 비공개 유지가 의도라면 그대로 두고, 공유가 필요하면 민감정보 검사 후
+  docs/인계/로 옮겨 커밋. 이번 작업에서는 읽기만 했고 수정·삭제하지 않음.
+
+## ⑧ 사용자가 결정해야 할 항목
+1. 커밋 3건(2b919cd, 6e37795, 보고서)의 main 푸시 여부. main 푸시는 GitHub Pages 자동 배포를 유발하나
+   이번 변경은 Pages 출력에서 제외되는 파일(README·AGENTS·docs·tests·.gitignore)과 CLAUDE.md·reports/뿐임.
+   CLAUDE.md·reports/는 _config.yml exclude에 없어 Pages에 그대로 게시될 수 있으니, 비공개가 필요하면
+   _config.yml exclude에 `CLAUDE.md`·`reports`를 추가한 뒤 푸시(조율자 확인 필요).
+2. backup-before-squash 브랜치 삭제 여부.
+3. .handoff/ 자료의 저장소 편입 여부.
