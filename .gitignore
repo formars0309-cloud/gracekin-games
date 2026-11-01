@@ -13,3 +13,6 @@ node_modules/
 *.db
 *.db-*
 coverage/
+
+# Claude Code 개인 설정은 로컬에만 둔다
+.claude/settings.local.json
