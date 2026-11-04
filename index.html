@@ -4,14 +4,14 @@
 <link rel="stylesheet" href="/assets/shared/fonts.css">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gracekin Games · 슬라임 레이스와 두 개의 무대</title>
-<meta name="description" content="Google Play 출시를 준비 중인 슬라임 라인과 경국지계, 10분마다 열리는 숲속 슬라임 레이스.">
+<title>Gracekin Games · 슬라임 라인과 경국지계</title>
+<meta name="description" content="Google Play 출시를 준비 중인 슬라임 라인과 경국지계. 그레이스킨 게임즈의 공식 홈페이지.">
 <meta name="theme-color" content="#0C0A10">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://gracekingames.com/">
 <meta property="og:site_name" content="Gracekin Games">
 <meta property="og:title" content="Gracekin Games · 그레이스킨 게임즈">
-<meta property="og:description" content="Google Play 출시를 준비 중인 슬라임 라인과 경국지계, 10분마다 열리는 숲속 슬라임 레이스.">
+<meta property="og:description" content="Google Play 출시를 준비 중인 슬라임 라인과 경국지계. 그레이스킨 게임즈의 공식 홈페이지.">
 <meta property="og:image" content="https://gracekingames.com/assets/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -21,10 +21,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
 <link rel="stylesheet" href="/assets/shared/account-header.css">
-<link rel="stylesheet" href="/assets/slime-race/race.css?v=20261018-clay">
+<link rel="stylesheet" href="/assets/home/home.css">
 <script defer src="https://cloud.umami.is/script.js" data-website-id="262268ac-4e27-49fa-862a-c911f4d38993" data-domains="gracekingames.com" data-do-not-track="true"></script>
 <script defer src="/assets/shared/account-header.js"></script>
-<script defer src="/assets/slime-race/race.js?v=20261018-clay"></script>
 </head>
 <body>
 <div class="gb-root">
@@ -34,35 +33,26 @@
 <div class="account-header" data-account-header aria-busy="false"><a class="account-header-link" data-account-link href="/account/"><span class="account-header-name" data-account-label>내 계정</span><span class="account-header-grain" data-account-grain hidden><img src="/assets/currency/grain.png" width="24" height="24" alt=""><span data-account-balance></span></span></a><button class="account-header-retry" data-account-retry type="button" hidden>다시 확인</button></div>
 </header>
 <main class="gb-main" id="top">
-<section id="slime-race" aria-labelledby="sr-title">
-<div class="sr-arena">
-<canvas role="img" aria-label="경기를 준비하는 달빛 숲의 다섯 직선 레인"></canvas>
-<div class="sr-heading">
-<div class="sr-title-sign"><h1 id="sr-title"><span>슬라임</span> 레이스</h1></div>
-<div class="sr-announcer" aria-label="부엉이 경기 사회자"><span class="sr-host"><img src="/assets/slime-race/art/owl-host.png" width="360" height="292" alt="날개를 들어 인사하는 부엉이 사회자"></span><p class="sr-speech" data-announcer-message role="status" aria-live="polite" aria-atomic="true">경기를 확인하고 있어요.</p></div>
-<div class="sr-round"><span data-round-label>경기 확인 중</span><strong data-timer>—</strong><span data-status>연결 중</span></div>
+<section class="gb-stage" aria-label="두 게임 무대">
+<a class="gb-panel gb-left" href="/games/slimeline/" data-umami-event="homepage-slimeline" data-umami-event-from="stage" aria-label="슬라임 라인 홈페이지 보기">
+<img class="gb-bg" src="/assets/slime-bg.jpg" alt="">
+<div class="gb-shade"></div>
+<img class="gb-slime" src="/assets/slime-front.png" alt="">
+<div class="gb-label">
+<div class="gb-kicker">STAGE I · <b>선 그리기 퍼즐</b></div>
+<div class="gb-title">슬라임 라인</div>
+<div class="gb-enter">홈페이지 보기 →</div>
 </div>
-<section class="sr-result" hidden aria-live="polite"><small data-result-round>경기 결과</small><h2 data-result-winner></h2><p data-result-personal></p><ol data-result-ranks aria-label="최종 순위"></ol><button class="sr-primary" type="button" data-action="history">내 결과 보기</button></section>
-<div class="sr-feedback"><div class="sr-notice" role="alert" data-public-error hidden><span data-public-message></span><button class="sr-text-button" type="button" data-action="retry">다시 불러오기</button></div><p class="sr-message" data-spectator-message aria-live="polite" hidden></p></div>
-<div class="sr-arena-controls"><button type="button" data-action="sound" aria-pressed="false">소리 꺼짐</button><button class="sr-primary" type="button" data-action="ticket" aria-haspopup="dialog" aria-controls="sr-ticket">출전 정보 · 티켓 구매 →</button><button type="button" data-action="cheer">♡ 응원하기</button></div>
+</a>
+<a class="gb-panel gb-right" href="/games/gyeongguk/" data-umami-event="homepage-gyeongguk" data-umami-event-from="stage" aria-label="경국지계 홈페이지 보기">
+<img class="gb-bg" src="/assets/gyeongguk-key.jpg" alt="">
+<div class="gb-shade"></div>
+<div class="gb-label">
+<div class="gb-kicker">STAGE II · <b>카드 대전 TCG</b></div>
+<div class="gb-title">경국지계</div>
+<div class="gb-enter">홈페이지 보기 →</div>
 </div>
-<dialog class="sr-ticket" id="sr-ticket" aria-labelledby="sr-ticket-title" aria-modal="true">
-<div class="sr-tickethead"><div><h2 id="sr-ticket-title">출전 정보·티켓 구매</h2><p class="sr-economy-note" data-economy-note>무료 그레인 · 현금 구매·환전·경품 교환 불가</p><span data-dialog-round hidden>경기 확인 중</span></div><button class="sr-close" type="button" data-action="close" aria-label="티켓 창 닫기">×</button></div>
-<div class="sr-ticket-scroll">
-<div class="sr-ticket-tools"><strong data-phase>경기 확인 중</strong><button class="sr-text-button" type="button" data-action="rules">경기 안내</button><button class="sr-text-button" type="button" data-action="roster">슬라임 10명 보기</button></div>
-<details data-rules><summary>경기는 이렇게 진행돼요</summary><p>티켓 구매 8분 20초 → 마감 카운트 10초 → 경주 1분 → 결과 30초.<br>최근 출전이 적은 슬라임에 가중치를 두어 10명 중 5명이 출전해요. 기초체력과 이번 회차 컨디션을 반영한 추첨 결과를 경주로 보여 드려요.<br>티켓 금액은 최소 100 그레인부터, 보유 잔액 안에서 정해요. 여러 선수에게 나누어 구매하고 마감 전 총금액을 바꾸거나 취소할 수 있어요. 배당은 원금을 포함하며 목표 환급률은 95%예요.<br>구매는 로그인과 성인 확인을 마친 회원만. 관람과 응원은 누구나 가능하며 응원은 경기 결과에 영향을 주지 않아요. 개인 기록만 확인할 수 있으며, 타인의 구매 금액·참여 인원·구매 합계는 공개하지 않아요.<br>그레인은 무료로 지급되는 사이트 공용 화폐예요. 현금 구매·충전·환전, 상품·쿠폰·유료 아이템 교환, 회원 간 양도, 유료 재화 전환은 제공하지 않아요.</p></details>
-<details data-roster><summary>달빛 숲의 열 친구</summary><div class="sr-fullroster"></div></details>
-<div class="sr-picktitle"><h3>출전 선수 · 최근 5경기</h3><span>선수 선택</span></div>
-<div class="sr-runners" aria-label="출전 선수 선택"><p class="sr-empty">출전 선수를 불러오고 있어요.</p></div>
-<section class="sr-history" data-history hidden aria-labelledby="sr-history-title"><h3 id="sr-history-title">나의 경기 기록</h3><p data-history-summary></p><ul class="sr-history-list"></ul><button class="sr-text-button" type="button" data-action="history-retry" hidden>기록 다시 불러오기</button></section>
-</div>
-<section class="sr-bet" aria-label="선택 선수 티켓 구매">
-<div><div class="sr-bethead"><h3 data-selected>선수를 선택해 주세요</h3><span data-dialog-balance>계정 확인 중</span><span data-selected-style hidden></span></div><div class="sr-betamount"><span>배당 · 원금 포함</span><strong data-odds>—</strong></div><div class="sr-betamount sr-prize"><span>선택 금액 우승 시 총 당첨</span><strong data-estimate>—</strong></div><p class="sr-betnote">선택 금액 기준 순이익 <span data-profit>—</span> 그레인</p></div>
-<div class="sr-betentry"><label for="sr-ticket-amount" data-amount-label>티켓 금액 · 최소 100 그레인</label><div class="sr-inputrow"><div class="sr-inputwrap"><input id="sr-ticket-amount" type="number" data-amount min="100" step="1" inputmode="numeric" autocomplete="off" value="100" aria-label="티켓 구매할 그레인" disabled><span>그레인</span></div><button class="sr-buy" type="button" data-action="buy" disabled>티켓 구매</button></div><div class="sr-quick"><button type="button" data-add="100" disabled>+100</button><button type="button" data-add="1000" disabled>+1,000</button><button type="button" data-add="5000" disabled>+5,000</button></div><div class="sr-betbottom"><span data-my-ticket>내 티켓을 확인해 주세요</span><button class="sr-text-button" type="button" data-action="cancel" disabled>티켓 취소</button></div><p class="sr-message" data-purchase-message aria-live="polite"></p><button class="sr-text-button" type="button" data-action="retry-purchase" hidden>같은 요청 재확인</button></div>
-</section>
-<div class="sr-gate" data-gate aria-live="polite">구매 자격을 확인하고 있어요.</div>
-<div class="sr-private-tools"><span>타인의 구매 내역은 공개하지 않아요</span><button class="sr-text-button" type="button" data-action="history">내 티켓 기록 →</button><button class="sr-text-button" type="button" data-action="refresh-me">내 정보 새로고침</button></div>
-</dialog>
+</a>
 </section>
 <section class="gb-games" id="games" aria-labelledby="games-title"><div class="gb-games-heading"><h2 id="games-title">당신을 위한 게임들</h2><span>Google Play 출시 준비 중 · 홈페이지에서 소식 확인</span></div><div class="gb-gamegrid">
 <article class="gb-game"><img src="/assets/slimeline/hero.webp" alt="숲속 슬라임 라인의 언덕 마을" loading="lazy"><a class="gb-gamecover-link" href="/games/slimeline/" data-umami-event="homepage-slimeline" data-umami-event-from="card-image" aria-label="슬라임 라인 게임 홈페이지"></a><div class="gb-gamecopy"><small class="gb-game-brand">SLIMELINE</small><h3>슬라임 라인</h3><p>선을 그려, 집으로 가는 길.</p><a class="gb-play" href="/games/slimeline/" data-umami-event="homepage-slimeline" data-umami-event-from="card-button">게임 홈페이지 →</a></div></article>

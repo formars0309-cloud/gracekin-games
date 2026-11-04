@@ -503,6 +503,12 @@ def verify(root: Path) -> Report:
 
     home = pages.get(root / 'index.html')
     if home:
+        check('slime-race' not in home.ids, '대문: 레이스 섹션은 비공개 기간에 남아 있으면 안 됨')
+        check(not any(name.startswith('sr-') for _, attrs in home.tags
+                      for name in (attrs.get('class') or '').split()),
+              '대문: 레이스 sr- 클래스가 남아 있음')
+        check(not re.search(r'#slime-race\b|race\.(?:js|css)\b', home.path.read_text()),
+              '대문: 레이스 섹션·스크립트·스타일 참조가 남아 있음')
         expected_entries = {'card-image', 'card-button'} if 'slime-race' in home.ids else {'stage', 'card-image', 'card-button'}
         for game, url in GAME_URLS.items():
             links = [link for link in home.links if link.get('href') == f'/games/{game}/']

@@ -43,6 +43,9 @@ assets/**
 !assets/slime-front.png
 !assets/slime-bg.jpg
 !assets/gyeongguk-key.jpg
+!assets/home/
+assets/home/**
+!assets/home/home.css
 !assets/currency/
 assets/currency/**
 !assets/currency/grain.png

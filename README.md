@@ -1,6 +1,6 @@
 # Gracekin Games 사이트
 
-`gracekingames.com`의 슬라임 레이스 관람 화면, 게임별 홈페이지와 커뮤니티를 관리한다. 슬라임 라인과 경국지계는 Google Play 모바일 출시를 준비 중이며, 대문 아래 게임 소개·카드에서 공식 홈페이지로 이동해 소식을 확인할 수 있다. 각 홈페이지의 **웹에서 체험하기**를 누르면 웹 버전이 열리며, 체험 전에는 게임 화면이나 게임 자원을 불러오지 않는다.
+`gracekingames.com`의 (현재 비공개) 슬라임 레이스, 게임별 홈페이지와 커뮤니티를 관리한다. 슬라임 라인과 경국지계는 Google Play 모바일 출시를 준비 중이며, 대문 아래 게임 소개·카드에서 공식 홈페이지로 이동해 소식을 확인할 수 있다. 각 홈페이지의 **웹에서 체험하기**를 누르면 웹 버전이 열리며, 체험 전에는 게임 화면이나 게임 자원을 불러오지 않는다.
 
 - 사업체: Gracekin Games(그레이스킨 게임즈)
 
@@ -8,7 +8,7 @@
 
 | 주소 | 내용 | 연결 방법 |
 | --- | --- | --- |
-| `gracekingames.com`, `www` | 게임 모음 대문 | GitHub Pages (이 저장소, `CNAME`) |
+| `gracekingames.com`, `www` | 두 게임 무대 대문 · 슬라임 레이스는 현재 비공개 | GitHub Pages (이 저장소, `CNAME`) |
 | `gracekingames.com/games/slimeline/` | 슬라임 라인 홈페이지 | 이 저장소 |
 | `gracekingames.com/games/gyeongguk/` | 경국지계 홈페이지 | 이 저장소 |
 | `gracekingames.com/community/?game=slimeline` | 슬라임 라인 커뮤니티 진입 | 같은 경로·쿼리·해시를 유지해 전용 Fly 커뮤니티로 이동 |

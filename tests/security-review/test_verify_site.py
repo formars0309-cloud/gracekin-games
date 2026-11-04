@@ -207,9 +207,11 @@ class StoreLaunchTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
+        stage = ''.join(f'<a class="gb-panel" href="/games/{game}/" data-umami-event="homepage-{game}" data-umami-event-from="stage">홈페이지 보기 →</a>'
+                        for game in SITE.GAME_URLS)
         cards = ''.join(f'<a href="/games/{game}/" data-umami-event="homepage-{game}" data-umami-event-from="{position}">게임 홈페이지 →</a>'
                         for game in SITE.GAME_URLS for position in ('card-image', 'card-button'))
-        self.write('index.html', f'<main id="slime-race">{cards}</main><footer>{self.DELETION}</footer>')
+        self.write('index.html', f'<main><section class="gb-stage">{stage}</section><section id="games">{cards}</section></main><footer>{self.DELETION}</footer>')
         for game, url in SITE.GAME_URLS.items():
             self.write(f'games/{game}/index.html', self.STORE + self.WEB.format(game=game, url=url)
                        + f'<a href="/community/?game={game}">커뮤니티</a>')
@@ -235,6 +237,19 @@ class StoreLaunchTests(unittest.TestCase):
 
     def test_pending_store_and_web_trial_links_are_allowed(self):
         self.assertEqual(self.launch_failures(), [])
+
+    def test_home_rejects_remaining_race_section_and_references(self):
+        original = (self.root / 'index.html').read_text()
+        for remaining in [
+            '<section id="slime-race"></section>',
+            '<div class="notice sr-arena"></div>',
+            '<a href="#slime-race">경기장</a>',
+            '<script src="/assets/slime-race/race.js?v=1"></script>',
+            '<link rel="stylesheet" href="/assets/slime-race/race.css?v=1">',
+        ]:
+            with self.subTest(remaining=remaining):
+                self.write('index.html', original + remaining)
+                self.assertTrue(any('대문: 레이스' in failure for failure in self.launch_failures()))
 
     def test_published_store_links_are_allowed(self):
         for game in SITE.GAME_URLS:
@@ -299,6 +314,10 @@ class StoreLaunchTests(unittest.TestCase):
 
 
 class FontSystemTests(unittest.TestCase):
+    def test_home_stylesheet_cannot_use_race_font(self):
+        issues = SITE.font_css_issues('.gb-title{font-family:var(--font-race)}', 'assets/home/home.css')
+        self.assertIn('--font-race는 슬라임 레이스 화면에서만 허용', issues)
+
     def test_role_variables_globals_and_shorthand_metrics_are_allowed(self):
         for property_name, value in [
             ('font-family', 'var(--font-body)'),
