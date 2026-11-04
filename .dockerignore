@@ -22,6 +22,9 @@ community/privacy/**
 !community/terms/
 community/terms/**
 !community/terms/index.html
+!community/account-deletion/
+community/account-deletion/**
+!community/account-deletion/index.html
 !games/
 games/**
 !games/slimeline/

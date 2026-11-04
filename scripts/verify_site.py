@@ -49,6 +49,7 @@ class Page(HTMLParser):
         self.path = path
         self.tags: list[tuple[str, dict[str, str]]] = []
         self.links: list[dict[str, str]] = []
+        self.footer_links: list[dict[str, str]] = []
         self.ids: set[str] = set()
         self.stack: list[str] = []
         self.anchor = None
@@ -69,6 +70,8 @@ class Page(HTMLParser):
         if tag == 'a':
             self.anchor = {'text': '', **attrs}
             self.links.append(self.anchor)
+            if 'footer' in self.stack:
+                self.footer_links.append(self.anchor)
         if tag not in VOID:
             self.stack.append(tag)
         if attrs.get('style'):
@@ -439,7 +442,7 @@ def verify(root: Path) -> Report:
     docker_allowed = {line.strip()[1:] for line in dockerignore.read_text().splitlines() if line.strip().startswith('!')} if dockerignore.is_file() else set()
     for path in sorted((root / 'server').glob('*.js')):
         check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 운영 패키지에서 서버 파일 누락')
-    required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'community/account-deletion/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
     paths = [root / 'index.html'] + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
@@ -511,15 +514,35 @@ def verify(root: Path) -> Report:
         if not page:
             continue
         rel = page.path.relative_to(root)
-        starts = [link for link in page.links if link.get('href') == url]
-        check(len(starts) == 1, f'{rel}: 실제 게임 START 링크는 1개여야 함')
-        check(all('START' in link.get('text', '').upper() for link in starts), f'{rel}: START 이외의 게임 직접 진입 링크 발견')
-        check(all(link.get('data-umami-event') == f'play-{game}' and link.get('data-umami-event-from') == 'homepage-start' for link in starts), f'{rel}: START 이벤트 불일치')
+        web_links = [link for link in page.links if link.get('href') == url]
+        check(len(web_links) == 1, f'{rel}: 웹 체험 링크는 1개여야 함')
+        check(all('웹' in link.get('text', '') for link in web_links), f'{rel}: 웹 체험 링크 문구에 웹 표시가 없음')
+        check(all(link.get('data-umami-event') == f'play-{game}' and link.get('data-umami-event-from') == 'homepage-web' for link in web_links), f'{rel}: 웹 체험 링크 이벤트 불일치')
+        # tags는 span을 포함한 모든 요소를 수집하므로 출시 전 상태도 검사한다.
+        stores = [(tag, attrs) for tag, attrs in page.tags if attrs.get('data-store') == 'google-play']
+        check(len(stores) == 1, f'{rel}: Google Play 스토어 요소는 1개여야 함')
+        for tag, attrs in stores:
+            if tag == 'a':
+                check(attrs.get('href', '').startswith('https://play.google.com/store/apps/details?id='), f'{rel}: Google Play 스토어 주소 불일치')
+                check(attrs.get('data-umami-event') == f'store-{game}', f'{rel}: Google Play 스토어 이벤트 불일치')
+            else:
+                check('is-pending' in attrs.get('class', '').split() and attrs.get('aria-disabled') == 'true', f'{rel}: Google Play 스토어 준비 중 상태 불일치')
         other = next(item for item in GAME_URLS if item != game)
         for link in page.links:
             href = link.get('href', '')
             check(f'game={other}' not in href and f'/games/{other}/' not in href and urlsplit(href).hostname != urlsplit(GAME_URLS[other]).hostname, f'{rel}: 다른 게임 링크 혼입')
         check(any(f'game={game}' in link.get('href', '') and '/community/' in link.get('href', '') for link in page.links), f'{rel}: 게임별 커뮤니티 링크 없음')
+
+    deletion_page = pages.get(root / 'community/account-deletion/index.html')
+    if deletion_page:
+        check(not any(tag == 'meta' and 'noindex' in attrs.get('content', '').lower()
+                      for tag, attrs in deletion_page.tags), 'community/account-deletion/index.html: 계정 삭제 안내에 noindex가 있음')
+    deletion_urls = {'/community/account-deletion/', 'https://community.gracekingames.com/community/account-deletion/'}
+    for relative in ('index.html', 'community/privacy/index.html', 'community/terms/index.html', 'account/index.html'):
+        page = pages.get(root / relative)
+        if page:
+            links = page.footer_links if relative == 'index.html' else page.links
+            check(any(link.get('href') in deletion_urls for link in links), f'{relative}: 계정 삭제 안내 링크 없음' + (' (바닥글)' if relative == 'index.html' else ''))
 
     for private_path in ('account/admin/index.html', 'community/bug-report/index.html'):
         private_page = pages.get(root / private_path)

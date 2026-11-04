@@ -198,6 +198,106 @@ class PublicAssetTests(unittest.TestCase):
             self.assertEqual(SITE.production_files(root, {}), [expected])
 
 
+class StoreLaunchTests(unittest.TestCase):
+    STORE = '<span class="button button-store is-pending" data-store="google-play" role="status" aria-disabled="true"><span>Google Play 출시 준비 중</span></span>'
+    WEB = '<a class="button button-web" href="{url}" data-umami-event="play-{game}" data-umami-event-from="homepage-web"><span>웹에서 체험하기</span></a>'
+    DELETION = '<a href="/community/account-deletion/">계정 삭제 안내</a>'
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        cards = ''.join(f'<a href="/games/{game}/" data-umami-event="homepage-{game}" data-umami-event-from="{position}">게임 홈페이지 →</a>'
+                        for game in SITE.GAME_URLS for position in ('card-image', 'card-button'))
+        self.write('index.html', f'<main id="slime-race">{cards}</main><footer>{self.DELETION}</footer>')
+        for game, url in SITE.GAME_URLS.items():
+            self.write(f'games/{game}/index.html', self.STORE + self.WEB.format(game=game, url=url)
+                       + f'<a href="/community/?game={game}">커뮤니티</a>')
+        for relative in ('community/privacy/index.html', 'community/terms/index.html', 'account/index.html'):
+            self.write(relative, self.DELETION)
+        self.write('community/account-deletion/index.html', '<main><h1>계정 삭제 안내</h1></main>')
+
+    def write(self, relative, source):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(source)
+
+    def change(self, relative, before, after):
+        path = self.root / relative
+        source = path.read_text()
+        self.assertIn(before, source)
+        path.write_text(source.replace(before, after))
+
+    def launch_failures(self):
+        # 자산·계정 API가 없는 최소 문서 픽스처에서 출시 동선 검사만 확인한다.
+        return [failure for failure in SITE.verify(self.root).failures
+                if any(marker in failure for marker in ('웹 체험 링크', 'Google Play 스토어', '계정 삭제 안내', '필수 페이지 없음: community/account-deletion/index.html', '대문:'))]
+
+    def test_pending_store_and_web_trial_links_are_allowed(self):
+        self.assertEqual(self.launch_failures(), [])
+
+    def test_published_store_links_are_allowed(self):
+        for game in SITE.GAME_URLS:
+            store = f'<a class="button button-store" data-store="google-play" href="https://play.google.com/store/apps/details?id=com.example.{game}" data-umami-event="store-{game}" data-umami-event-from="homepage-hero">Google Play에서 받기</a>'
+            self.change(f'games/{game}/index.html', self.STORE, store)
+        self.assertEqual(self.launch_failures(), [])
+
+    def test_web_trial_requires_one_link_label_and_tracking(self):
+        relative = 'games/slimeline/index.html'
+        original = (self.root / relative).read_text()
+        web = self.WEB.format(game='slimeline', url=SITE.GAME_URLS['slimeline'])
+        for before, after in [(web, ''), (web, web + web), ('웹에서 체험하기', '게임 실행'),
+                              ('play-slimeline', 'play-gyeongguk'), ('homepage-web', 'homepage-start')]:
+            with self.subTest(after=after):
+                self.write(relative, original.replace(before, after))
+                self.assertTrue(any('웹 체험 링크' in failure for failure in self.launch_failures()))
+
+    def test_store_requires_one_element_and_disabled_pending_state(self):
+        relative = 'games/slimeline/index.html'
+        original = (self.root / relative).read_text()
+        for before, after in [(self.STORE, ''), (self.STORE, self.STORE + self.STORE),
+                              ('is-pending', 'not-pending'), ('aria-disabled="true"', 'aria-disabled="false"')]:
+            with self.subTest(after=after):
+                self.write(relative, original.replace(before, after))
+                self.assertTrue(any('Google Play 스토어' in failure for failure in self.launch_failures()))
+
+    def test_store_anchor_requires_play_url_and_matching_event(self):
+        relative = 'games/slimeline/index.html'
+        original = (self.root / relative).read_text()
+        for url, event in [('https://play.google.com.evil.invalid/store/apps/details?id=game', 'store-slimeline'),
+                           ('https://play.google.com/store/apps/details?id=game', 'store-gyeongguk')]:
+            with self.subTest(url=url, event=event):
+                store = f'<a data-store="google-play" href="{url}" data-umami-event="{event}">Google Play에서 받기</a>'
+                self.write(relative, original.replace(self.STORE, store))
+                self.assertTrue(any('Google Play 스토어' in failure for failure in self.launch_failures()))
+
+    def test_account_deletion_page_must_exist_and_allow_indexing(self):
+        relative = 'community/account-deletion/index.html'
+        (self.root / relative).unlink()
+        self.assertIn(f'필수 페이지 없음: {relative}', self.launch_failures())
+        for name in ('robots', 'googlebot'):
+            with self.subTest(name=name):
+                self.write(relative, f'<meta name="{name}" content="NOINDEX, follow">')
+                self.assertTrue(any('noindex' in failure for failure in self.launch_failures()))
+
+    def test_account_deletion_links_are_required_on_all_entry_pages(self):
+        for relative in ('index.html', 'community/privacy/index.html', 'community/terms/index.html', 'account/index.html'):
+            with self.subTest(relative=relative):
+                original = (self.root / relative).read_text()
+                self.write(relative, original.replace(self.DELETION, ''))
+                self.assertTrue(any(failure.startswith(f'{relative}: 계정 삭제 안내 링크 없음') for failure in self.launch_failures()))
+                self.write(relative, original)
+
+    def test_home_account_deletion_link_must_be_in_footer(self):
+        self.change('index.html', f'<footer>{self.DELETION}</footer>', self.DELETION + '<footer></footer>')
+        self.assertIn('index.html: 계정 삭제 안내 링크 없음 (바닥글)', self.launch_failures())
+
+    def test_official_community_account_deletion_url_is_allowed(self):
+        for relative in ('index.html', 'community/privacy/index.html', 'community/terms/index.html', 'account/index.html'):
+            self.change(relative, 'href="/community/account-deletion/"', 'href="https://community.gracekingames.com/community/account-deletion/"')
+        self.assertEqual(self.launch_failures(), [])
+
+
 class FontSystemTests(unittest.TestCase):
     def test_role_variables_globals_and_shorthand_metrics_are_allowed(self):
         for property_name, value in [
