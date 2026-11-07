@@ -484,7 +484,7 @@ function makePortrait(id){const c=document.createElement('canvas');c.width=144;c
     state.raf=requestAnimationFrame(tick);
   }
   async function loadAssets() {
-    const paths=[...names.flatMap((_,i)=>[['slime'+i,'slime'+i+'.png'],['acc'+i,'acc'+i+'.png']]),['backdrop','clay/backdrop.webp'],['lane','clay/lane.webp'],['plaque','clay/title-plaque.png'],['panel','clay/panel.png'],['button','clay/button.png'],['gold','clay/button-gold.png']];
+    const paths=[...names.flatMap((_,i)=>[['slime'+i,'slime'+i+'.png'],['acc'+i,'acc'+i+'.png']]),['backdrop','clay/backdrop.webp'],['lane','clay/lane.webp'],['plaque','clay/title-plaque.webp'],['panel','clay/panel.webp'],['button','clay/button.webp'],['gold','clay/button-gold.webp']];
     let failures=0;
     await Promise.all(paths.map(([key,file])=>new Promise(resolve=>{
       const image=new Image();image.decoding='async';

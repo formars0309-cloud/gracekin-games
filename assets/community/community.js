@@ -22,7 +22,7 @@
           ['선을 그려 길을 이어요', '슬라임이 지나갈 길을 선으로 만들어 주세요. 게임 화면에 나오는 안내를 보며 한 걸음씩 시작하면 돼요.'],
           ['막히거나 오류를 만났다면', '화면이 멈추거나 예상과 다르게 움직인다면 비공개 버그 제보로 알려 주세요. 이용한 기기와 브라우저, 문제가 생긴 화면과 상황을 함께 적어 주시면 확인에 도움이 돼요.']
         ] },
-        { id: 'feedback', date: '2026-10-15', cover: '/assets/slime-front.png', title: '문제 신고와 소감을 보내는 방법', excerpt: '플레이하다 만난 문제나 떠오른 생각을 편지로 받습니다.', sections: [
+        { id: 'feedback', date: '2026-10-15', cover: '/assets/slime-front.webp', title: '문제 신고와 소감을 보내는 방법', excerpt: '플레이하다 만난 문제나 떠오른 생각을 편지로 받습니다.', sections: [
           ['로그인한 계정으로 비공개 제보해요', '비공개 버그 제보에서 알려진 문제를 먼저 확인해 주세요. 로그인한 계정으로 제보하면 본인은 제보 목록과 처리 상태를 볼 수 있어요. 원문은 운영자만 확인해요.'],
           ['제보 전에 해 볼 것', '화면을 새로고침하고, 다른 브라우저에서도 같은 문제가 생기는지 살펴봐 주세요. 비공개 버그 제보의 알려진 문제도 확인해 주세요.'],
           ['문제 설명에 적을 칸', ['게임 이름: 슬라임 라인', '어느 화면: 문제가 생긴 화면과 주소', '무엇을 했는지: 문제가 반복되는 순서', '기대한 결과와 실제 결과: 각각 어떻게 달랐는지', '기기와 브라우저: 기기 이름, 운영체제, 브라우저 이름과 버전']],
@@ -315,7 +315,7 @@
   titleArt.width = gameId === 'slimeline' ? 2171 : 2048;
   titleArt.height = gameId === 'slimeline' ? 724 : 768;
   titleArt.alt = game.name;
-  titleArt.src = `/assets/${gameId}/title.png`;
+  titleArt.src = `/assets/${gameId}/title.webp`;
   titleArt.hidden = false;
   byId('hero-links').hidden = false;
   byId('hero-home').href = studioPath(game.home);
@@ -451,7 +451,7 @@
     const emptyArt = byId('empty-art');
     emptyArt.hidden = !isBoardEmpty;
     if (isBoardEmpty) {
-      if (gameId === 'slimeline') { byId('empty-image').src = '/assets/slime-front.png'; byId('empty-image').hidden = false; }
+      if (gameId === 'slimeline') { byId('empty-image').src = '/assets/slime-front.webp'; byId('empty-image').hidden = false; }
       else {
         emptyArt.className = `empty-art tile-${boardId}`;
       }

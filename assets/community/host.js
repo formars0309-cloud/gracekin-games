@@ -8,7 +8,7 @@
     document.documentElement.dataset.game = game;
     document.querySelector('meta[name="theme-color"]').content = game === 'gyeongguk' ? '#f8f6f1' : game === 'slimeline' ? '#101728' : '#17131f';
     if (game !== 'picker') {
-      for (const name of ['hero.webp', 'title.png']) {
+      for (const name of ['hero.webp', 'title.webp']) {
         const preload = document.createElement('link');
         preload.rel = 'preload';
         preload.as = 'image';

@@ -149,10 +149,10 @@ class PublicAssetTests(unittest.TestCase):
             (root / 'server').mkdir()
             (root / 'server/grain.js').write_text('')
             (root / 'assets/currency').mkdir(parents=True)
-            (root / 'assets/currency/grain.png').write_bytes(b'')
-            (root / 'index.html').write_text('<img src="/assets/currency/grain.png">')
+            (root / 'assets/currency/grain.webp').write_bytes(b'')
+            (root / 'index.html').write_text('<img src="/assets/currency/grain.webp">')
             manifest = root / '.dockerignore'
-            manifest.write_text('**\n!index.html\n!server/\n!assets/\n!assets/currency/grain.png\n')
+            manifest.write_text('**\n!index.html\n!server/\n!assets/\n!assets/currency/grain.webp\n')
             failures = SITE.verify(root).failures
             self.assertIn('server/grain.js: 운영 패키지에서 서버 파일 누락', failures)
             self.assertIn('index.html (img.src): 운영 패키지에서 내부 자산 누락', failures)

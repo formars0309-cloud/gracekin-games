@@ -127,7 +127,7 @@ textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outl
 :root[data-game=gyeongguk] body .board-tabs a[aria-current=page]::after{height:3px;background:#7fa8c6}
 .board-tile{display:block;flex-shrink:0;width:28px;height:28px;border:1px solid #bbb0a2}
 /* 그림 요청은 경국지계 요소에만 연결해 다른 게임의 자원을 받지 않는다. */
-:root[data-game=gyeongguk] body :is(.board-tile,.empty-art){background-image:url('/assets/gyeongguk/tiles.webp');background-size:300% 200%;background-repeat:no-repeat}
+:root[data-game=gyeongguk] body :is(.board-tile,.empty-art){background-image:url('/assets/gyeongguk/tiles-small.webp');background-size:300% 200%;background-repeat:no-repeat}
 .tile-free{background-position:0 0;object-position:0 0}
 .tile-deck{background-position:50% 0;object-position:50% 0}
 .tile-strategy{background-position:100% 0;object-position:100% 0}

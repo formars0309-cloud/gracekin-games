@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-CLAY = ('backdrop.webp', 'lane.webp', 'title-plaque.png', 'panel.png', 'button.png', 'button-gold.png')
+CLAY = ('backdrop.webp', 'lane.webp', 'title-plaque.webp', 'panel.webp', 'button.webp', 'button-gold.webp')
 
 
 def main():

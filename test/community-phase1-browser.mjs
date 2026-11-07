@@ -83,7 +83,7 @@ try {
           page.on('request', request => {
             const url = request.url();
             if (/fonts\.(googleapis|gstatic)\.com/.test(url)) fontRequests.add(url);
-            const opposite = game === 'gyeongguk' ? /\/assets\/(slimeline\/|slime-front\.png)/ : /\/assets\/gyeongguk\//;
+            const opposite = game === 'gyeongguk' ? /\/assets\/(slimeline\/|slime-front\.webp)/ : /\/assets\/gyeongguk\//;
             if (opposite.test(url)) wrongImages.push(url);
           });
           const user = signedIn ? { id: '화면검수', name: '화면검수', canWriteCommunity: true } : null;
@@ -126,7 +126,7 @@ try {
           const text = (await page.locator('body').innerText()).replaceAll('← 이전', '').replaceAll('다음 →', '').replaceAll('← 목록으로', '');
           assert.doesNotMatch(text, /[↗→＋←]/);
           const preloads = await page.locator('link[rel=preload][as=image]').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
-          assert.deepEqual(preloads, [`/assets/${game}/hero.webp`, `/assets/${game}/title.png`]);
+          assert.deepEqual(preloads, [`/assets/${game}/hero.webp`, `/assets/${game}/title.webp`]);
           // 키보드만으로 시작 링크와 게임 전환, 카드 영역, 접기 안내에 진입한다.
           await page.keyboard.press('Tab');
           assert.equal(await page.evaluate(() => document.activeElement.className), 'skip-link');

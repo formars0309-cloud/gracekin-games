@@ -40,15 +40,15 @@ assets/**
 !assets/favicon.svg
 !assets/apple-touch-icon.png
 !assets/og.jpg
-!assets/slime-front.png
-!assets/slime-bg.jpg
-!assets/gyeongguk-key.jpg
+!assets/slime-front.webp
+!assets/slime-bg.webp
+!assets/gyeongguk-key.webp
 !assets/home/
 assets/home/**
 !assets/home/home.css
 !assets/currency/
 assets/currency/**
-!assets/currency/grain.png
+!assets/currency/grain.webp
 !assets/community/
 assets/community/**
 !assets/community/community.js
@@ -57,13 +57,14 @@ assets/community/**
 !assets/slimeline/
 assets/slimeline/**
 !assets/slimeline/hero.webp
-!assets/slimeline/title.png
+!assets/slimeline/title.webp
 !assets/slimeline/tiles.webp
 !assets/gyeongguk/
 assets/gyeongguk/**
 !assets/gyeongguk/hero.webp
-!assets/gyeongguk/title.png
+!assets/gyeongguk/title.webp
 !assets/gyeongguk/tiles.webp
+!assets/gyeongguk/tiles-small.webp
 !assets/gyeongguk/card-lubu.webp
 !assets/gyeongguk/card-diaochan.webp
 !assets/gyeongguk/card-zhugeliang.webp
@@ -129,7 +130,7 @@ assets/slime-race/art/**
 !assets/slime-race/art/acc9.png
 !assets/slime-race/art/tree.webp
 !assets/slime-race/art/bush.webp
-!assets/slime-race/art/owl-host.png
+!assets/slime-race/art/owl-host.webp
 
 # 그레인 활동 보상·버그 제보·운영자 도구
 !server/grain-policy.js
@@ -151,9 +152,9 @@ account/admin/**
 assets/slime-race/art/clay/**
 !assets/slime-race/art/clay/backdrop.webp
 !assets/slime-race/art/clay/lane.webp
-!assets/slime-race/art/clay/title-plaque.png
-!assets/slime-race/art/clay/panel.png
-!assets/slime-race/art/clay/button.png
-!assets/slime-race/art/clay/button-gold.png
+!assets/slime-race/art/clay/title-plaque.webp
+!assets/slime-race/art/clay/panel.webp
+!assets/slime-race/art/clay/button.webp
+!assets/slime-race/art/clay/button-gold.webp
 !assets/slime-race/art/clay/Jua-Regular.woff2
 !assets/slime-race/art/clay/Jua-OFL.txt

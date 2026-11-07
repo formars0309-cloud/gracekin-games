@@ -65,7 +65,7 @@ test('게임별 이름·탭 그림·첫 화면을 분리하고 기존 게시판 
     assert.equal(initial.node('board-title').textContent, '새 소식');
     assert.equal(tabs[0].children[0].attributes['aria-hidden'], 'true');
     assert.equal(ui.node('game-title').hidden, false);
-    assert.equal(ui.node('game-title').src, `/assets/${game}/title.png`);
+    assert.equal(ui.node('game-title').src, `/assets/${game}/title.webp`);
     assert.equal(ui.node('game-hero-art').hidden, false);
     assert.equal(ui.node('game-hero-art').src, `/assets/${game}/hero.webp`);
     assert.equal(ui.node('game-hero-art').attributes.fetchpriority, 'high');
@@ -238,7 +238,7 @@ test('게임 그림은 주소 없이 시작하고 머리말에서 테마를 먼�
     runInNewContext(host, { document, location: { pathname: '/community/', search: `?game=${query}`, hostname: '127.0.0.1' }, window: {}, URLSearchParams });
     assert.equal(root.dataset.game, game);
     assert.equal(meta.content, color);
-    assert.deepEqual(preloads.map(node => node.href), game === 'picker' ? [] : [`/assets/${game}/hero.webp`, `/assets/${game}/title.png`]);
+    assert.deepEqual(preloads.map(node => node.href), game === 'picker' ? [] : [`/assets/${game}/hero.webp`, `/assets/${game}/title.webp`]);
     for (const node of preloads) { assert.equal(node.rel, 'preload'); assert.equal(node.as, 'image'); assert.equal(node.fetchpriority, 'high'); }
   }
 });
@@ -253,7 +253,7 @@ test('모든 게시판은 날짜·그림 카드 세 개를 제공하고 새 소�
       assert.equal(new Set(cards.map(card => card.href)).size, 3);
       for (const card of cards) {
         assert.ok(card.href.includes(`game=${game}&board=notice&post=`));
-        assert.ok(card.children[0].src.startsWith(`/assets/${game}/`) || game === 'slimeline' && card.children[0].src === '/assets/slime-front.png');
+        assert.ok(card.children[0].src.startsWith(`/assets/${game}/`) || game === 'slimeline' && card.children[0].src === '/assets/slime-front.webp');
         assert.equal(card.children[1].children[1].dateTime, '2026-10-15');
       }
     }

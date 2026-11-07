@@ -579,7 +579,7 @@ def verify(root: Path) -> Report:
         check(host_index < style_index, '커뮤니티: 테마 판별은 첫 스타일시트보다 먼저 실행해야 함')
         check(any(tag == 'meta' and attrs.get('name') == 'theme-color' and attrs.get('content') == '#17131f' for tag, attrs in tags), '커뮤니티: 게임 선택 화면의 기본 테마 색 누락')
         for game in GAME_URLS:
-            for name in ('hero.webp', 'title.png'):
+            for name in ('hero.webp', 'title.webp'):
                 resource = Path(f'assets/{game}/{name}')
                 check((root / resource).is_file() and docker_allows(resource, docker_allowed), f'커뮤니티: {resource} 자산 또는 운영 패키지 허용 누락')
         resource = Path('assets/gyeongguk/tiles.webp')
