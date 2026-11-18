@@ -38,6 +38,8 @@ try {
     const failures = await page.evaluate(async () => (await window.axe.run(document, { runOnly: ['wcag2a','wcag2aa','wcag21aa'] })).violations.map(item => ({ id: item.id, targets: item.nodes.map(node => node.target) })));
     assert.deepEqual(failures, []);
   }
+  assert.equal(await page.getByRole('region', { name: '게임 자산 내보내기' }).count(), 1);
+  assert.equal(await page.getByRole('button', { name: '게임 파일 만들기' }).isVisible(), true);
   await capture('작업대');
   await $('#hero-name').fill('새벽별');
   await $('[data-job=ranger]').click();
@@ -129,6 +131,7 @@ try {
   await $('#keep-local').click();
   await $('#save').click();
   await page.waitForFunction(() => document.querySelector('#sync-status').textContent.includes('계정에 저장했어요'));
+  assert.equal(await page.getByRole('button', { name: '게임 파일 만들기' }).count(), 1);
   const updated = await savedAvatar();
   assert.equal(updated.id, saved.id);
   assert.equal(updated.revision, saved.revision + 2);

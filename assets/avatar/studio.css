@@ -177,3 +177,22 @@ dialog::backdrop { background: #081218c9; }
   .editor { margin-top: 12px; }
   .editor button, .editor input { scroll-margin-top: calc(34svh + 106px); }
 }
+
+.export-panel {
+  margin-top: 14px; padding: 17px 22px; border: 1px solid #516b65;
+  border-radius: 5px; background: #152a30;
+}
+.export-panel h2 { font-size: 1.15rem; font-weight: 600; letter-spacing: -.04em; }
+.avatar-gamekit { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 8px; }
+.avatar-gamekit p { flex: 1 1 240px; color: var(--muted); font-size: .82rem; line-height: 1.65; }
+.avatar-gamekit button, .avatar-gamekit a {
+  border: 1px solid #b4a17a; padding: 8px 15px; border-radius: 3px; color: #f0dbac; font-size: .85rem;
+}
+.avatar-gamekit a { display: inline-flex; align-items: center; color: #23363a; background: #eac68a; }
+.export-panel[inert] { visibility: hidden; }
+.export-panel.previous-owner a[download], .export-panel.previous-owner [role=status] { display: none; }
+@media (max-width: 700px) {
+  .export-panel { margin-top: 12px; padding: 14px; }
+  .avatar-gamekit { align-items: flex-start; flex-direction: column-reverse; }
+  .avatar-gamekit p { flex: auto; }
+}
