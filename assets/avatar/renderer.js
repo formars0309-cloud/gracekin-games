@@ -42,7 +42,7 @@ export function createAvatarView(container, character, { mode = 'studio' } = {})
     software = !backend;
   let view = mode === 'portrait' ? 'face' : 'full',
     motion = 'idle',
-    angle = mode === 'board' ? 0.42 : -0.265;
+    angle = mode === 'board' ? 0.42 : -0.43;
   let model,
     modelKey,
     pending = character,
@@ -80,15 +80,7 @@ export function createAvatarView(container, character, { mode = 'studio' } = {})
     dirty = true;
     requestFrame();
   }
-  function draw(now) {
-    frameId = 0;
-    if (disposed || !visible || doc.hidden) return;
-    if (!width || !height) {
-      const rect = host.getBoundingClientRect();
-      width = rect.width;
-      height = rect.height;
-    }
-    if (width <= 0 || height <= 0) return;
+  function syncModel() {
     if (needsModel) {
       const key = JSON.stringify(readAppearance(pending));
       if (key !== modelKey) {
@@ -98,6 +90,17 @@ export function createAvatarView(container, character, { mode = 'studio' } = {})
       }
       needsModel = false;
     }
+  }
+  function draw(now) {
+    frameId = 0;
+    if (disposed || !visible || doc.hidden) return;
+    if (!width || !height) {
+      const rect = host.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+    }
+    if (width <= 0 || height <= 0) return;
+    syncModel();
     const animate = !reduced.matches && (motion === 'walk' || mode === 'studio' || mode === 'rpg');
     const interval = software ? (motion === 'walk' ? 110 : 220) : 1000 / 30;
     if (dirty || now - lastDraw >= interval - 0.75) {
@@ -222,6 +225,60 @@ export function createAvatarView(container, character, { mode = 'studio' } = {})
     motion = next;
     invalidate();
   }
+  let captureCanvas, captureBackend, captureModel;
+  function releaseCapture() {
+    captureCanvas?.removeEventListener('webglcontextlost', releaseCapture);
+    captureBackend?.dispose();
+    if (captureCanvas) captureCanvas.width = captureCanvas.height = 1;
+    captureCanvas = captureBackend = captureModel = null;
+  }
+  // 화면과 독립된 촬영 공간을 재사용한다. 화면 밖에 놓인 게임 키트도 첫 프레임부터 동기로 촬영한다.
+  function captureFrame({ angle: heading = 0, phase = 0, motion: action = 'idle', view: framing = 'full' } = {}) {
+    if (disposed) throw new Error('종료한 아바타는 촬영할 수 없습니다.');
+    const rect = host.getBoundingClientRect();
+    const w = Math.round(rect.width),
+      h = Math.round(rect.height);
+    if (w < 1 || h < 1) throw new RangeError('촬영할 요소의 크기가 필요합니다.');
+    if (!captureBackend) {
+      captureCanvas = doc.createElement('canvas');
+      captureBackend = software ? null : createHardware(captureCanvas);
+      if (captureBackend) captureCanvas.addEventListener('webglcontextlost', releaseCapture);
+      else {
+        captureCanvas = doc.createElement('canvas');
+        captureBackend = createPaper(captureCanvas);
+      }
+      if (!captureBackend) throw new Error('아바타를 촬영할 그림판을 열 수 없습니다.');
+    }
+    syncModel();
+    if (captureModel !== model) {
+      captureBackend.setModel(model);
+      captureModel = model;
+    }
+    if (captureCanvas.width !== w || captureCanvas.height !== h) {
+      captureCanvas.width = w;
+      captureCanvas.height = h;
+    }
+    const cycle = Number.isFinite(phase) ? ((phase % 1) + 1) % 1 : 0;
+    captureBackend.draw(
+      pose(model, {
+        angle: Number.isFinite(heading) ? heading : 0,
+        time: 0,
+        cycle,
+        motion: action,
+        mode,
+        view: framing,
+        width: w,
+        height: h,
+      }),
+    );
+    const snapshot = doc.createElement('canvas');
+    snapshot.width = w;
+    snapshot.height = h;
+    const paint = snapshot.getContext('2d');
+    if (!paint) throw new Error('아바타 촬영 결과를 저장할 수 없습니다.');
+    paint.drawImage(captureCanvas, 0, 0);
+    return snapshot;
+  }
   function dispose() {
     if (disposed) return;
     disposed = true;
@@ -236,6 +293,7 @@ export function createAvatarView(container, character, { mode = 'studio' } = {})
     host.removeEventListener('pointerdown', down);
     host.removeEventListener('pointermove', move);
     host.removeEventListener('lostpointercapture', release);
+    releaseCapture();
     backend?.dispose();
     canvas.width = 1;
     canvas.height = 1;
@@ -245,7 +303,7 @@ export function createAvatarView(container, character, { mode = 'studio' } = {})
     pending = null;
     views.delete(container);
   }
-  const api = { update, setView, rotate, setMotion, dispose };
+  const api = { update, setView, rotate, setMotion, captureFrame, dispose };
   views.set(container, api);
   update(character);
   return api;

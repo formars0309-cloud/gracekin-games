@@ -35,6 +35,7 @@ void main() {
   float spec=pow(max(0.,dot(n,vec3(-.296,.394,.870))),mix(16.,58.,gloss));
   vec3 light=vec3(.65,.65,.72)+sky*vec3(.12,.11,.10)+lit*vec3(.33,.30,.23);
   vec3 shade=tint*light+rim*vec3(.10,.092,.079)*(.35+gloss)+spec*vec3(.30,.27,.20)*gloss;
+  if(abs(finish.y-2.)<.5) shade+=tint*vec3(.089,.073,.068)*(.65+.35*max(n.z,0.));
   if(finish.y<.5) shade*=mix(.72,1.,smoothstep(.10,.65,length(local.xz)));
   gl_FragColor=vec4(shade,1.);
 }`;

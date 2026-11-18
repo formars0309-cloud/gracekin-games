@@ -43,7 +43,12 @@ export class Sculpture {
         normals.push([0, 0, 0]);
       }
     }
-    const vertex = (p, n) => this.vertices.push(...p, ...n, ...color, gloss, this.bone);
+    const vertex = (i, n) => {
+      const point = data[i];
+      const tint =
+        typeof color === 'function' ? color(point, (i % stride) / columns, Math.floor(i / stride) / rows) : color;
+      this.vertices.push(...point, ...n, ...tint, gloss, this.bone);
+    };
     const base = this.vertices.length / 11;
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < columns; x++) {
@@ -60,7 +65,7 @@ export class Sculpture {
             const normal = unit(n);
             ids.forEach((k) => {
               this.indices.push(this.vertices.length / 11);
-              vertex(data[k], normal);
+              vertex(k, normal);
             });
           } else {
             ids.forEach((k) => {
@@ -72,7 +77,7 @@ export class Sculpture {
       }
     }
     if (!faceted) {
-      data.forEach((p, i) => vertex(p, unit(normals[i])));
+      data.forEach((_, i) => vertex(i, unit(normals[i])));
       this.indices.push(...triangles.map((i) => base + i));
     }
   }
