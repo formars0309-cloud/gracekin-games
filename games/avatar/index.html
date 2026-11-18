@@ -81,6 +81,10 @@
       <div id="conflict-actions" hidden><span>다른 곳에서 저장한 기록이 있어요.</span><button type="button" id="use-server">저장된 기록 열기</button><button type="button" id="keep-local">내 편집본으로 계속</button></div>
     </section>
     <p id="storage-warning" class="notice" role="status" hidden>이 브라우저에서는 초안을 보관할 수 없어요. 창을 닫기 전에 계정에 저장해 주세요.</p>
+    <div class="export-panel" id="export-panel">
+      <h2>게임 자산 내보내기</h2>
+      <div id="game-files"></div>
+    </div>
   </main>
   <dialog id="quiz-dialog" aria-label="질문으로 직업 찾기"><div class="dialog-bar"><strong>직업 탐색</strong><button type="button" id="close-quiz">닫기</button></div><div id="quiz-root"></div></dialog>
   <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-copy"><h2 id="confirm-title">기록 불러오기</h2><p id="confirm-copy"></p><form method="dialog"><button value="cancel" autofocus>취소</button><button class="gold" value="ok">불러오기</button></form></dialog>

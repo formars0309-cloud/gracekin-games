@@ -11,12 +11,16 @@ export function mountRecords({ current, replace, makeDefault, validDraft, valida
   let owner = guest, revision = 0, saved = null, pending = null;
   let ready = false, busy = false, retry = false, timer, refreshQueued = false;
   const bench = document.querySelector('.bench');
+  const exportPanel = byId('export-panel');
+  let exportOwner = null;
   function shieldPrivateView() {
     if (owner === guest) return;
+    exportPanel.inert = true;
     bench.inert = true;
     bench.classList.add('awaiting-account');
   }
   function revealView() {
+    exportPanel.inert = false;
     bench.inert = false;
     bench.classList.remove('awaiting-account');
   }
@@ -29,6 +33,7 @@ export function mountRecords({ current, replace, makeDefault, validDraft, valida
   }
   function refreshButtons() {
     const member = owner !== guest;
+    exportPanel.classList.toggle('previous-owner', exportOwner !== null && exportOwner !== owner);
     byId('save').hidden = !member && !retry;
     byId('login').hidden = member || retry;
     byId('save').disabled = busy || !ready || !member || !!pending;
@@ -215,5 +220,11 @@ export function mountRecords({ current, replace, makeDefault, validDraft, valida
   window.addEventListener('focus', () => { if (!document.hidden && !byId('confirm-dialog').open) refresh(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { flush(); shieldPrivateView(); } else refresh(); });
   refresh();
-  return { edited };
+  function getAvatar() {
+    exportOwner = owner;
+    exportPanel.classList.remove('previous-owner');
+    const avatar = pending ? pending.remote : saved;
+    return { id: avatar?.id ?? null, revision: avatar?.revision ?? 0, character: current() };
+  }
+  return { edited, getAvatar };
 }

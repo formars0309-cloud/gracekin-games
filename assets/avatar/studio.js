@@ -2,6 +2,7 @@ import { createDefaultCharacter, createAvatarPreset, characterError, JOBS } from
 import { createAvatarView } from './renderer.js';
 import { mountScene } from './studio-scene.js';
 import { mountRecords } from './studio-records.js';
+import { mountAvatarExport } from './gamekit.js';
 
 const byId = id => document.getElementById(id);
 const all = selector => document.querySelectorAll(selector);
@@ -198,7 +199,8 @@ quizDialog.addEventListener('close', () => {
 });
 render();
 records = mountRecords({ current: () => character, replace, makeDefault: createDefaultCharacter, validDraft, validateName });
+const gameFiles = mountAvatarExport(byId('game-files'), records.getAvatar);
 if (location.hash === '#quiz' || new URLSearchParams(location.search).get('mode') === 'quiz') openQuiz();
 window.addEventListener('pagehide', event => {
-  if (!event.persisted) { previews.forEach(preview => preview.dispose()); scene.dispose(); }
+  if (!event.persisted) { gameFiles.dispose(); previews.forEach(preview => preview.dispose()); scene.dispose(); }
 });
