@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#112830">
+  <meta name="description" content="별무리 공방에서 나만의 모험가를 빚고, 보드판과 들판에서 움직여 보세요.">
+  <title>별무리 공방 · 그레이스킨게임즈</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <script src="/assets/avatar/studio-host.js"></script>
+  <link rel="stylesheet" href="/assets/shared/fonts.css">
+  <link rel="stylesheet" href="/assets/avatar/studio.css">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="262268ac-4e27-49fa-862a-c911f4d38993" data-domains="gracekingames.com" data-do-not-track="true"></script>
+  <script type="module" src="/assets/avatar/studio.js"></script>
+</head>
+<body>
+  <a class="skip" href="#editor">편집 도구로 건너뛰기</a>
+  <header class="mast">
+    <div class="mast-inner">
+      <a class="brand" href="/" aria-label="그레이스킨게임즈 홈"><img src="/assets/favicon.svg" alt="" width="32" height="32">그레이스킨게임즈</a>
+      <span class="mast-line" aria-hidden="true"></span>
+      <a id="account-link" href="/account/?game=avatar" target="_blank" rel="noopener">내 계정 <span aria-hidden="true">↗</span><span class="sr"> (새 창)</span></a>
+    </div>
+  </header>
+  <main class="workshop">
+    <div class="intro">
+      <div><h1>별무리 공방</h1><p>모험가의 모습을 빚고, 첫걸음을 함께 걸어 보세요.</p></div>
+      <button id="open-quiz" class="quiz-link" type="button"><span aria-hidden="true">✧</span> 질문으로 직업 찾기 <span aria-hidden="true">↗</span></button>
+    </div>
+    <noscript>아바타를 만들려면 브라우저에서 자바스크립트를 켜 주세요.</noscript>
+    <div class="bench">
+      <section class="showcase" aria-label="모험가 미리보기">
+        <nav class="modes" aria-label="미리보기 장면">
+          <button type="button" data-mode="studio" aria-pressed="true">작업대</button>
+          <button type="button" data-mode="portrait" aria-pressed="false">초상화</button>
+          <button type="button" data-mode="board" aria-pressed="false">보드판</button>
+          <button type="button" data-mode="rpg" aria-pressed="false">탐험</button>
+        </nav>
+        <div class="scene" id="scene" data-mode="studio" tabindex="0" aria-label="작업대. 좌우 방향키로 모험가 회전">
+          <div class="scenery" aria-hidden="true"></div>
+          <div class="celestial" aria-hidden="true"><i></i><b>✦</b></div>
+          <div class="world" id="world"><div id="board-grid" aria-hidden="true"></div><div id="avatar-view"></div></div>
+          <span class="location" id="location">별무리 작업대</span>
+          <p id="render-status" role="status">모험가를 불러오는 중…</p>
+          <div class="nameplate"><span id="plate-job"></span><strong id="plate-name"></strong></div>
+        </div>
+        <div class="view-tools" id="view-tools">
+          <div class="camera"><button type="button" id="rotate-left" aria-label="왼쪽으로 회전">↶</button><button type="button" id="rotate-right" aria-label="오른쪽으로 회전">↷</button></div>
+          <button type="button" id="zoom" aria-pressed="false">얼굴 확대</button>
+          <button type="button" id="motion" aria-pressed="false">걸어 보기</button>
+        </div>
+        <div class="travel-tools" id="travel-tools" hidden>
+          <span id="travel-hint"></span>
+          <div class="directions" role="group" aria-label="이동 방향">
+            <button type="button" data-direction="left" aria-label="왼쪽으로 이동">←</button><button type="button" data-direction="up" aria-label="위로 이동">↑</button><button type="button" data-direction="down" aria-label="아래로 이동">↓</button><button type="button" data-direction="right" aria-label="오른쪽으로 이동">→</button>
+          </div>
+        </div>
+      </section>
+      <section class="editor" id="editor" aria-labelledby="editor-title">
+        <div class="editor-head"><h2 id="editor-title">모험가 수첩</h2><div class="history"><button id="undo" type="button" aria-label="되돌리기" title="되돌리기" disabled>↶</button><button id="redo" type="button" aria-label="다시 적용" title="다시 적용" disabled>↷</button></div></div>
+        <nav class="sections" aria-label="편집 항목">
+          <button type="button" data-section="profile" aria-pressed="true">기본</button><button type="button" data-section="body" aria-pressed="false">체형</button><button type="button" data-section="face" aria-pressed="false">얼굴</button><button type="button" data-section="color" aria-pressed="false">색상</button>
+        </nav>
+        <div class="paper-body">
+          <div data-pane="profile">
+            <fieldset class="first-choice"><legend>시작 외형 고르기</legend><div id="presets" class="presets"></div><p class="note">외형을 고른 뒤 체형·얼굴·색상을 바꿔 보세요.</p></fieldset>
+            <label class="field" for="hero-name">모험가 이름</label>
+            <input type="text" id="hero-name" autocomplete="off" required>
+            <fieldset><legend>직업</legend><div id="jobs" class="jobs"></div><p id="recommendation" class="note" hidden></p></fieldset>
+          </div>
+          <div data-pane="body" hidden><h3>몸의 비율</h3><div id="body-fields"></div></div>
+          <div data-pane="face" hidden><h3>얼굴의 윤곽</h3><div id="face-fields"></div><fieldset><legend>머리 모양</legend><div class="hair" id="hair-fields"></div></fieldset></div>
+          <div data-pane="color" hidden><h3>모험가의 팔레트</h3><div id="color-fields"></div></div>
+        </div>
+      </section>
+    </div>
+    <section class="save-strip" aria-labelledby="save-title">
+      <div class="save-copy"><h2 id="save-title">모험가 기록</h2><p id="sync-status" role="status">계정의 기록을 확인하고 있어요.</p></div>
+      <div class="save-actions"><button type="button" id="load">불러오기</button><button type="button" class="gold" id="save" disabled>계정에 저장</button><a class="gold" id="login" href="/account/?game=avatar" target="_blank" rel="noopener" hidden>로그인 후 저장 <span aria-hidden="true">↗</span><span class="sr"> (새 창)</span></a></div>
+      <div id="draft-actions" hidden><span>로그인 전에 만들던 모험가가 있어요.</span><button type="button" id="use-guest">손님 초안 가져오기</button></div>
+      <div id="conflict-actions" hidden><span>다른 곳에서 저장한 기록이 있어요.</span><button type="button" id="use-server">저장된 기록 열기</button><button type="button" id="keep-local">내 편집본으로 계속</button></div>
+    </section>
+    <p id="storage-warning" class="notice" role="status" hidden>이 브라우저에서는 초안을 보관할 수 없어요. 창을 닫기 전에 계정에 저장해 주세요.</p>
+  </main>
+  <dialog id="quiz-dialog" aria-label="질문으로 직업 찾기"><div class="dialog-bar"><strong>직업 탐색</strong><button type="button" id="close-quiz">닫기</button></div><div id="quiz-root"></div></dialog>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-copy"><h2 id="confirm-title">기록 불러오기</h2><p id="confirm-copy"></p><form method="dialog"><button value="cancel" autofocus>취소</button><button class="gold" value="ok">불러오기</button></form></dialog>
+</body>
+</html>
