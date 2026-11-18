@@ -215,7 +215,8 @@ class StoreLaunchTests(unittest.TestCase):
                 '<a href="https://community.gracekingames.com/community/" data-umami-event="hero-community">커뮤니티 둘러보기</a></section>')
         cards = ''.join(f'<a href="/games/{game}/" data-umami-event="homepage-{game}" data-umami-event-from="{position}">게임 홈페이지 →</a>'
                         for game in SITE.GAME_URLS for position in ('card-image', 'card-button'))
-        self.write('index.html', f'<main>{hero}<section id="games">{cards}</section></main><footer>{self.DELETION}</footer>')
+        avatar = '<a href="/games/avatar/" data-umami-event="homepage-avatar">캐릭터 만들기</a>'
+        self.write('index.html', f'<main>{hero}<section id="games">{cards}{avatar}</section></main><footer>{self.DELETION}</footer>')
         self.write('.dockerignore', '!assets/\n!assets/home/\n' + ''.join(f'!assets/home/hero-{size}.webp\n' for size in (960, 1600, 2560)))
         for size in (960, 1600, 2560):
             path = self.root / f'assets/home/hero-{size}.webp'
@@ -246,6 +247,14 @@ class StoreLaunchTests(unittest.TestCase):
 
     def test_pending_store_and_web_trial_links_are_allowed(self):
         self.assertEqual(self.launch_failures(), [])
+
+    def test_avatar_entry_must_open_the_workshop_on_the_current_host(self):
+        self.change('index.html', 'href="/games/avatar/"', 'href="https://community.gracekingames.com/games/avatar/"')
+        self.assertIn('대문: 캐릭터 만들기 진입 링크 누락 또는 대상 불일치', self.launch_failures())
+
+    def test_avatar_renderer_dependency_requires_docker_permission(self):
+        self.write('assets/avatar/art/pose.js', 'export const pose = {};')
+        self.assertIn('assets/avatar/art/pose.js: 공방 자산의 운영 패키지 허용 누락', SITE.verify(self.root).failures)
 
     def test_home_rejects_remaining_race_section_and_references(self):
         original = (self.root / 'index.html').read_text()

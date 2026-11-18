@@ -27,6 +27,10 @@ export function createAvatarRoutes(db, auth) {
     const session = await auth.api.getSession({ headers: request.headers, query: { disableRefresh: true } });
     const user = activeAccountUser(db, session?.user);
     if (!user) fail(401, 'AUTH_REQUIRED', '로그인 후 이용해 주세요.');
+    const expectedOwner = request.headers.get('X-Avatar-Owner');
+    if (expectedOwner !== null && expectedOwner !== user.id) {
+      fail(412, 'AVATAR_SESSION_CHANGED', '로그인한 계정이 바뀌었습니다. 현재 계정의 아바타를 다시 확인해 주세요.');
+    }
     if (request.method === 'GET') return avatarResponse(current.get(user.id));
 
     const { revision, character } = body;

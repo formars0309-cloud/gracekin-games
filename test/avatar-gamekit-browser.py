@@ -149,8 +149,14 @@ def run(options):
         link = page.get_by_role('link', name='게임 파일 받기 (ZIP)')
         status = page.get_by_role('status')
         outputs = []
-        for index in range(2):
-            data = avatar(index)
+        samples = [avatar(0), avatar(1)]
+        if not options.fixture:
+            # 두 기본 외형은 같은 직업 그대로 내보내 머리와 체형 차이도 독립적으로 확인한다.
+            samples.extend(page.evaluate("""async () => {
+              const {createAvatarPreset} = await import('/assets/avatar/model.js');
+              return ['youth', 'maiden'].map(key => ({id: null, revision: 0, character: createAvatarPreset(key)}));
+            }"""))
+        for index, data in enumerate(samples):
             page.evaluate('data => window.avatar = data', data)
             build.click()
             expect(link).to_be_visible(timeout=60000)
@@ -162,8 +168,9 @@ def run(options):
             target = Path(directory) / f'{index}.zip'
             downloaded.value.save_as(target)
             outputs.append(verify_archive(target, data))
-        assert all(a != b for a, b in zip(outputs[0][0], outputs[1][0]))
-        assert outputs[0][1] != outputs[1][1]
+        for first, second in zip(outputs[::2], outputs[1::2]):
+            assert all(a != b for a, b in zip(first[0], second[0]))
+            assert first[1] != second[1]
         if options.fixture:
             events = page.evaluate('events')
             assert [e[1:] for e in events if e[0] == '생성'] == [['board', 512, 512], ['rpg', 192, 192]] * 2
@@ -204,7 +211,7 @@ def run(options):
         assert page.evaluate("liveUrls.size === 0 && !document.querySelector('[inert], .avatar-gamekit')")
         assert not errors, errors
         browser.close()
-    print('두 외형의 ZIP·투명 PNG·방향별 동작·스냅샷·모바일 다운로드·자원 해제를 확인했습니다.')
+    print(f'외형 {len(samples)}종의 ZIP·투명 PNG·방향별 동작·스냅샷·모바일 다운로드·자원 해제를 확인했습니다.')
 
 
 if __name__ == '__main__':

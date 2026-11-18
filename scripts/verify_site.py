@@ -295,7 +295,7 @@ FONT_STYLESHEET = 'assets/shared/fonts.css'
 FONT_PAGES = frozenset({
     'index.html', 'account/index.html', 'account/admin/index.html', 'community/index.html',
     'community/bug-report/index.html', 'community/privacy/index.html', 'community/terms/index.html',
-    'games/slimeline/index.html', 'games/gyeongguk/index.html',
+    'games/slimeline/index.html', 'games/gyeongguk/index.html', 'games/avatar/index.html',
 })
 FONT_VARIABLE = re.compile(r'var\(\s*--font-[a-z][a-z0-9-]*\s*\)', re.I)
 GOOGLE_FONT_HOSTS = {'fonts.googleapis.com', 'fonts.gstatic.com'}
@@ -452,6 +452,10 @@ def verify(root: Path) -> Report:
     for path in sorted((root / 'server').glob('*.js')):
         check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 운영 패키지에서 서버 파일 누락')
     required = [root / 'index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'community/account-deletion/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    required.append(root / 'games/avatar/index.html')
+    for path in sorted((root / 'assets/avatar').rglob('*')):
+        if path.is_file():
+            check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 공방 자산의 운영 패키지 허용 누락')
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
     paths = [root / 'index.html'] + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
@@ -512,6 +516,9 @@ def verify(root: Path) -> Report:
 
     home = pages.get(root / 'index.html')
     if home:
+        avatar_links = [link for link in home.links if link.get('data-umami-event') == 'homepage-avatar']
+        check(len(avatar_links) == 1 and avatar_links[0].get('href') == '/games/avatar/'
+              and '캐릭터 만들기' in avatar_links[0]['text'], '대문: 캐릭터 만들기 진입 링크 누락 또는 대상 불일치')
         check('slime-race' not in home.ids, '대문: 레이스 섹션은 비공개 기간에 남아 있으면 안 됨')
         check(not any(name.startswith('sr-') for _, attrs in home.tags
                       for name in (attrs.get('class') or '').split()),

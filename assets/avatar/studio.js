@@ -119,6 +119,7 @@ function addField(key, title, parent, type) {
 const previews = [];
 for (const [index, preset] of presets.entries()) {
   const choice = button('', 'preset', index, () => change({ ...character, appearance: copy(preset.character.appearance) }));
+  choice.setAttribute('aria-label', preset.label);
   const art = document.createElement('span');
   art.className = 'preset-art';
   art.setAttribute('aria-hidden', 'true');

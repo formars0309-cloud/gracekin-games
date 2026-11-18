@@ -173,6 +173,22 @@ test('회원별 기록을 분리하고 계정 삭제 시 해당 아바타와 접
   assert.deepEqual((await request(app, api, { cookie: b.cookie })).body, { avatar: other });
 });
 
+test('다른 탭에서 계정이 바뀌면 버전이 같아도 이전 공방의 조건부 저장과 조회를 중단한다', async t => {
+  const { app, login } = await fixture(t);
+  const a = await login('tab-one@example.test'), b = await login('tab-two@example.test');
+  const headers = { 'X-Avatar-Owner': a.userId };
+  const body = { revision: 0, character: createAvatarPreset('youth') };
+  const staleSave = () => request(app, api, { method: 'PUT', cookie: b.cookie, headers, body });
+  assert.equal((await staleSave()).status, 412);
+  assert.equal((await request(app, api, { cookie: b.cookie })).body.avatar, null);
+  assert.equal((await request(app, api, { method: 'PUT', cookie: a.cookie, headers, body })).status, 200);
+  const second = (await put(app, b.cookie, 0, createAvatarPreset('maiden'))).body;
+  body.revision = 1;
+  assert.equal((await staleSave()).status, 412);
+  assert.equal((await request(app, api, { cookie: b.cookie, headers })).status, 412);
+  assert.deepEqual((await request(app, api, { cookie: b.cookie })).body, second);
+});
+
 test('유효 세션·같은 출처·올바른 본문이 있어야 저장하며 거절된 입력은 기록을 보존한다', async t => {
   const { app, login } = await fixture(t);
   const character = createDefaultCharacter();

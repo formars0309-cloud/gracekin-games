@@ -161,10 +161,27 @@ try {
   await page.waitForFunction(() => !document.querySelector('#save').disabled);
   assert.notEqual(await $('#hero-name').inputValue(), '회원 비공개 초안');
   assert.equal(await savedAvatar(), null);
+  // 두 회원의 버전이 같은 상태에서 공방의 세션 조회와 저장 사이에 계정을 전환한다.
+  for (let revision = 0; revision < updated.revision; revision++) {
+    const result = await context.request.put(app.origin + '/api/avatar/me', { headers: { origin: app.origin },
+      data: { revision, character: { ...updated.character, name: '둘째 회원' } } });
+    assert.equal(result.status(), 200);
+  }
+  const otherAvatar = await savedAvatar();
   await context.clearCookies();
   assert.equal((await signIn(member)).status(), 200);
   await $('#load').click();
   await checkName('회원 비공개 초안');
+  await page.route('**/api/account/session', async route => {
+    const original = await route.fetch();
+    assert.equal((await signIn(second)).status(), 200);
+    await route.fulfill({ response: original });
+  }, { times: 1 });
+  const switched = page.waitForResponse(response => response.request().method() === 'PUT' && response.url().endsWith('/api/avatar/me'));
+  await $('#save').click();
+  assert.equal((await switched).status(), 412);
+  await checkName('둘째 회원');
+  assert.deepEqual(await savedAvatar(), otherAvatar);
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await mobile.route(/^https:\/\//, route => route.abort());
   page = await mobile.newPage();
@@ -186,11 +203,19 @@ try {
     const response = await context.request.get(app.origin + local.pathname);
     await route.fulfill({ response });
   });
-  await redirected.route('https://community.gracekingames.com/**', route => route.fulfill({ contentType: 'text/html', body: '<title>공방 도착</title>' }));
+  await redirected.route('https://community.gracekingames.com/**', async route => {
+    const url = new URL(route.request().url());
+    await route.fulfill({ response: await context.request.get(app.origin + url.pathname + url.search) });
+  });
   await redirected.route(/https:\/\/(cloud\.umami\.is|fonts\.)/, route => route.abort());
   const entry = await redirected.newPage();
+  await entry.goto('https://gracekingames.com/');
+  await entry.getByRole('link', { name: /캐릭터 만들기/ }).click();
+  await entry.waitForURL('https://community.gracekingames.com/games/avatar/');
+  await entry.locator('#avatar-view canvas').waitFor();
   await entry.goto('https://gracekingames.com/games/avatar/?mode=quiz', { waitUntil: 'commit' });
   await entry.waitForURL('https://community.gracekingames.com/games/avatar/#quiz');
+  await entry.locator('#quiz-root input[type=radio]').first().waitFor();
   await redirected.close();
   assert.deepEqual(errors, []);
   console.log('공방 브라우저 검수 통과 · 외형·직업·보드판·탐험·손님 초안·계정 로그인·저장 충돌·390px 화면');

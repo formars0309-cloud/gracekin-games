@@ -76,8 +76,8 @@ export function mountRecords({ current, replace, makeDefault, validDraft, valida
     if (!data.user?.id || typeof data.user.id !== 'string') throw new Error('계정을 확인할 수 없어요.');
     return prefix + data.user.id;
   }
-  async function readAvatar() {
-    const { avatar } = await decode(await fetch('/api/avatar/me', options()));
+  async function readAvatar(account) {
+    const { avatar } = await decode(await fetch('/api/avatar/me', { ...options(), headers: { 'X-Avatar-Owner': account.slice(prefix.length) } }));
     if (avatar === null) return null;
     if (!avatar?.id || !Number.isSafeInteger(avatar.revision) || avatar.revision < 1 || !validDraft(avatar.character)) throw new Error('저장된 기록을 읽을 수 없어요.');
     return avatar;
@@ -129,7 +129,10 @@ export function mountRecords({ current, replace, makeDefault, validDraft, valida
     catch (error) {
       ready = false;
       retry = true;
-      if (error.status === 401) {
+      if (error.status === 412) {
+        shieldPrivateView();
+        refreshQueued = true;
+      } else if (error.status === 401) {
         useGuest();
         retry = false;
         status('로그인이 풀렸어요. 같은 계정으로 돌아오면 편집하던 초안을 열 수 있어요.');
@@ -149,7 +152,7 @@ export function mountRecords({ current, replace, makeDefault, validDraft, valida
     await run(async () => {
       const account = await identity();
       if (account === guest) { useGuest(); ready = true; retry = false; return; }
-      const remote = await readAvatar();
+      const remote = await readAvatar(account);
       if (await identity() !== account) { refreshQueued = true; return; }
       let discard = false;
       if (manual && account === owner && drafts.has(owner)) {
@@ -166,9 +169,13 @@ export function mountRecords({ current, replace, makeDefault, validDraft, valida
     if (await identity() !== owner) { refreshQueued = true; return; }
     const character = current();
     const payload = { revision, character: { ...character, name: character.name.trim() } };
-    const response = await fetch('/api/avatar/me', { ...options(), method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const response = await fetch('/api/avatar/me', {
+      ...options(), method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Avatar-Owner': owner.slice(prefix.length) },
+      body: JSON.stringify(payload),
+    });
     if (response.status === 409) {
-      const remote = await readAvatar();
+      const remote = await readAvatar(owner);
       if (await identity() !== owner) { refreshQueued = true; return; }
       pending = { remote };
       edited();
