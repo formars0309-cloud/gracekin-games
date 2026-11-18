@@ -13,6 +13,7 @@ import { createCommunity, initializeCommunitySchema } from './community.js';
 import { createMailer } from './mailer.js';
 import { createAccountService } from './account.js';
 import { createAccountSummary } from './account-summary.js';
+import { createAvatarRoutes } from './avatar.js';
 import { createGrainService } from './grain.js';
 import { createGrainRewards } from './grain-rewards.js';
 import { createGrainAdmin } from './grain-admin.js';
@@ -29,23 +30,28 @@ const DEFAULT_ROOT = fileURLToPath(new URL('../', import.meta.url));
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.woff2': 'font/woff2', '.woff': 'font/woff' };
 const AUTH_PATHS = new Set(['/api/auth/sign-up/email', '/api/auth/sign-in/email', '/api/auth/sign-out', '/api/auth/change-password', '/api/auth/send-verification-email', '/api/auth/request-password-reset', '/api/auth/reset-password']);
 
-function staticAllowed(path) {
-  return path === '/index.html' || (/^\/(games|community|account|assets)\//.test(path) && Boolean(TYPES[extname(path)]));
+const AVATAR_TYPES = { '.mjs': 'text/javascript; charset=utf-8', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json', '.bin': 'application/octet-stream', '.wasm': 'application/wasm' };
+
+function staticType(path) {
+  const ext = extname(path);
+  if (path.startsWith('/assets/avatar/') && AVATAR_TYPES[ext]) return AVATAR_TYPES[ext];
+  if (path === '/index.html' || /^\/(games|community|account|assets)\//.test(path)) return TYPES[ext];
 }
 
 async function serveStatic(request, path, root) {
   if (!['GET', 'HEAD'].includes(request.method)) fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
   if (path === '/') path = '/index.html';
   if (path.endsWith('/') && /^\/(games|community|account)\//.test(path)) path += 'index.html';
-  if (!staticAllowed(path)) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
+  if (!staticType(path)) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
   let target;
   try {
     target = await realpath(resolve(root, `.${path}`));
     const rel = relative(root, target).split('\\').join('/');
-    if (rel.startsWith('../') || rel.startsWith('/') || !staticAllowed(safePath(`/${rel}`))) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
+    const type = staticType(safePath(`/${rel}`));
+    if (rel.startsWith('../') || rel.startsWith('/') || !type) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
     if (!(await stat(target)).isFile()) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
     const content = request.method === 'HEAD' ? null : await readFile(target);
-    return new Response(content, { headers: { 'content-type': TYPES[extname(target)], 'cache-control': path.startsWith('/account/') ? 'no-store' : extname(target) === '.html' ? 'no-cache' : 'public, max-age=3600' } });
+    return new Response(content, { headers: { 'content-type': type, 'cache-control': path.startsWith('/account/') ? 'no-store' : extname(target) === '.html' ? 'no-cache' : 'public, max-age=3600' } });
   } catch (error) {
     if (['ENOENT', 'ENOTDIR', 'EACCES', 'ELOOP'].includes(error.code)) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
     throw error;
@@ -191,6 +197,7 @@ export async function startServer(options = {}) {
     accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, rewards, socialProviders: social.providers, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
     const community = createCommunity(db, auth, { rewards, isAdmin: grainAdmin.isAdmin, now: options.now });
     const accountSummary = createAccountSummary(db, auth, { origin });
+    const avatarMe = createAvatarRoutes(db, auth);
     const limit = createLimiter(options.rateLimit);
     slimeRace = createSlimeRace(db, { now: options.now, onTimerError: () => { console.error('슬라임 경주 자동 진행 실패: 저장소 상태를 확인해 주세요.'); } });
     const slimeRaceRoutes = createSlimeRaceRoutes({ db, auth, race: slimeRace, origin, limit, adultVerifier: options.slimeRaceAdultVerifier, rewards });
@@ -221,6 +228,7 @@ export async function startServer(options = {}) {
           if (!Number.isFinite(length) || length > 65536) fail(413, 'PAYLOAD_TOO_LARGE', '요청 내용이 너무 큽니다.');
         }
         if (path === GUARDIAN_WEBHOOK_PATH && !url.search) return hardened(await guardianWebhook(request));
+        if (path === '/api/avatar/me') return hardened(await avatarMe(request, url));
         if (path.startsWith('/api/auth/')) {
           if (!AUTH_PATHS.has(path) || request.method !== 'POST') fail(404, 'NOT_FOUND', '인증 요청을 찾을 수 없습니다.');
           const body = await readJson(request);
