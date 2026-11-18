@@ -49,6 +49,8 @@ class Page(HTMLParser):
         self.path = path
         self.tags: list[tuple[str, dict[str, str]]] = []
         self.links: list[dict[str, str]] = []
+        self.headings: list[dict[str, str]] = []
+        self.heading = None
         self.footer_links: list[dict[str, str]] = []
         self.ids: set[str] = set()
         self.stack: list[str] = []
@@ -67,6 +69,9 @@ class Page(HTMLParser):
             if attrs['id'] in self.ids:
                 self.errors.append('중복 식별자: ' + attrs['id'])
             self.ids.add(attrs['id'])
+        if tag == 'h1':
+            self.heading = {'text': '', **attrs}
+            self.headings.append(self.heading)
         if tag == 'a':
             self.anchor = {'text': '', **attrs}
             self.links.append(self.anchor)
@@ -83,6 +88,8 @@ class Page(HTMLParser):
             self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
+        if tag == 'h1':
+            self.heading = None
         if tag == 'a':
             self.anchor = None
         if tag in VOID:
@@ -95,6 +102,8 @@ class Page(HTMLParser):
             self.stack.pop()
 
     def handle_data(self, data):
+        if self.heading is not None:
+            self.heading['text'] += data
         if self.anchor is not None:
             self.anchor['text'] += data
         if self.stack and self.stack[-1] == 'script':
@@ -509,7 +518,22 @@ def verify(root: Path) -> Report:
               '대문: 레이스 sr- 클래스가 남아 있음')
         check(not re.search(r'#slime-race\b|race\.(?:js|css)\b', home.path.read_text()),
               '대문: 레이스 섹션·스크립트·스타일 참조가 남아 있음')
-        expected_entries = {'card-image', 'card-button'} if 'slime-race' in home.ids else {'stage', 'card-image', 'card-button'}
+        heroes = [attrs for tag, attrs in home.tags if tag == 'section' and 'gb-hero' in (attrs.get('class') or '').split()]
+        check(len(heroes) == 1, '대문: gb-hero 섹션은 하나여야 함')
+        check(len(home.headings) == 1 and ' '.join(home.headings[0]['text'].split()) == '보드게임의 세계로, 함께 떠나요.',
+              '대문: h1 문구·개수 불일치')
+        check(len(heroes) == 1 and len(home.headings) == 1 and bool(home.headings[0].get('id'))
+              and heroes[0].get('aria-labelledby') == home.headings[0]['id'], '대문: h1 접근성 이름 연결 불일치')
+        for event, href, label in [('hero-games', '#games', '게임 둘러보기'),
+                                   ('hero-community', 'https://community.gracekingames.com/community/', '커뮤니티 둘러보기')]:
+            buttons = [link for link in home.links if link.get('data-umami-event') == event]
+            check(len(buttons) == 1 and buttons[0].get('href') == href and buttons[0]['text'].strip() == label,
+                  f'대문: {event} 단추 문구·목적지·이벤트 불일치')
+        for size in (960, 1600, 2560):
+            resource = Path(f'assets/home/hero-{size}.webp')
+            check((root / resource).is_file() and docker_allows(resource, docker_allowed),
+                  f'대문: {resource} 자산 또는 운영 패키지 허용 누락')
+        expected_entries = {'card-image', 'card-button'}
         for game, url in GAME_URLS.items():
             links = [link for link in home.links if link.get('href') == f'/games/{game}/']
             check(len(links) == len(expected_entries) and {link.get('data-umami-event-from') for link in links} == expected_entries, f'대문: {game} 게임 소개 진입 위치·개수 불일치')

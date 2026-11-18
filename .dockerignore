@@ -41,11 +41,12 @@ assets/**
 !assets/apple-touch-icon.png
 !assets/og.jpg
 !assets/slime-front.png
-!assets/slime-bg.jpg
-!assets/gyeongguk-key.jpg
 !assets/home/
 assets/home/**
 !assets/home/home.css
+!assets/home/hero-960.webp
+!assets/home/hero-1600.webp
+!assets/home/hero-2560.webp
 !assets/currency/
 assets/currency/**
 !assets/currency/grain.png

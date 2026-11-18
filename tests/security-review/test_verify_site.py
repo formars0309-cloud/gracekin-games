@@ -157,7 +157,9 @@ class PublicAssetTests(unittest.TestCase):
             self.assertIn('server/grain.js: 운영 패키지에서 서버 파일 누락', failures)
             self.assertIn('index.html (img.src): 운영 패키지에서 내부 자산 누락', failures)
             manifest.write_text(manifest.read_text() + '!server/grain.js\n!assets/currency/\n')
-            self.assertFalse(any('운영 패키지' in failure for failure in SITE.verify(root).failures))
+            failures = SITE.verify(root).failures
+            self.assertNotIn('server/grain.js: 운영 패키지에서 서버 파일 누락', failures)
+            self.assertNotIn('index.html (img.src): 운영 패키지에서 내부 자산 누락', failures)
 
     def test_summary_exception_is_limited_to_the_shared_header_file(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -207,11 +209,18 @@ class StoreLaunchTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
-        stage = ''.join(f'<a class="gb-panel" href="/games/{game}/" data-umami-event="homepage-{game}" data-umami-event-from="stage">홈페이지 보기 →</a>'
-                        for game in SITE.GAME_URLS)
+        hero = ('<section class="gb-hero" aria-labelledby="hero-title">'
+                '<h1 id="hero-title">보드게임의 세계로, <br>함께 떠나요.</h1>'
+                '<a href="#games" data-umami-event="hero-games">게임 둘러보기</a>'
+                '<a href="https://community.gracekingames.com/community/" data-umami-event="hero-community">커뮤니티 둘러보기</a></section>')
         cards = ''.join(f'<a href="/games/{game}/" data-umami-event="homepage-{game}" data-umami-event-from="{position}">게임 홈페이지 →</a>'
                         for game in SITE.GAME_URLS for position in ('card-image', 'card-button'))
-        self.write('index.html', f'<main><section class="gb-stage">{stage}</section><section id="games">{cards}</section></main><footer>{self.DELETION}</footer>')
+        self.write('index.html', f'<main>{hero}<section id="games">{cards}</section></main><footer>{self.DELETION}</footer>')
+        self.write('.dockerignore', '!assets/\n!assets/home/\n' + ''.join(f'!assets/home/hero-{size}.webp\n' for size in (960, 1600, 2560)))
+        for size in (960, 1600, 2560):
+            path = self.root / f'assets/home/hero-{size}.webp'
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b'')
         for game, url in SITE.GAME_URLS.items():
             self.write(f'games/{game}/index.html', self.STORE + self.WEB.format(game=game, url=url)
                        + f'<a href="/community/?game={game}">커뮤니티</a>')
@@ -250,6 +259,49 @@ class StoreLaunchTests(unittest.TestCase):
             with self.subTest(remaining=remaining):
                 self.write('index.html', original + remaining)
                 self.assertTrue(any('대문: 레이스' in failure for failure in self.launch_failures()))
+
+    def test_home_rejects_wrong_heading_and_accessibility_name(self):
+        original = (self.root / 'index.html').read_text()
+        for before, after in [
+            ('보드게임의 세계로,', '보드게임 세상으로,'),
+            ('<br>함께 떠나요.', ''),
+            ('aria-labelledby="hero-title"', 'aria-labelledby="missing"'),
+            ('id="hero-title"', ''),
+            ('</main>', '<h1>보드게임의 세계로, 함께 떠나요.</h1></main>'),
+            ('class="gb-hero"', 'class="gb-stage"'),
+        ]:
+            with self.subTest(after=after):
+                self.write('index.html', original.replace(before, after))
+                self.assertTrue(any('대문:' in failure for failure in self.launch_failures()))
+
+    def test_home_rejects_missing_duplicate_or_misdirected_hero_buttons(self):
+        original = (self.root / 'index.html').read_text()
+        for event, label in [('hero-games', '게임 둘러보기'), ('hero-community', '커뮤니티 둘러보기')]:
+            for before, after in [
+                (f'data-umami-event="{event}"', 'data-umami-event="wrong-event"'),
+                (label, '잘못된 문구'),
+                ('</main>', f'<a href="#games" data-umami-event="{event}">{label}</a></main>'),
+                ('href="#games"' if event == 'hero-games' else 'href="https://community.gracekingames.com/community/"', 'href="#letter"'),
+            ]:
+                with self.subTest(event=event, after=after):
+                    self.write('index.html', original.replace(before, after))
+                    self.assertTrue(any(f'대문: {event} 단추' in failure for failure in self.launch_failures()))
+
+    def test_home_requires_all_hero_images_and_docker_permissions(self):
+        for size in (960, 1600, 2560):
+            relative = f'assets/home/hero-{size}.webp'
+            with self.subTest(relative=relative):
+                (self.root / relative).unlink()
+                self.assertIn(f'대문: {relative} 자산 또는 운영 패키지 허용 누락', self.launch_failures())
+                (self.root / relative).write_bytes(b'')
+                original = (self.root / '.dockerignore').read_text()
+                self.write('.dockerignore', original.replace('!' + relative, relative))
+                self.assertIn(f'대문: {relative} 자산 또는 운영 패키지 허용 누락', self.launch_failures())
+                self.write('.dockerignore', original)
+
+    def test_home_rejects_remaining_stage_game_entry(self):
+        self.change('index.html', '</main>', '<a href="/games/slimeline/" data-umami-event="homepage-slimeline" data-umami-event-from="stage">홈페이지 보기</a></main>')
+        self.assertIn('대문: slimeline 게임 소개 진입 위치·개수 불일치', self.launch_failures())
 
     def test_published_store_links_are_allowed(self):
         for game in SITE.GAME_URLS:
@@ -315,7 +367,7 @@ class StoreLaunchTests(unittest.TestCase):
 
 class FontSystemTests(unittest.TestCase):
     def test_home_stylesheet_cannot_use_race_font(self):
-        issues = SITE.font_css_issues('.gb-title{font-family:var(--font-race)}', 'assets/home/home.css')
+        issues = SITE.font_css_issues('.gb-hero h1{font-family:var(--font-race)}', 'assets/home/home.css')
         self.assertIn('--font-race는 슬라임 레이스 화면에서만 허용', issues)
 
     def test_role_variables_globals_and_shorthand_metrics_are_allowed(self):
