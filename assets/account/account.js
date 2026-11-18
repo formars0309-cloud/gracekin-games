@@ -13,11 +13,13 @@
   const game = ['slimeline', 'gyeongguk'].includes(entry.params.get('game')) ? entry.params.get('game') : null;
   const boards = game === 'gyeongguk' ? ['notice', 'free', 'deck', 'strategy'] : ['notice', 'free', 'guide', 'gallery'];
   const board = boards.includes(entry.params.get('board')) ? entry.params.get('board') : 'notice';
-  const communityPath = `/community/?${new URLSearchParams({ game: game || 'slimeline', board })}`;
+  const fromAvatar = entry.params.get('game') === 'avatar';
+  const communityPath = fromAvatar ? '/community/' : `/community/?${new URLSearchParams({ game: game || 'slimeline', board })}`;
   const studioPath = path => location.hostname === 'community.gracekingames.com' ? `https://gracekingames.com${path}` : path;
   for (const link of document.querySelectorAll('.studio-home-link')) link.href = studioPath('/');
   byId('community-link').href = communityPath;
-  for (const id of ['back-link', 'guest-link']) byId(id).href = studioPath(game ? `/games/${game}/` : '/');
+  for (const id of ['account-avatar-link', 'signin-avatar-link']) byId(id).href = '/games/avatar/';
+  for (const id of ['back-link', 'guest-link']) byId(id).href = fromAvatar ? '/games/avatar/' : studioPath(game ? `/games/${game}/` : '/');
 
   const errors = {
     INVALID_EMAIL_OR_PASSWORD: '이메일과 비밀번호를 확인해 주세요.', INVALID_PASSWORD: '비밀번호를 확인해 주세요.', USER_NOT_FOUND: '이메일과 비밀번호를 확인해 주세요.',
@@ -85,12 +87,13 @@
     if (view !== 'signin') byId('signin-password').value = '';
     if (view !== 'reset') { byId('reset-password').value = ''; byId('reset-confirm').value = ''; state.resetToken = ''; }
     if (view !== 'verify') state.verifyToken = '';
+    if (state.view === 'member' && view !== 'member') clearAvatar();
     state.view = view;
     clearMessages();
     const panelId = view === 'signup-details' ? 'signup' : view;
     for (const panel of document.querySelectorAll('.panel')) panel.hidden = panel.id !== `${panelId}-panel`;
     const next = new URLSearchParams({ view: view === 'age' || view === 'signup-details' ? 'signup' : view });
-    if (game) next.set('game', game);
+    if (game || fromAvatar) next.set('game', fromAvatar ? 'avatar' : game);
     if (game && board) next.set('board', board);
     history.replaceState(null, '', `/account/?${next}`);
     if (focus) byId(`${panelId}-title`).focus();
@@ -382,11 +385,65 @@
       message('login-methods-error', error.message);
     }
   }
+  let avatarRequest = 0;
+  let avatarView;
+  function clearAvatar() {
+    avatarRequest += 1;
+    avatarView?.dispose();
+    avatarView = null;
+    const portrait = byId('account-avatar-portrait');
+    portrait.hidden = true;
+    portrait.replaceChildren();
+    byId('account-avatar-details').hidden = true;
+    byId('account-avatar-name').textContent = '';
+    byId('account-avatar-job').textContent = '';
+    byId('account-avatar-link').textContent = '아바타 공방 열기';
+    byId('account-avatar-retry').hidden = true;
+    message('account-avatar-status', '');
+  }
+
+  async function loadAvatar() {
+    clearAvatar();
+    if (!state.user || state.view !== 'member') return;
+    const requestId = avatarRequest;
+    message('account-avatar-status', '아바타를 불러오고 있어요.');
+    try {
+      const { avatar } = await request('/avatar/me');
+      if (requestId !== avatarRequest) return;
+      if (avatar === null) {
+        message('account-avatar-status', '아직 저장한 아바타가 없어요.');
+        byId('account-avatar-link').textContent = '첫 아바타 만들기';
+        return;
+      }
+      const { name, job } = avatar.character;
+      const { JOBS } = await import('/assets/avatar/model.js');
+      if (requestId !== avatarRequest) return;
+      byId('account-avatar-name').textContent = name;
+      byId('account-avatar-job').textContent = JOBS.find(item => item.id === job)?.label || '직업 미정';
+      byId('account-avatar-details').hidden = false;
+      byId('account-avatar-link').textContent = '아바타 관리하기';
+      const { createAvatarView } = await import('/assets/avatar/renderer.js');
+      if (requestId !== avatarRequest) return;
+      const portrait = byId('account-avatar-portrait');
+      portrait.hidden = false;
+      avatarView = createAvatarView(portrait, avatar.character, { mode: 'portrait' });
+      message('account-avatar-status', '');
+    } catch (error) {
+      if (requestId !== avatarRequest) return;
+      byId('account-avatar-portrait').hidden = true;
+      const detail = byId('account-avatar-details').hidden ? '아바타를' : '초상화를';
+      message('account-avatar-status', error.code === 'UNAUTHORIZED' ? errors.UNAUTHORIZED : `${detail} 불러오지 못했어요.`);
+      byId('account-avatar-retry').hidden = false;
+    }
+  }
+  byId('account-avatar-retry').addEventListener('click', loadAvatar);
+
   function showMember() {
     byId('member-title').textContent = `${state.user.name}님, 반가워요`;
     byId('member-email').textContent = state.user.email;
     byId('member-permission').textContent = state.user.canWriteCommunity ? '커뮤니티에서 글과 댓글을 나눌 수 있어요.' : '이 계정으로는 커뮤니티의 글과 공식 안내를 읽을 수 있어요. 글·댓글 작성은 제공하지 않아요.';
     navigate('member');
+    loadAvatar();
     loadWallet();
     loadLoginMethods();
   }
@@ -550,6 +607,7 @@
     state.resetToken = '';
     state.verifyToken = '';
     state.pendingLink = null;
+    clearAvatar();
     state.user = null; clearWallet(); clearLoginMethods();
     byId('member-panel').hidden = true;
     byId('member-email').textContent = '';

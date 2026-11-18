@@ -19,14 +19,14 @@
 <div class="account-shell">
 <header class="topbar"><a class="studio-link studio-home-link" href="https://gracekingames.com/"><img src="/assets/favicon.svg" width="28" height="28" alt=""><span>GRACEKIN GAMES</span></a><a id="back-link" class="back-link" href="https://gracekingames.com/">게임 둘러보기 <span aria-hidden="true">↗</span></a></header>
 <main id="main" class="account-layout">
-<section class="welcome" aria-labelledby="welcome-title"><p class="eyebrow">그레이스킨게임즈 계정</p><h1 id="welcome-title">작은 모험에서,<br> 다음 이야기로.</h1><p class="welcome-copy">게임은 가입 없이 먼저 만나 보세요.<br> 함께 이야기를 나누고 싶을 때,<br> 이곳에서 계정을 만들면 돼요.</p><div class="welcome-note"><span aria-hidden="true">✧</span><p>기존 커뮤니티 계정이 있다면<br> 그대로 로그인할 수 있어요.</p></div><p class="scope-note">현재 계정은 사이트·커뮤니티와 경국지계에서 사용해요.<br> 슬라임 라인 계정 연결은 준비 중이에요.</p></section>
+<section class="welcome" aria-labelledby="welcome-title"><p class="eyebrow">그레이스킨게임즈 계정</p><h1 id="welcome-title">작은 모험에서,<br> 다음 이야기로.</h1><p class="welcome-copy">게임은 가입 없이 먼저 만나 보세요.<br> 함께 이야기를 나누고 싶을 때,<br> 이곳에서 계정을 만들면 돼요.</p><div class="welcome-note"><span aria-hidden="true">✧</span><p>기존 커뮤니티 계정이 있다면<br> 그대로 로그인할 수 있어요.</p></div><p class="scope-note">이 계정으로 아바타 공방과 커뮤니티, 경국지계를 이용해요.<br> 슬라임 라인 계정 연결은 준비 중이에요.</p></section>
 <div class="account-card">
 <p id="loading-message" class="loading-message" role="status">계정 화면을 준비하고 있어요.</p>
 <div id="service-notice" class="notice" role="status" hidden></div>
 <p id="global-message" class="notice success" role="status" tabindex="-1" hidden></p>
 <div id="oidc-notice" class="notice" role="status" hidden><p id="oidc-notice-text" class="oidc-notice-text"></p><button id="oidc-cancel" type="button" class="text-button">취소하고 게임으로 돌아가기</button><p id="oidc-error" class="form-message" role="alert" tabindex="-1" hidden></p></div>
 <section id="signin-panel" class="panel" aria-labelledby="signin-title" hidden>
-<p class="step-label">다시 오셨군요</p><h2 id="signin-title" tabindex="-1">로그인</h2><p class="description">그레이스킨게임즈의 사이트·커뮤니티와 경국지계 계정이에요.</p>
+<p class="step-label">다시 오셨군요</p><h2 id="signin-title" tabindex="-1">로그인</h2><p class="description">로그인하면 <a id="signin-avatar-link" href="https://community.gracekingames.com/games/avatar/">아바타 공방</a>에 저장한 내 캐릭터를 확인하고 다시 꾸밀 수 있어요.</p>
 <form id="signin-form">
 <div class="field"><label for="signin-email">이메일</label><input id="signin-email" name="email" type="email" autocomplete="email" maxlength="254" required></div>
 <div class="field"><label for="signin-password">비밀번호</label><input id="signin-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required></div>
@@ -83,7 +83,18 @@
 <form id="reset-form"><div class="field"><label for="reset-password">새 비밀번호</label><input id="reset-password" name="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></div><div class="field"><label for="reset-confirm">새 비밀번호 확인</label><input id="reset-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></div><p id="reset-error" class="form-message" role="alert" tabindex="-1" hidden></p><button id="reset-submit" class="primary-button" type="submit">비밀번호 바꾸기</button></form><button type="button" class="text-button" data-view="forgot">재설정 메일 다시 받기</button>
 </section>
 <section id="member-panel" class="panel" aria-labelledby="member-title" hidden>
-<p class="step-label">내 계정</p><h2 id="member-title" tabindex="-1">반가워요</h2><p id="member-email" class="description"></p><p id="member-permission" class="notice"></p><section class="grain-wallet" aria-labelledby="grain-title" aria-busy="false" id="grain-wallet">
+<p class="step-label">내 계정</p><h2 id="member-title" tabindex="-1">반가워요</h2><p id="member-email" class="description"></p><p id="member-permission" class="notice"></p>
+<section class="account-avatar" aria-labelledby="account-avatar-title">
+  <div class="account-avatar-copy">
+    <h3 id="account-avatar-title">내 아바타</h3>
+    <div id="account-avatar-details" hidden><strong id="account-avatar-name"></strong><span id="account-avatar-job"></span></div>
+    <p id="account-avatar-status" role="status"></p>
+    <a id="account-avatar-link" href="https://community.gracekingames.com/games/avatar/">아바타 공방 열기</a>
+    <button type="button" id="account-avatar-retry" class="text-button" hidden>다시 불러오기</button>
+  </div>
+  <div id="account-avatar-portrait" class="account-avatar-portrait" role="img" aria-label="내 아바타 초상화" hidden></div>
+</section>
+<section class="grain-wallet" aria-labelledby="grain-title" aria-busy="false" id="grain-wallet">
 <div class="grain-heading"><img src="/assets/currency/grain.png" width="48" height="48" alt=""><h3 id="grain-title">내 그레인</h3></div>
 <p id="grain-status" class="description" role="status">잔액을 불러오고 있어요.</p>
 <div id="grain-content" hidden><p class="grain-balance"><strong id="grain-balance"></strong> <span>그레인</span></p><p class="description small">그레인은 이벤트와 커뮤니티 활동으로만 받는 무료 화폐예요. 돈으로 사거나 현금·상품으로 바꿀 수 없고, 다른 회원에게 줄 수 없어요.</p><p id="grain-attendance" class="notice success" role="status" hidden></p><p id="grain-eligibility" class="notice" hidden></p><button id="grain-verify" class="text-button" type="button" hidden>인증 메일 다시 받기</button><p class="grain-pending-total">적립 예정 <strong id="grain-pending-total"></strong> 그레인</p><p id="grain-pending-description" class="description small">글·댓글은 유지 조건을 충족하면 확정돼요. 확정 전 삭제·숨김되거나 보상 자격이 바뀌면 지급되지 않을 수 있어요.</p><ul id="grain-pending" class="grain-entries"></ul><p id="grain-pending-empty" class="description" hidden>적립 예정인 보상이 없어요.</p><h4>이용 내역</h4><ul id="grain-entries" class="grain-entries"></ul><p id="grain-empty" class="description" hidden>아직 이용 내역이 없어요.</p></div>

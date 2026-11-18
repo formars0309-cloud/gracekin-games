@@ -1,0 +1,50 @@
+.avq {
+  --avq-ink: #292421;
+  --avq-muted: #61564e;
+  --avq-line: #c4b5a5;
+  --avq-accent: #365f55;
+  box-sizing: border-box;
+  width: min(100%, 42rem);
+  margin-inline: auto;
+  padding: clamp(1rem, 4vw, 2rem);
+  border: 1px solid var(--avq-line);
+  border-radius: 1rem;
+  background: #faf4e9;
+  color: var(--avq-ink);
+  font-family: var(--font-body);
+  line-height: 1.65;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  color-scheme: light;
+}
+.avq *, .avq *::before, .avq *::after { box-sizing: border-box; }
+.avq .avq-header, .avq .avq-actions { display: flex; gap: .65rem; align-items: center; flex-wrap: wrap; }
+.avq .avq-header { justify-content: space-between; }
+.avq .avq-step, .avq .avq-counts { color: var(--avq-accent); font-size: .875rem; font-weight: 600; }
+.avq .avq-progress { display: block; width: 100%; height: .45rem; accent-color: var(--avq-accent); margin: .65rem 0 1.25rem; }
+.avq .avq-title, .avq .avq-job { font-family: var(--font-display); color: var(--avq-ink); margin: 0 0 .65rem; line-height: 1.4; }
+.avq .avq-title { font-size: clamp(1.3rem, 4vw, 1.8rem); }
+.avq .avq-job { font-size: 1.6rem; color: var(--avq-accent); }
+.avq .avq-field { margin: 0; padding: 0; border: 0; min-width: 0; }
+.avq .avq-story { float: none; width: 100%; padding: 0; margin: 0 0 1rem; line-height: 1.75; }
+.avq .avq-choices { display: grid; gap: .6rem; }
+.avq .avq-choice {
+  display: flex; gap: .8rem; align-items: center;
+  min-height: 3rem; padding: .7rem .9rem; cursor: pointer;
+  border: 1px solid var(--avq-line); border-radius: .65rem; background: #fffdf8;
+}
+.avq .avq-choice:has(input:checked) { border-color: var(--avq-accent); background: #e4efe9; }
+.avq .avq-choice input { flex: none; width: 1.1rem; height: 1.1rem; margin: 0; accent-color: var(--avq-accent); }
+.avq .avq-choice:focus-within, .avq button:focus-visible, .avq .avq-title:focus-visible { outline: 2px solid var(--avq-accent); outline-offset: 2px; }
+.avq .avq-actions { margin-top: 1.3rem; }
+.avq .avq-button, .avq .avq-primary {
+  width: auto; min-height: 44px; padding: .5rem .9rem; cursor: pointer; font: inherit; font-size: .875rem;
+  border: 1px solid var(--avq-line); border-radius: .5rem; background: #fffcf6; color: var(--avq-ink);
+}
+.avq .avq-primary { margin-inline-start: auto; background: var(--avq-accent); border-color: var(--avq-accent); color: #fff; font-weight: 600; }
+.avq .avq-primary:disabled { background: #d8d3c9; border-color: #d8d3c9; color: #544e47; cursor: default; }
+.avq .avq-description, .avq .avq-evidence, .avq .avq-rule { margin: 0 0 .8rem; color: var(--avq-muted); }
+.avq .avq-evidence-title { margin: 1rem 0 .4rem; font-size: 1rem; }
+.avq .avq-evidence { padding-inline-start: 1.3rem; }
+.avq .avq-counts { margin: 1rem 0 .3rem; }
+.avq .avq-rule { font-size: .875rem; }
