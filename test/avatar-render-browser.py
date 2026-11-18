@@ -1,6 +1,9 @@
 """독립 표본으로 조형·회전·보행·접근성·대체 화면을 검수하고 지정한 폴더에 캡처를 남긴다."""
 import argparse
+import base64
 import functools
+import json
+import subprocess
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -26,8 +29,8 @@ import {createAvatarView} from '/assets/avatar/renderer.js';
 window.build=(samples,mode='studio')=>{
  window.views?.forEach(v=>v.dispose());window.views=[];window.heroes=[];
  document.querySelector('main').replaceChildren();
- for(const [job,name,hairStyle,skinColor,hairColor,eyeColor,clothColor] of samples){
-  const appearance={height:50,build:50,shoulders:50,jaw:50,eyes:50,nose:50,hairStyle,skinColor,hairColor,eyeColor,clothColor};
+ for(const [job,name,hairStyle,skinColor,hairColor,eyeColor,clothColor,shape] of samples){
+  const appearance={height:50,build:50,shoulders:50,jaw:50,eyes:50,nose:50,hairStyle,skinColor,hairColor,eyeColor,clothColor,...shape};
   const character={name,appearance,job,recommendedJob:null};window.heroes.push(character);
   const row=document.createElement('article'),slot=document.createElement('div'),title=document.createElement('h2');
   title.textContent=name;slot.className='figure';row.append(slot,title);document.querySelector('main').append(row);
@@ -53,7 +56,67 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(404)
 
 
-def run(out, webkit):
+
+def verify_exports(page, out):
+    result = page.evaluate("""async()=>{
+      const {createAvatarView}=await import('/assets/avatar/renderer.js');
+      const studio=document.createElement('div');Object.assign(studio.style,{position:'fixed',left:'-10000px',
+        width:'192px',height:'192px'});document.body.append(studio);
+      const view=createAvatarView(studio,heroes[0],{mode:'rpg'});
+      const sheet=document.createElement('canvas');sheet.width=192*4;sheet.height=192*2;
+      const ctx=sheet.getContext('2d');
+      try {
+        const frames=[];let first;
+        for(const [row,motion] of ['idle','walk'].entries()){
+          for(const [col,angle] of [0,Math.PI/2,Math.PI,-Math.PI/2].entries()){
+            const frame=view.captureFrame({angle,phase:.25,motion});
+            if(!(frame instanceof HTMLCanvasElement)||frame.width!==192||frame.height!==192)
+              throw new Error('동기 프레임 크기 불일치');
+            ctx.drawImage(frame,col*192,row*192);frames.push(frame.toDataURL());
+            if(!first)first=frame;
+          }
+        }
+        if(new Set(frames).size!==8)throw new Error('방향 또는 보행 프레임 중복');
+        if(view.captureFrame({phase:1.25}).toDataURL()!==frames[0])throw new Error('순환 위상 불일치');
+        view.rotate(.9);view.setMotion('walk');view.setView('face');
+        if(view.captureFrame({phase:.25}).toDataURL()!==frames[0])throw new Error('절대 촬영 방향 불일치');
+        if(view.captureFrame({view:'face'}).toDataURL()===view.captureFrame().toDataURL())throw new Error('얼굴 촬영 실패');
+        const alpha=first.getContext('2d').getImageData(0,0,192,192).data;
+        if(!alpha.some((v,i)=>i%4===3&&v===255)||alpha[3]!==0)throw new Error('투명도 불일치');
+        studio.style.width='128px';studio.style.height='160px';
+        view.update({...heroes[0],appearance:{...heroes[0].appearance,hairStyle:2}});
+        const updated=view.captureFrame();
+        if(updated.width!==128||updated.height!==160)throw new Error('촬영 크기 갱신 실패');
+        if(first.toDataURL()!==frames[0])throw new Error('기존 촬영 결과 변경');
+        return sheet.toDataURL().split(',')[1];
+      }finally{view.dispose();studio.remove()}
+    }""")
+    (out / "15-절대방향-보행-투명프레임.png").write_bytes(base64.b64decode(result))
+
+
+def capture_presets(page, out, model, initial_yaw):
+    source = """import {pathToFileURL} from 'node:url';
+const {createAvatarPreset}=await import(pathToFileURL(process.argv[1]));
+console.log(JSON.stringify(['youth','maiden'].map(createAvatarPreset)));"""
+    characters = json.loads(subprocess.check_output(["node", "--input-type=module", "-e", source, str(model.resolve())]))
+    rows = []
+    for name, character in zip(["소년풍", "소녀풍"], characters):
+        appearance = character["appearance"]
+        rows.append([character["job"], name, *[appearance[k] for k in
+                     ["hairStyle", "skinColor", "hairColor", "eyeColor", "clothColor"]], appearance])
+    page.set_viewport_size({"width": 840, "height": 520})
+    page.add_style_tag(content="main{grid-template-columns:1fr 1fr}.figure{height:470px}")
+    for filename, mode, angle in [
+        ("11-프리셋-정면", "portrait", 0), ("12-프리셋-사선", "portrait", -.55),
+        ("13-프리셋-측면", "portrait", 1.55), ("14-프리셋-게임말", "board", .52),
+    ]:
+        page.evaluate("([rows,mode,delta])=>{build(rows,mode);views.forEach(v=>v.rotate(delta))}",
+                      [rows, mode, angle - (.42 if mode == "board" else initial_yaw)])
+        page.evaluate("()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
+        page.locator("main").screenshot(path=str(out / (filename + ".png")))
+
+
+def run(out, webkit, model=None, initial_yaw=-.43):
     out.mkdir(exist_ok=True, parents=True)
     server = ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=ROOT))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -66,6 +129,11 @@ def run(out, webkit):
             address = f"http://127.0.0.1:{server.server_port}/"
             page.goto(address)
             page.wait_for_function("window.ready")
+            if model:
+                capture_presets(page, out, model, initial_yaw)
+                page.goto(address)
+                page.wait_for_function("window.ready")
+                page.set_viewport_size({"width": 1280, "height": 470})
             page.evaluate("samples=>build(samples)", SAMPLES)
             canvas = page.locator("canvas").first
             page.wait_for_function("document.querySelector('canvas').width!==300")
@@ -75,6 +143,7 @@ def run(out, webkit):
                 page.evaluate("()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
                 page.locator("main").screenshot(path=str(out / (name + ".png")))
 
+            verify_exports(page, out)
             capture("01-직업별-전신")
             page.evaluate("views.forEach(v=>v.setView('face'))")
             capture("02-직업별-얼굴")
@@ -147,5 +216,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
     parser.add_argument("--webkit", action="store_true", help="아이폰 크기의 웹킷에서도 확인한다")
+    parser.add_argument("--model", type=Path, help="공통 모델 모듈에서 실제 프리셋을 불러와 비교한다")
     args = parser.parse_args()
-    run(args.output, args.webkit)
+    run(args.output, args.webkit, args.model)

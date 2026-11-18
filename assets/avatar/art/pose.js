@@ -40,16 +40,16 @@ function joint(p, x, y, z) {
   return product(shift(...p), product(turn, shift(-p[0], -p[1], -p[2])));
 }
 
-export function pose(model, { angle, time, motion, mode, view, width, height }) {
+export function pose(model, { angle, time, cycle, motion, mode, view, width, height }) {
   const face = view === 'face',
     walking = motion === 'walk',
-    phase = time * 4.6;
+    phase = cycle === undefined ? time * 4.6 : cycle * 2 * Math.PI;
   const rhythm = walking ? Math.sin(phase) : 0,
-    breath = Math.sin(time * 1.86);
+    breath = cycle === undefined ? Math.sin(time * 1.86) : Math.cos(phase);
   const pitch = face ? 0.042 : mode === 'board' ? 0.278 : mode === 'rpg' ? 0.165 : 0.104;
-  const hat = model.crown - model.headY > 0.8;
+  const hat = model.crown - model.headY > 0.73;
   const portion = face
-    ? Math.max((hat ? 1.83 : 1.42) * model.scaleY, (1.24 * height) / width)
+    ? Math.max((hat ? 1.67 : 1.34) * model.scaleY, (1.16 * height) / width)
     : Math.max((model.crown + 0.44) * (0.45 + 0.55 * model.scaleY), (1.98 * height) / width);
   const center = face
     ? (model.headY + (hat ? 0.095 : -0.045)) * model.scaleY

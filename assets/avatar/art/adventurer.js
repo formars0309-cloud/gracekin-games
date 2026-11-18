@@ -388,9 +388,9 @@ export function buildAdventurer(character, mode) {
     m = new Sculpture();
   const hip = 0.285 + a.build * 0.0009,
     waist = 0.217 + a.build * 0.0011;
-  const shoulder = 0.288 + a.shoulders * 0.0015 + a.build * 0.00027;
+  const shoulder = 0.251 + a.shoulders * 0.00228 + a.build * 0.00027;
   const hand = shoulder + 0.132,
-    headY = 2.445;
+    headY = 2.498;
   m.pivots[BONE.floor] = [0, 0, 0];
   m.pivots[BONE.chest] = [0, 1.12, 0];
   m.pivots[BONE.head] = [0, 2.01, 0];
@@ -406,7 +406,9 @@ export function buildAdventurer(character, mode) {
     [
       [1.88, 0.138, 0.127],
       [2.018, 0.117, 0.116],
-      [2.098, 0.142, 0.129],
+      [2.12, 0.109, 0.11, -0.008],
+      [2.215, 0.133, 0.129, -0.023],
+      [2.303, 0.166, 0.15, -0.036],
     ],
     p.skin,
     0.17,
@@ -436,13 +438,21 @@ export function buildAdventurer(character, mode) {
   );
   vestments(m, p, job, shoulder, hip, hand, headY);
   sculptHead(m, a, p, headY);
-  const scaleY = 0.9 + a.height * 0.002;
+  const headScale = 0.88 + 0.00033 * (64 - a.build);
+  const neck = 2.01;
+  for (let i = 0; i < m.vertices.length; i += 11) {
+    if (m.vertices[i + 10] !== BONE.head) continue;
+    m.vertices[i] *= headScale;
+    m.vertices[i + 1] = neck + (m.vertices[i + 1] - neck) * headScale;
+    m.vertices[i + 2] *= headScale;
+  }
+  const scaleY = 0.89 + a.height * 0.0022;
   return {
     vertices: new Float32Array(m.vertices),
     indices: new Uint16Array(m.indices),
     pivots: m.pivots,
     scaleY,
-    headY,
-    crown: headY + (job === 'arcanist' ? 0.95 : 0.64),
+    headY: neck + (headY - neck) * headScale,
+    crown: neck + (headY - neck + (job === 'arcanist' ? 0.95 : 0.64)) * headScale,
   };
 }

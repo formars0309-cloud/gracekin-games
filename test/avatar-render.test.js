@@ -63,3 +63,21 @@ test('게임 말·초상화·역할놀이가 같은 인물을 쓰고 회전 한 
   assert.notDeepEqual(walking, original);
   assert.ok(pose(samples[0], { ...resting, view: 'face' }).sy > pose(samples[0], resting).sy);
 });
+
+test('절대 촬영 각도가 앞·오른쪽·뒤·왼쪽을 향하고 걸음 절반마다 교차한다', () => {
+  const model = buildAdventurer({}, 'rpg');
+  const signs = [
+    [0, 1],
+    [1, 0],
+    [0, -1],
+    [-1, 0],
+  ];
+  for (let i = 0; i < 4; i++) {
+    const frame = pose(model, { ...resting, angle: (i * Math.PI) / 2, cycle: 0 });
+    const frontX = frame.bones[2 * 16 + 8],
+      frontZ = frame.bones[2 * 16 + 10];
+    assert.ok(Math.abs(frontX - signs[i][0]) < 0.06 && Math.abs(frontZ - signs[i][1]) < 0.06);
+  }
+  const step = (cycle) => pose(model, { ...resting, cycle, motion: 'walk' }).bones;
+  assert.notDeepEqual(step(0.25), step(0.75));
+});

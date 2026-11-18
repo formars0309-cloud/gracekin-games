@@ -49,12 +49,19 @@ export function createPaper(canvas) {
         const rim = (1 - Math.min(1, Math.abs(nz))) ** 3 * (0.35 + gloss);
         const spec = Math.max(0, -0.296 * nx + 0.394 * ny + 0.87 * nz) ** (16 + 42 * gloss) * gloss;
         const dest = j + 3 + side * 3;
+        const fill = b === 32 ? 0.65 + 0.35 * Math.max(nz, 0) : 0;
         p[dest] =
-          255 * floorShade * (vertices[i + 6] * (0.65 + 0.12 * sky + 0.33 * light) + rim * 0.1 + spec * 0.3);
+          255 *
+          floorShade *
+          (vertices[i + 6] * (0.65 + 0.089 * fill + 0.12 * sky + 0.33 * light) + rim * 0.1 + spec * 0.3);
         p[dest + 1] =
-          255 * floorShade * (vertices[i + 7] * (0.65 + 0.11 * sky + 0.3 * light) + rim * 0.092 + spec * 0.27);
+          255 *
+          floorShade *
+          (vertices[i + 7] * (0.65 + 0.073 * fill + 0.11 * sky + 0.3 * light) + rim * 0.092 + spec * 0.27);
         p[dest + 2] =
-          255 * floorShade * (vertices[i + 8] * (0.72 + 0.1 * sky + 0.23 * light) + rim * 0.079 + spec * 0.2);
+          255 *
+          floorShade *
+          (vertices[i + 8] * (0.72 + 0.068 * fill + 0.1 * sky + 0.23 * light) + rim * 0.079 + spec * 0.2);
       }
       p[j] = ((p[j] * sx + 1) * w) / 2;
       p[j + 1] = ((1 - p[j + 1] * sy) * h) / 2;
