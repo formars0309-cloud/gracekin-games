@@ -21,36 +21,38 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
 <link rel="stylesheet" href="/assets/shared/account-header.css">
+<link rel="stylesheet" href="/assets/shared/site.css">
 <link rel="stylesheet" href="/assets/home/home.css">
 <script defer src="https://cloud.umami.is/script.js" data-website-id="262268ac-4e27-49fa-862a-c911f4d38993" data-domains="gracekingames.com" data-do-not-track="true"></script>
 <script defer src="/assets/shared/account-header.js"></script>
 </head>
 <body>
-<div class="gb-root">
+<div class="gb-root gb-home">
+<picture class="gb-backdrop">
+<source media="(max-aspect-ratio: 1/1)" srcset="/assets/home/hero-tall-720.webp 720w, /assets/home/hero-tall-1080.webp 1080w, /assets/home/hero-tall-1440.webp 1440w, /assets/home/hero-tall-2160.webp 2160w" sizes="100vw" width="2160" height="3240">
+<img src="/assets/home/hero-wide-1600.webp" srcset="/assets/home/hero-wide-1600.webp 1600w, /assets/home/hero-wide-2560.webp 2560w, /assets/home/hero-wide-3840.webp 3840w" sizes="100vw" width="3840" height="2560" fetchpriority="high" alt="맑은 오후 언덕길, 짐을 진 흰 짐승과 여행자들이 퍼즐 조각과 게임판으로 쌓은 탑을 향해 걸어가는 모습">
+</picture>
 <header class="gb-nav">
-<a class="gb-logo" href="#top" aria-label="그레이스킨게임즈 처음으로"><img src="/assets/favicon.svg" width="36" height="36" alt="">GRACEKIN</a>
-<nav class="gb-navlinks" aria-label="주 메뉴"><a href="#games">모든 게임</a><a href="#letter">의견 보내기</a></nav>
+<a class="gb-logo" href="/" aria-label="그레이스킨게임즈 처음으로"><img src="/assets/favicon.svg" width="36" height="36" alt="">GRACEKIN</a>
+<nav class="gb-navlinks" aria-label="주 메뉴"><a href="/games/">모든 게임</a><a href="#letter">의견 보내기</a></nav>
 <div class="account-header" data-account-header aria-busy="false"><a class="account-header-link" data-account-link href="/account/"><span class="account-header-name" data-account-label>내 계정</span><span class="account-header-grain" data-account-grain hidden><img src="/assets/currency/grain.png" width="24" height="24" alt=""><span data-account-balance></span></span></a><button class="account-header-retry" data-account-retry type="button" hidden>다시 확인</button></div>
 </header>
 <main class="gb-main" id="top">
-<section class="gb-hero" aria-labelledby="hero-title">
-<img class="gb-hero-image" src="/assets/home/hero-1600.webp" srcset="/assets/home/hero-960.webp 960w, /assets/home/hero-1600.webp 1600w, /assets/home/hero-2560.webp 2560w" sizes="(max-width: 360px) calc(100vw - 16px), (max-width: 700px) calc(100vw - 28px), (max-width: 1180px) calc(100vw - 64px), 1116px" width="2560" height="1707" fetchpriority="high" alt="맑은 오후 언덕길, 짐을 진 흰 짐승과 여행자들이 퍼즐 조각과 게임판으로 쌓은 탑을 향해 걸어가는 모습">
+<section class="gb-home-intro" aria-labelledby="hero-title">
 <div class="gb-hero-copy">
 <p class="gb-hero-brand">GRACEKIN GAMES</p>
 <h1 id="hero-title">보드게임의 세계로, <br>함께 떠나요.</h1>
 <p class="gb-hero-subtitle">오래 사랑받은 보드게임부터 그레이스킨이 새로 빚은 게임까지, 하나씩 모아 가고 있어요.</p>
 <div class="gb-hero-actions">
-<a class="gb-hero-primary" href="#games" data-umami-event="hero-games">게임 둘러보기</a>
+<a class="gb-hero-primary" href="/games/" data-umami-event="hero-games">게임 둘러보기</a>
 <a class="gb-hero-secondary" href="https://community.gracekingames.com/community/" data-umami-event="hero-community">커뮤니티 둘러보기</a>
 </div>
 </div>
 </section>
-<section class="gb-games" id="games" aria-labelledby="games-title"><div class="gb-games-heading"><h2 id="games-title">당신을 위한 게임들</h2><span>Google Play 출시 준비 중 · 홈페이지에서 소식 확인</span></div><div class="gb-gamegrid">
-<article class="gb-game"><img src="/assets/slimeline/hero.webp" alt="숲속 슬라임 라인의 언덕 마을" loading="lazy"><a class="gb-gamecover-link" href="/games/slimeline/" data-umami-event="homepage-slimeline" data-umami-event-from="card-image" aria-label="슬라임 라인 게임 홈페이지"></a><div class="gb-gamecopy"><small class="gb-game-brand">SLIMELINE</small><h3>슬라임 라인</h3><p>선을 그려, 집으로 가는 길.</p><a class="gb-play" href="/games/slimeline/" data-umami-event="homepage-slimeline" data-umami-event-from="card-button">게임 홈페이지 →</a></div></article>
-<article class="gb-game"><img src="/assets/gyeongguk/hero.webp" alt="경국지계의 삼국 영웅과 책략" loading="lazy"><a class="gb-gamecover-link" href="/games/gyeongguk/" data-umami-event="homepage-gyeongguk" data-umami-event-from="card-image" aria-label="경국지계 게임 홈페이지"></a><div class="gb-gamecopy"><small>경국지계</small><h3>한 수로, 천하를.</h3><p>영웅과 책략이 만나는 카드 대전.</p><a class="gb-play" href="/games/gyeongguk/" data-umami-event="homepage-gyeongguk" data-umami-event-from="card-button">게임 홈페이지 →</a></div></article>
-</div></section>
 </main>
-<footer class="gb-foot" id="letter"><strong>GRACEKIN GAMES</strong><span>작은 세계에서 만나는, 오래 남을 즐거움.</span><div class="gb-foot-links"><a href="https://community.gracekingames.com/community/terms/">이용약관</a><a href="https://community.gracekingames.com/community/privacy/">계정·커뮤니티 개인정보처리방침</a><a href="https://community.gracekingames.com/community/account-deletion/">계정 삭제 안내</a><a href="https://community.gracekingames.com/community/bug-report/">버그 제보</a><a data-umami-event="feedback-form" href="https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform">의견 보내기</a><a href="mailto:support@gracekingames.com">문의</a><a href="https://slimeline.gracekingames.com/privacy.html">슬라임 라인 개인정보처리방침</a><a href="https://gyeongguk.gracekingames.com/privacy">경국지계 개인정보처리방침</a></div><span class="gb-copyright">© 2026 Gracekin Games · 방문 통계는 쿠키 없이, 누구인지 알 수 없는 형태로만 셉니다.</span></footer>
+<footer class="gb-legal" id="letter" aria-label="법적 안내와 문의">
+<a href="https://community.gracekingames.com/community/terms/">이용약관</a><span aria-hidden="true">·</span><a href="/privacy/">개인정보처리방침</a><span aria-hidden="true">·</span><a href="https://community.gracekingames.com/community/account-deletion/">계정 삭제 안내</a><span aria-hidden="true">·</span><a data-umami-event="feedback-form" href="https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform">의견 보내기</a><span aria-hidden="true">·</span><a href="mailto:support@gracekingames.com">문의</a><span aria-hidden="true">·</span><span>© 2026 Gracekin Games</span>
+</footer>
 </div>
 </body>
 </html>

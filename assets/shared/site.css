@@ -1,0 +1,12 @@
+/* 대표 사이트의 공통 색상·상단 메뉴·바닥글. */
+:root{color-scheme:dark;background:#0c0a10;color:#f3ecdf;font-family:var(--font-body)}
+*{box-sizing:border-box}body{margin:0}h1,h2,h3,h4,h5,h6{font-family:var(--font-display);font-weight:600}a{color:#e6c98a}button{font:inherit;cursor:pointer}a:focus-visible,button:focus-visible{outline:2px solid #e6c98a;outline-offset:4px}[hidden]{display:none!important}
+.gb-root{min-width:0;min-height:100svh;background:radial-gradient(ellipse at 50% 8%,#30203d 0,transparent 45%),#0c0a10;font-size:14px;line-height:1.55;display:flex;flex-direction:column}
+.gb-root h1,.gb-root h2,.gb-root h3,.gb-root p{margin:0}
+.gb-nav{width:100%;max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:24px;padding:24px 34px;border-bottom:1px solid #e6c98a19;position:relative;z-index:2}
+.gb-logo{display:flex;align-items:center;gap:10px;color:#f1dfba;text-decoration:none;font-family:var(--font-brand);font-size:15px;letter-spacing:.22em;white-space:nowrap}.gb-logo img{width:36px;height:36px}
+.gb-navlinks{display:flex;align-items:center;gap:24px;margin-left:auto}.gb-navlinks a{text-decoration:none;font-size:12px;color:#ded3e5;white-space:nowrap}.gb-nav>.account-header{margin-left:0;flex:0 1 auto;max-width:285px;color:#e6c98a}
+.gb-main{width:100%;max-width:1180px;margin:0 auto;padding:48px 32px 24px;min-width:0;flex:1}
+.gb-foot{width:calc(100% - 64px);max-width:1116px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:30px auto 0;padding:26px 0;border-top:1px solid #392a40;color:#b3a5be;font-size:12px}.gb-foot strong{font-family:var(--font-brand);font-size:12px;font-weight:400;letter-spacing:.14em;color:#c5b19b}.gb-foot a{color:#d9c6ac;text-decoration:none}.gb-foot-links{display:flex;gap:12px 16px;flex-wrap:wrap}.gb-copyright{flex-basis:100%;font-size:11px}
+@media(max-width:760px){.gb-nav{padding:12px 16px;gap:8px;flex-wrap:wrap}.gb-logo{font-size:12px;letter-spacing:.15em;gap:7px}.gb-logo img{width:30px;height:30px}.gb-nav>.account-header{flex:0 1 53%;max-width:53%;margin-left:auto;justify-content:flex-end}.gb-navlinks{flex:1 1 100%;justify-content:center;gap:24px;order:3;margin:0}.gb-main{padding:32px 16px 16px}.gb-foot{width:calc(100% - 32px);margin:24px auto 0;padding:20px 0;align-items:flex-start;flex-direction:column;gap:10px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

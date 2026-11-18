@@ -209,16 +209,23 @@ class StoreLaunchTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
-        hero = ('<section class="gb-hero" aria-labelledby="hero-title">'
+        hero = ('<section class="gb-home-intro" aria-labelledby="hero-title">'
                 '<h1 id="hero-title">보드게임의 세계로, <br>함께 떠나요.</h1>'
-                '<a href="#games" data-umami-event="hero-games">게임 둘러보기</a>'
+                '<a href="/games/" data-umami-event="hero-games">게임 둘러보기</a>'
                 '<a href="https://community.gracekingames.com/community/" data-umami-event="hero-community">커뮤니티 둘러보기</a></section>')
         cards = ''.join(f'<a href="/games/{game}/" data-umami-event="homepage-{game}" data-umami-event-from="{position}">게임 홈페이지 →</a>'
                         for game in SITE.GAME_URLS for position in ('card-image', 'card-button'))
-        self.write('index.html', f'<main>{hero}<section id="games">{cards}</section></main><footer>{self.DELETION}</footer>')
-        self.write('.dockerignore', '!assets/\n!assets/home/\n' + ''.join(f'!assets/home/hero-{size}.webp\n' for size in (960, 1600, 2560)))
-        for size in (960, 1600, 2560):
-            path = self.root / f'assets/home/hero-{size}.webp'
+        picture = ('<picture><source media="(max-aspect-ratio: 1/1)" width="2160" height="3240" sizes="100vw" srcset="'
+                   + ', '.join(f'/assets/home/hero-tall-{size}.webp {size}w' for size in (720, 1080, 1440, 2160))
+                   + '"><img src="/assets/home/hero-wide-1600.webp" width="3840" height="2560" sizes="100vw" fetchpriority="high" srcset="'
+                   + ', '.join(f'/assets/home/hero-wide-{size}.webp {size}w' for size in (1600, 2560, 3840)) + '"></picture>')
+        self.write('index.html', f'{picture}<main>{hero}</main><footer>{self.DELETION}<a href="/privacy/">개인정보처리방침</a></footer>')
+        filters = ''.join(f'<button data-filter="{category}" aria-pressed="false">{label}</button>' for category, label in [('all', '전체'), ('puzzle', '퍼즐'), ('card', '카드 대전'), ('board', '보드게임')])
+        self.write('games/index.html', cards + filters + '<div id="board-empty">보드게임은 준비 중이에요. 첫 게임이 열리면 커뮤니티 새 소식으로 알려 드릴게요.</div><a href="https://community.gracekingames.com/community/">커뮤니티</a>' + '<footer>' + self.DELETION + '<a href="/privacy/">개인정보처리방침</a></footer>')
+        self.write('privacy/index.html', ''.join(f'<a href="{url}">방침</a>' for url in SITE.PRIVACY_URLS) + '<footer>' + self.DELETION + '<a href="/privacy/">개인정보처리방침</a></footer>')
+        self.write('.dockerignore', '!assets/\n!assets/home/\n' + ''.join(f'!{relative}\n' for relative in SITE.HOME_IMAGES))
+        for relative in SITE.HOME_IMAGES:
+            path = self.root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b'')
         for game, url in SITE.GAME_URLS.items():
@@ -242,7 +249,7 @@ class StoreLaunchTests(unittest.TestCase):
     def launch_failures(self):
         # 자산·계정 API가 없는 최소 문서 픽스처에서 출시 동선 검사만 확인한다.
         return [failure for failure in SITE.verify(self.root).failures
-                if any(marker in failure for marker in ('웹 체험 링크', 'Google Play 스토어', '계정 삭제 안내', '필수 페이지 없음: community/account-deletion/index.html', '대문:'))]
+                if any(marker in failure for marker in ('웹 체험 링크', 'Google Play 스토어', '계정 삭제 안내', '필수 페이지 없음: community/account-deletion/index.html', '대문:', '게임 목록:', '방침 안내:', '통합 개인정보처리방침'))]
 
     def test_pending_store_and_web_trial_links_are_allowed(self):
         self.assertEqual(self.launch_failures(), [])
@@ -268,7 +275,7 @@ class StoreLaunchTests(unittest.TestCase):
             ('aria-labelledby="hero-title"', 'aria-labelledby="missing"'),
             ('id="hero-title"', ''),
             ('</main>', '<h1>보드게임의 세계로, 함께 떠나요.</h1></main>'),
-            ('class="gb-hero"', 'class="gb-stage"'),
+            ('class="gb-home-intro"', 'class="gb-stage"'),
         ]:
             with self.subTest(after=after):
                 self.write('index.html', original.replace(before, after))
@@ -280,16 +287,15 @@ class StoreLaunchTests(unittest.TestCase):
             for before, after in [
                 (f'data-umami-event="{event}"', 'data-umami-event="wrong-event"'),
                 (label, '잘못된 문구'),
-                ('</main>', f'<a href="#games" data-umami-event="{event}">{label}</a></main>'),
-                ('href="#games"' if event == 'hero-games' else 'href="https://community.gracekingames.com/community/"', 'href="#letter"'),
+                ('</main>', f'<a href="/games/" data-umami-event="{event}">{label}</a></main>'),
+                ('href="/games/"' if event == 'hero-games' else 'href="https://community.gracekingames.com/community/"', 'href="#letter"'),
             ]:
                 with self.subTest(event=event, after=after):
                     self.write('index.html', original.replace(before, after))
                     self.assertTrue(any(f'대문: {event} 단추' in failure for failure in self.launch_failures()))
 
     def test_home_requires_all_hero_images_and_docker_permissions(self):
-        for size in (960, 1600, 2560):
-            relative = f'assets/home/hero-{size}.webp'
+        for relative in SITE.HOME_IMAGES:
             with self.subTest(relative=relative):
                 (self.root / relative).unlink()
                 self.assertIn(f'대문: {relative} 자산 또는 운영 패키지 허용 누락', self.launch_failures())
@@ -301,7 +307,34 @@ class StoreLaunchTests(unittest.TestCase):
 
     def test_home_rejects_remaining_stage_game_entry(self):
         self.change('index.html', '</main>', '<a href="/games/slimeline/" data-umami-event="homepage-slimeline" data-umami-event-from="stage">홈페이지 보기</a></main>')
-        self.assertIn('대문: slimeline 게임 소개 진입 위치·개수 불일치', self.launch_failures())
+        self.assertIn('대문: 개별 게임 진입 링크가 남아 있음', self.launch_failures())
+
+    def test_home_rejects_game_cards_and_old_section(self):
+        original = (self.root / 'index.html').read_text()
+        for remaining in ['<section id="games"></section>', '<article class="gb-game"></article>']:
+            self.write('index.html', original + remaining)
+            self.assertIn('대문: 게임 카드·목록이 남아 있음', self.launch_failures())
+
+    def test_catalog_rejects_missing_filters_and_card_events(self):
+        original = (self.root / 'games/index.html').read_text()
+        for before, after, expected in [
+            ('data-filter="board"', 'data-filter="other"', '분류 필터'),
+            ('id="board-empty"', 'id="missing"', '빈 상태'),
+            ('data-umami-event-from="card-image"', 'data-umami-event-from="stage"', '진입 위치'),
+            ('data-umami-event="homepage-slimeline"', 'data-umami-event="wrong"', '이동 이벤트'),
+        ]:
+            with self.subTest(expected=expected):
+                self.write('games/index.html', original.replace(before, after))
+                self.assertTrue(any(expected in failure for failure in self.launch_failures()))
+
+    def test_privacy_requires_each_service_link_and_consolidated_footer(self):
+        original = (self.root / 'privacy/index.html').read_text()
+        for url in SITE.PRIVACY_URLS:
+            self.write('privacy/index.html', original.replace(url, 'https://example.com/'))
+            self.assertIn('방침 안내: 서비스별 방침 링크 누락', self.launch_failures())
+        self.write('privacy/index.html', original)
+        self.change('index.html', 'href="/privacy/"', 'href="https://community.gracekingames.com/community/privacy/"')
+        self.assertIn('index.html: 통합 개인정보처리방침 바닥글 링크 불일치', self.launch_failures())
 
     def test_published_store_links_are_allowed(self):
         for game in SITE.GAME_URLS:
@@ -356,7 +389,7 @@ class StoreLaunchTests(unittest.TestCase):
                 self.write(relative, original)
 
     def test_home_account_deletion_link_must_be_in_footer(self):
-        self.change('index.html', f'<footer>{self.DELETION}</footer>', self.DELETION + '<footer></footer>')
+        self.change('index.html', f'<footer>{self.DELETION}', self.DELETION + '<footer>')
         self.assertIn('index.html: 계정 삭제 안내 링크 없음 (바닥글)', self.launch_failures())
 
     def test_official_community_account_deletion_url_is_allowed(self):
