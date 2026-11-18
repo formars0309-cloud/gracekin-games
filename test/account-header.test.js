@@ -43,8 +43,10 @@ test('Pages 상단은 고정 summary에 자격증명만 전송하고 로딩·오
     assert.equal(label(ui).textContent, '내 계정'); assert.equal(balance(ui).textContent, ''); assert.equal(retry(ui).hidden, false);
     retry(ui).events.click();
     ui.calls[1].respond({ user: { name: '가입회원', grainBalance: 30000 } }); await flush();
-    assert.equal(label(ui).textContent, '가입회원'); assert.equal(balance(ui).textContent, '30,000 그레인');
+    assert.equal(label(ui).textContent, '가입회원'); assert.equal(balance(ui).textContent, '30,000 코인');
     assert.equal(grain(ui).hidden, false); assert.equal(retry(ui).hidden, true);
+    assert.equal(link(ui).attributes['aria-label'], '가입회원님, 30,000 그레이스킨 코인, 내 계정 열기');
+    assert.equal(link(ui).attributes.title, '가입회원 · 30,000 그레이스킨 코인');
     ui.event('pageshow'); ui.calls[2].respond({ user: null }); await flush();
     assert.equal(label(ui).textContent, '로그인'); assert.equal(balance(ui).textContent, ''); assert.equal(grain(ui).hidden, true);
   }
@@ -56,7 +58,7 @@ test('늦은 이전 응답은 최신 계정을 덮어쓰지 않고 숨김·복�
   assert.equal(ui.calls[0].options.signal.aborted, true);
   ui.calls[1].respond({ user: { name: '새회원', grainBalance: 12345 } }); await flush();
   ui.calls[0].respond({ user: { name: '이전회원', grainBalance: 99999 } }); await flush();
-  assert.equal(label(ui).textContent, '새회원'); assert.equal(balance(ui).textContent, '12,345 그레인');
+  assert.equal(label(ui).textContent, '새회원'); assert.equal(balance(ui).textContent, '12,345 코인');
   ui.visibility(true);
   assert.equal(label(ui).textContent, '내 계정'); assert.equal(balance(ui).textContent, '');
   ui.event('focus'); assert.equal(ui.calls.length, 2);
@@ -65,7 +67,7 @@ test('늦은 이전 응답은 최신 계정을 덮어쓰지 않고 숨김·복�
   ui.calls[2].respond({ user: { name: '이탈후응답', grainBalance: 333 } }); await flush();
   assert.equal(balance(ui).textContent, ''); assert.equal(label(ui).textContent, '내 계정');
   ui.event('pageshow'); ui.calls[3].respond({ user: { name: '돌아온회원', grainBalance: 30000 } }); await flush();
-  assert.equal(balance(ui).textContent, '30,000 그레인');
+  assert.equal(balance(ui).textContent, '30,000 코인');
   ui.event('blur'); assert.equal(balance(ui).textContent, '');
   ui.event('focus'); ui.calls[4].respond({ user: null }); await flush();
   assert.equal(label(ui).textContent, '로그인'); assert.equal(grain(ui).hidden, true);
@@ -94,8 +96,8 @@ test('로컬·게임별 계정 링크 문맥과 긴 닉네임·큰 잔액의 접
     assert.equal(ui.calls[0].url, '/api/account/summary');
     ui.calls[0].respond({ user: { name, grainBalance: 9007199254740991 } }); await flush();
     assert.equal(label(ui).textContent, name);
-    assert.equal(balance(ui).textContent, '9,007,199,254,740,991 그레인');
-    assert.equal(link(ui).attributes['aria-label'], `${name}님, 9,007,199,254,740,991 그레인, 내 계정 열기`);
+    assert.equal(balance(ui).textContent, '9,007,199,254,740,991 코인');
+    assert.equal(link(ui).attributes['aria-label'], `${name}님, 9,007,199,254,740,991 그레이스킨 코인, 내 계정 열기`);
     ui.event('focus'); ui.calls[1].respond({ user: { name, grainBalance: '0' } }); await flush();
     assert.equal(balance(ui).textContent, ''); assert.equal(grain(ui).hidden, true); assert.equal(retry(ui).hidden, false);
   }

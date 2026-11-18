@@ -98,7 +98,7 @@ test('자격 회원 첫 글 보상과 오른쪽 지급표는 서버 변경 수�
   assert.equal(ui.node('empty-write').hidden, false);
   assert.equal(ui.node('empty-signin').hidden, true);
   assert.equal(ui.node('empty-reward').hidden, false);
-  assert.match(ui.node('empty-reward').textContent, /48시간 뒤 765 그레인.*42자 이상.*4회/);
+  assert.match(ui.node('empty-reward').textContent, /48시간 뒤 765 그레이스킨 코인.*42자 이상.*4회/);
   const summary = contents(ui.node('grain-policy-summary'));
   for (const amount of [321, 765, 123]) assert.ok(summary.includes(String(amount)));
   assert.equal(ui.node('member-bar').hidden, true);
@@ -125,7 +125,7 @@ test('목록·회원·공개 정책·자격 응답 순서와 무관하게 첫 �
     for (const path of order) { ui.release(path); await flush(); }
     assert.equal(ui.node('empty-write').hidden, false);
     assert.equal(ui.node('empty-reward').hidden, false);
-    assert.match(ui.node('empty-reward').textContent, /24시간 뒤 500 그레인/);
+    assert.match(ui.node('empty-reward').textContent, /24시간 뒤 500 그레이스킨 코인/);
   }
 });
 

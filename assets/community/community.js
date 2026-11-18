@@ -30,8 +30,8 @@
           ['다른 문의가 있다면', '이메일 문의는 support@gracekingames.com으로 보내 주세요.']
         ] },
         { id: 'rules', date: null, cover: '/assets/slimeline/tiles.webp', title: '커뮤니티 규칙 한 장', excerpt: '함께 이야기하기 전에 이용약관의 주요 내용을 살펴봐요.', sections: [
-          ['서로를 지키며 이야기해요', ['도배와 무관한 광고·홍보를 올리지 않아요.', '욕설·협박·차별과 특정인을 괴롭히는 내용을 올리지 않아요.', '본인이나 다른 사람의 비밀번호·연락처 등 공개하면 안 되는 개인정보를 올리지 않아요.', '불법 정보나 타인의 권리를 침해하는 내용을 올리지 않아요.', '계정·그레인의 거래·대여·대리 이용과 외부 거래 알선 글을 올리지 않아요.', '버그·보안 취약점과 악용 방법은 공개 게시판에 쓰지 않고 비공개 버그 제보로 보내요.']],
-          ['신고와 운영 조치', '게시물 신고 기능으로 대상과 사유를 알려 주세요. 운영자는 위반 내용·정도·반복 여부·피해를 확인해 게시물 숨김, 부당 획득 그레인 회수, 보상 정지, 일부 기능 또는 계정 이용 제한을 필요한 범위에서 적용해요. 피해 확산이나 보안상 긴급한 사유가 있으면 먼저 조치하고 뒤에 안내할 수 있어요.'],
+          ['서로를 지키며 이야기해요', ['도배와 무관한 광고·홍보를 올리지 않아요.', '욕설·협박·차별과 특정인을 괴롭히는 내용을 올리지 않아요.', '본인이나 다른 사람의 비밀번호·연락처 등 공개하면 안 되는 개인정보를 올리지 않아요.', '불법 정보나 타인의 권리를 침해하는 내용을 올리지 않아요.', '계정·그레이스킨 코인의 거래·대여·대리 이용과 외부 거래 알선 글을 올리지 않아요.', '버그·보안 취약점과 악용 방법은 공개 게시판에 쓰지 않고 비공개 버그 제보로 보내요.']],
+          ['신고와 운영 조치', '게시물 신고 기능으로 대상과 사유를 알려 주세요. 운영자는 위반 내용·정도·반복 여부·피해를 확인해 게시물 숨김, 부당 획득 그레이스킨 코인 회수, 보상 정지, 일부 기능 또는 계정 이용 제한을 필요한 범위에서 적용해요. 피해 확산이나 보안상 긴급한 사유가 있으면 먼저 조치하고 뒤에 안내할 수 있어요.'],
           ['제재가 억울할 때', '조치 사유·종류·범위·기간과 이의 제기 방법은 계정 이메일이나 본인이 확인할 수 있는 화면으로 안내해요. support@gracekingames.com으로 대상 계정, 조치 내용과 이의 사유를 보내 재검토를 요청할 수 있어요. 운영자는 기록을 확인해 결과와 이유를 알리고, 처리가 길어지면 이유와 예상 일정을 안내해요. 잘못된 조치가 확인되면 해제·복구 등 필요한 정정을 해요.'],
           ['이용약관의 요약이에요', '이 안내는 커뮤니티 이용약관 5절과 9절의 요약이에요. 자세한 기준과 절차는 이용약관에서 확인해 주세요.']
         ] }
@@ -62,8 +62,8 @@
           ['이메일로 문의하기', '다른 문의는 support@gracekingames.com으로 보내 주세요.']
         ] },
         { id: 'rules', date: null, cover: '/assets/gyeongguk/tiles.webp', title: '커뮤니티 규칙 한 장', excerpt: '이용약관의 주요 내용과 이의 제기 절차를 안내합니다.', sections: [
-          ['서로를 지키며 이야기합니다', ['도배와 무관한 광고·홍보를 게시하지 않습니다.', '욕설·협박·차별과 특정인을 괴롭히는 내용을 게시하지 않습니다.', '본인이나 다른 사람의 비밀번호·연락처 등 공개하면 안 되는 개인정보를 게시하지 않습니다.', '불법 정보나 타인의 권리를 침해하는 내용을 게시하지 않습니다.', '계정·그레인의 거래·대여·대리 이용과 외부 거래 알선 글을 게시하지 않습니다.', '버그·보안 취약점과 악용 방법은 공개 게시판에 쓰지 않고 비공개 버그 제보로 접수합니다.']],
-          ['신고와 운영 조치', '게시물 신고 기능으로 대상과 사유를 알릴 수 있습니다. 운영자는 위반 내용·정도·반복 여부·피해를 확인해 게시물 숨김, 부당 획득 그레인 회수, 보상 정지, 일부 기능 또는 계정 이용 제한을 필요한 범위에서 적용합니다. 피해 확산이나 보안상 긴급한 사유가 있으면 먼저 조치하고 뒤에 안내할 수 있습니다.'],
+          ['서로를 지키며 이야기합니다', ['도배와 무관한 광고·홍보를 게시하지 않습니다.', '욕설·협박·차별과 특정인을 괴롭히는 내용을 게시하지 않습니다.', '본인이나 다른 사람의 비밀번호·연락처 등 공개하면 안 되는 개인정보를 게시하지 않습니다.', '불법 정보나 타인의 권리를 침해하는 내용을 게시하지 않습니다.', '계정·그레이스킨 코인의 거래·대여·대리 이용과 외부 거래 알선 글을 게시하지 않습니다.', '버그·보안 취약점과 악용 방법은 공개 게시판에 쓰지 않고 비공개 버그 제보로 접수합니다.']],
+          ['신고와 운영 조치', '게시물 신고 기능으로 대상과 사유를 알릴 수 있습니다. 운영자는 위반 내용·정도·반복 여부·피해를 확인해 게시물 숨김, 부당 획득 그레이스킨 코인 회수, 보상 정지, 일부 기능 또는 계정 이용 제한을 필요한 범위에서 적용합니다. 피해 확산이나 보안상 긴급한 사유가 있으면 먼저 조치하고 뒤에 안내할 수 있습니다.'],
           ['제재가 억울할 때', '조치 사유·종류·범위·기간과 이의 제기 방법은 계정 이메일이나 본인이 확인할 수 있는 화면으로 안내합니다. support@gracekingames.com으로 대상 계정, 조치 내용과 이의 사유를 보내 재검토를 요청할 수 있습니다. 운영자는 기록을 확인해 결과와 이유를 알리고, 처리가 길어지면 이유와 예상 일정을 안내합니다. 잘못된 조치가 확인되면 해제·복구 등 필요한 정정을 합니다.'],
           ['이용약관의 요약입니다', '이 안내는 커뮤니티 이용약관 5절과 9절의 요약입니다. 자세한 기준과 절차는 이용약관에서 확인할 수 있습니다.']
         ] }
@@ -103,7 +103,7 @@
         if (!session.ok || !(await session.json()).user) return;
         const response = await fetch('/api/grain/attendance', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: '{}', signal: controller.signal });
         if (!response.ok) return; const result = await response.json();
-        if (result.awarded) { const notice = make('p', `오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(result.amount)} 그레인을 받았어요.`, 'reward-notice'); notice.setAttribute('role', 'status'); byId('game-picker').prepend(notice); }
+        if (result.awarded) { const notice = make('p', `오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(result.amount)} 그레이스킨 코인을 받았어요.`, 'reward-notice'); notice.setAttribute('role', 'status'); byId('game-picker').prepend(notice); }
       } catch (_) { /* 게임 선택은 출석 응답과 관계없이 제공한다. */ }
       finally { clearTimeout(timer); }
     })();
@@ -211,7 +211,7 @@
   const reportHeading = make('div', null, 'dialog-heading'); const reportTitle = make('h2', '글·댓글 신고'); reportTitle.id = 'report-title';
   const reportClose = make('button', '×', 'dialog-close'); reportClose.type = 'button'; reportClose.setAttribute('aria-label', '신고 창 닫기'); reportClose.addEventListener('click', () => { if (!state.reportBusy) reportDialog.close(); }); reportHeading.append(reportTitle, reportClose);
   const reasonField = make('div', null, 'form-field'); const reasonLabel = make('label', '신고 사유'); reasonLabel.htmlFor = 'report-reason'; const reasonSelect = make('select'); reasonSelect.id = 'report-reason'; reasonSelect.required = true;
-  for (const reason of ['도배·광고', '욕설·괴롭힘', '개인정보 노출', '계정·그레인 거래', '버그·보안 제보 공개', '기타']) { const option = make('option', reason); option.value = reason; reasonSelect.append(option); } reasonField.append(reasonLabel, reasonSelect);
+  for (const reason of ['도배·광고', '욕설·괴롭힘', '개인정보 노출', '계정·그레이스킨 코인 거래', '버그·보안 제보 공개', '기타']) { const option = make('option', reason); option.value = reason; reasonSelect.append(option); } reasonField.append(reasonLabel, reasonSelect);
   const detailField = make('div', null, 'form-field'); const detailLabel = make('label', '추가 설명 (선택, 최대 500자)'); detailLabel.htmlFor = 'report-description'; const reportDescription = make('textarea'); reportDescription.id = 'report-description'; reportDescription.maxLength = 500; reportDescription.rows = 4; detailField.append(detailLabel, reportDescription);
   const reportResult = make('p', '', 'form-message'); reportResult.setAttribute('role', 'status'); reportResult.hidden = true;
   const reportSubmit = make('button', '신고 접수', 'primary-button'); reportSubmit.type = 'submit'; reportForm.append(reportHeading, make('p', '신고는 운영자만 확인해요. 비밀번호·인증 코드와 불필요한 개인정보는 적지 마세요.', 'dialog-description'), reasonField, detailField, reportResult, reportSubmit); reportDialog.append(reportForm); document.body.append(reportDialog);
@@ -233,7 +233,7 @@
   function openDialog(id) { const dialog = byId(id); if (!dialog.open) dialog.showModal(); }
   function renderSession() {
     byId('member-bar').hidden = !!state.user;
-    byId('session-label').textContent = '로그인하면 글·댓글을 남기고 그레인을 받을 수 있어요.';
+    byId('session-label').textContent = '로그인하면 글·댓글을 남기고 그레이스킨 코인을 받을 수 있어요.';
     byId('open-signin').hidden = !!state.user;
     byId('open-signup').hidden = !!state.user;
     byId('signout-button').hidden = !state.user;
@@ -278,7 +278,7 @@
             } catch (_) { /* 자격을 확인하지 못했으면 보상 약속을 표시하지 않는다. */ }
           })(),
           (async () => {
-            try { const result = await send('/grain/attendance', 'POST', {}); if (version === state.sessionVersion && result.awarded) showReward(`오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(result.amount)} 그레인을 받았어요.`); }
+            try { const result = await send('/grain/attendance', 'POST', {}); if (version === state.sessionVersion && result.awarded) showReward(`오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(result.amount)} 그레이스킨 코인을 받았어요.`); }
             catch (_) { /* 출석 실패가 게시판 이용을 막지 않는다. */ }
           })()
         ]);
@@ -352,7 +352,7 @@
   firstVisit.append(make('span', '처음이라면 '), firstNews, make('span', '부터, 한 판 소감은 '), firstFree, make('span', '에, 문제는 '), firstBug, make('span', gameId === 'gyeongguk' ? '로 전합니다.' : '로 알려 주세요.'));
   firstVisit.hidden = false;
   const shortcuts = [
-    ['출석 / 그레인', '/account/', 'M5 4h14v16H5z M8 2v4 M16 2v4 M5 9h14 M8 14l3 3 5-6'],
+    ['출석 / 그레이스킨 코인', '/account/', 'M5 4h14v16H5z M8 2v4 M16 2v4 M5 9h14 M8 14l3 3 5-6'],
     ['게임 시작', `https://${gameId}.gracekingames.com/`, 'M8 4l12 8-12 8z'],
     ['버그 제보', '/community/bug-report/', 'M12 4v9 M12 17v1 M12 2L2 21h20z'],
     ['의견 보내기', FEEDBACK_URL, 'M3 5h18v14H3z M3 5l9 8 9-8']
@@ -417,7 +417,7 @@
     const activity = rewardActivity();
     if (kind === 'post' && boardId === 'notice') return '';
     if (!activity || !state.user?.canWriteCommunity || state.rewardEligibility !== 'eligible') return '';
-    return `${kind === 'post' ? '글을 쓰면' : '댓글을 쓰면'} ${number(activity.confirmationDelayMs / 3600000)}시간 뒤 ${number(activity[kind].amount)} 그레인이 적립돼요.`;
+    return `${kind === 'post' ? '글을 쓰면' : '댓글을 쓰면'} ${number(activity.confirmationDelayMs / 3600000)}시간 뒤 ${number(activity[kind].amount)} 그레이스킨 코인이 적립돼요.`;
   }
   async function loadGuidance() {
     await Promise.all([
@@ -431,7 +431,7 @@
         byId('grain-policy-status').textContent = activity ? '' : '받는 방법을 불러오지 못했어요. 계정 페이지에서 다시 확인해 주세요.';
         byId('grain-policy-delay').hidden = !activity;
         if (activity) {
-          for (const [key, label] of [['attendance', '출석'], ['post', '글 작성'], ['comment', '댓글 작성']]) byId('grain-policy-summary').append(make('dt', label), make('dd', `${number(activity[key].amount)} 그레인`));
+          for (const [key, label] of [['attendance', '출석'], ['post', '글 작성'], ['comment', '댓글 작성']]) byId('grain-policy-summary').append(make('dt', label), make('dd', `${number(activity[key].amount)} 그레이스킨 코인`));
           byId('grain-policy-delay').textContent = `보상 자격과 지급 조건을 충족하면 받을 수 있어요. 글·댓글은 ${number(activity.confirmationDelayMs / 3600000)}시간 뒤 확인해요.`;
         }
         renderEmptyAudience();

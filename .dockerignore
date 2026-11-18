@@ -46,7 +46,8 @@ assets/home/**
 !assets/home/home.css
 !assets/currency/
 assets/currency/**
-!assets/currency/grain.png
+!assets/currency/coin.webp
+!assets/currency/coin.png
 !assets/community/
 assets/community/**
 !assets/community/community.js
@@ -129,7 +130,7 @@ assets/slime-race/art/**
 !assets/slime-race/art/bush.webp
 !assets/slime-race/art/owl-host.png
 
-# 그레인 활동 보상·버그 제보·운영자 도구
+# 그레이스킨 코인 활동 보상·버그 제보·운영자 도구
 !server/grain-policy.js
 !server/grain-rewards.js
 !server/grain-admin.js

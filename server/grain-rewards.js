@@ -84,7 +84,7 @@ export function createGrainRewards(db, { now = Date.now, startTimer = true, onTi
   const rewardEligible = user => rewardStatus(user) === 'eligible';
   // 운영 지급도 이 함수를 사용합니다. BEGIN/COMMIT은 호출자 소유입니다.
   function grant(userId, eventId, amount, reason) {
-    if (!Number.isSafeInteger(amount) || amount <= 0 || typeof eventId !== 'string' || !eventId || typeof reason !== 'string' || !reason.trim()) fail(422, 'INVALID_INPUT', '그레인 지급 항목을 확인해 주세요.');
+    if (!Number.isSafeInteger(amount) || amount <= 0 || typeof eventId !== 'string' || !eventId || typeof reason !== 'string' || !reason.trim()) fail(422, 'INVALID_INPUT', '그레이스킨 코인 지급 항목을 확인해 주세요.');
     if (db.prepare('SELECT 1 FROM grain_ledger WHERE userId=? AND eventId=?').get(userId, eventId)) return false;
     const balance = db.prepare('SELECT balance FROM grain_wallets WHERE userId=?').get(userId)?.balance ?? 0;
     if (BigInt(balance) + BigInt(amount) > BigInt(Number.MAX_SAFE_INTEGER)) fail(422, 'AMOUNT_OVERFLOW', '금액이 안전한 계산 범위를 넘었습니다.');

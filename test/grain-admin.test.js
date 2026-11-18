@@ -207,6 +207,19 @@ test('알려진 문제는 별도 공개 요약만 생성·수정하고 제보 �
   assert.equal((await api('/api/community/known-issues', undefined, 'guest')).body.issues[0].status, '수정 완료');
 }));
 
+test('화폐 거래 신고의 이전 사유는 보존하고 운영 화면에는 새 이름을 제공함', async () => scenario(async ({ api, post, db }) => {
+  for (const reason of ['계정·그레인 거래', '계정·그레이스킨 코인 거래']) {
+    const created = await post();
+    const reported = await api('/api/community/reports', { targetType: 'post', targetId: created.body.post.id, reason, description: '거래 제안 확인' }, 'bob');
+    assert.equal(reported.status, 201, reported.text);
+    const id = reported.body.report.id;
+    assert.equal(db.prepare('SELECT reason FROM community_reports WHERE id=?').get(id).reason, reason);
+    const reports = await api('/api/admin/reports');
+    assert.equal(reports.body.reports.find(report => report.id === id).reason, '계정·그레이스킨 코인 거래');
+    assert.equal(db.prepare('SELECT reason FROM community_reports WHERE id=?').get(id).reason, reason);
+  }
+}));
+
 test('신고 대상내용·기각·숨김·복구와 원본별 예정 보상 취소', async () => scenario(async ({ api, post, users, db }) => {
   const created = await post(), postId = created.body.post.id;
   const another = await post();

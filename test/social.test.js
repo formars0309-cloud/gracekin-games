@@ -108,7 +108,7 @@ test('설정에 키가 있는 공급자만 켜지고, 키가 없으면 소셜 �
   }, { env: {} });
 });
 
-test('연령 선택 뒤 구글 가입: 서버가 정한 닉네임·14plus·확인 이메일로 가입 때 30,000 그레인 한 번', async () => scenario(async ({ app, db }) => {
+test('연령 선택 뒤 구글 가입: 서버가 정한 닉네임·14plus·확인 이메일로 가입 때 30,000 그레이스킨 코인 한 번', async () => scenario(async ({ app, db }) => {
   const browser = jar();
   profiles.google = googleProfile('google-sub-1', 'social-google@example.test');
   // 연령 없이 또는 14세 미만으로는 소셜 가입을 시작하지 않는다.

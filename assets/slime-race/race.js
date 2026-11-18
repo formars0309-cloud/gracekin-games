@@ -228,27 +228,27 @@
   }
   function renderGate() {
     const gate = $('[data-gate]'); gate.replaceChildren(); gate.hidden=Boolean(freeEconomyCompatible()&&state.meStatus==='ready'&&state.me?.user&&state.me.eligibility.canBet);
-    if (!freeEconomyCompatible()) gate.textContent = '그레인 이용 정책을 확인하지 못했어요. 티켓 구매를 잠시 중지했어요.';
+    if (!freeEconomyCompatible()) gate.textContent = '그레이스킨 코인 이용 정책을 확인하지 못했어요. 티켓 구매를 잠시 중지했어요.';
     else if (state.meStatus === 'loading') gate.textContent = '계정과 구매 자격을 확인하고 있어요.';
     else if (state.meStatus === 'error') gate.textContent = '내 정보를 확인하지 못했어요. 새로고침 후 다시 확인해 주세요.';
     else if (!state.me?.user) { gate.append(document.createTextNode('로그인과 성인 확인을 마친 회원만 티켓을 구매할 수 있어요.')); const link = node('a',null,'로그인'); link.href = '/account/'; gate.append(link); }
     else if (!state.me.eligibility.canBet) gate.textContent = state.me.eligibility.message || '성인 확인을 마친 회원만 티켓을 구매할 수 있어요.';
-    else gate.textContent = salesOpen() ? '최소 100 그레인 · 보유 잔액 안에서 여러 선수에게 구매할 수 있어요.' : '구매가 마감됐어요. 선수 정보와 내 티켓은 계속 확인할 수 있어요.';
+    else gate.textContent = salesOpen() ? '최소 100 그레이스킨 코인 · 보유 잔액 안에서 여러 선수에게 구매할 수 있어요.' : '구매가 마감됐어요. 선수 정보와 내 티켓은 계속 확인할 수 있어요.';
   }
   function render() {
     const round = currentRound(), stage = phase(), slime = selected(), bet = ownBet(state.selectedId);
     const label = round ? roundLabel(round) || '이번 경기' : '경기 확인 중';
     $('[data-round-label]').textContent = label; $('[data-dialog-round]').textContent = label;
     $('[data-phase]').textContent = PHASES[stage] || '경기 확인 중';
-    $('[data-economy-note]').textContent = freeEconomyCompatible() ? '무료 그레인 · 현금 구매·환전·경품 교환 불가' : '정책 확인 중 · 티켓 구매 일시 중지';
+    $('[data-economy-note]').textContent = freeEconomyCompatible() ? '무료 그레이스킨 코인 · 현금 구매·환전·경품 교환 불가' : '정책 확인 중 · 티켓 구매 일시 중지';
     $('[data-selected]').textContent = slime ? slime.name+' 티켓' : '선수를 선택해 주세요'; $('[data-selected-style]').textContent = slime ? slime.grade+' · '+slime.style : '';
     $('[data-odds]').textContent = slime ? oddsText(slime.oddsCents) : '—';
     const validAmount = Number.isSafeInteger(state.amount) && state.amount >= 100;
     const payout = slime && validAmount ? BigInt(state.amount) * BigInt(slime.oddsCents) / 100n : null;
-    $('[data-estimate]').textContent = payout !== null ? payout.toLocaleString('ko-KR')+' 그레인' : '—'; $('[data-profit]').textContent = payout !== null ? (payout-BigInt(state.amount)).toLocaleString('ko-KR') : '—';
-    $('[data-dialog-balance]').textContent = state.meStatus === 'ready' && state.me?.user ? '잔액 '+money(state.me.wallet.balance)+' 그레인' : state.meStatus === 'error' ? '계정 확인 필요' : state.meStatus === 'ready' ? '로그인 필요' : '계정 확인 중';
-    $('[data-my-ticket]').textContent = state.meStatus === 'ready' && state.me?.user ? bet ? slime?.name+' '+money(bet)+' 그레인 보유' : '이 선수의 티켓 없음' : '내 티켓을 확인해 주세요';
-    $('[data-amount-label]').textContent = bet ? '총 티켓 금액 · 최소 100 그레인' : '티켓 금액 · 최소 100 그레인';
+    $('[data-estimate]').textContent = payout !== null ? payout.toLocaleString('ko-KR')+' 그레이스킨 코인' : '—'; $('[data-profit]').textContent = payout !== null ? (payout-BigInt(state.amount)).toLocaleString('ko-KR') : '—';
+    $('[data-dialog-balance]').textContent = state.meStatus === 'ready' && state.me?.user ? '잔액 '+money(state.me.wallet.balance)+' 그레이스킨 코인' : state.meStatus === 'error' ? '계정 확인 필요' : state.meStatus === 'ready' ? '로그인 필요' : '계정 확인 중';
+    $('[data-my-ticket]').textContent = state.meStatus === 'ready' && state.me?.user ? bet ? slime?.name+' '+money(bet)+' 그레이스킨 코인 보유' : '이 선수의 티켓 없음' : '내 티켓을 확인해 주세요';
+    $('[data-amount-label]').textContent = bet ? '총 티켓 금액 · 최소 100 그레이스킨 코인' : '티켓 금액 · 최소 100 그레이스킨 코인';
     const locked = !salesOpen() || !eligible() || state.busy || Boolean(state.pending);
     amountInput.disabled = locked; root.querySelectorAll('[data-add]').forEach(button => { button.disabled = locked; });
     $('[data-action="buy"]').disabled = locked || !slime || !validAmount; $('[data-action="buy"]').textContent = state.busy ? '확인 중' : bet ? '금액 변경' : '티켓 구매'; $('[data-action="cancel"]').disabled = locked || !bet;
@@ -280,11 +280,11 @@
   function requestId() { if (crypto.randomUUID) return crypto.randomUUID(); const bytes = crypto.getRandomValues(new Uint8Array(16)); bytes[6] = bytes[6]&15|64; bytes[8] = bytes[8]&63|128; const hex = [...bytes].map(b => b.toString(16).padStart(2,'0')).join(''); return [hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-'); }
   async function buy(cancel = false, retry = false) {
     if (state.busy) return;
-    if (!freeEconomyCompatible()) { message('그레인 이용 정책을 다시 확인해 주세요. 티켓 구매를 잠시 중지했어요.'); return; }
+    if (!freeEconomyCompatible()) { message('그레이스킨 코인 이용 정책을 다시 확인해 주세요. 티켓 구매를 잠시 중지했어요.'); return; }
     if (!retry) {
       if (!salesOpen() || !eligible() || state.pending || !selected()) { message('현재 구매 자격과 경기 마감을 다시 확인해 주세요.'); return; }
       const amount = cancel ? 0 : Number(amountInput.value), old = ownBet(state.selectedId);
-      if (!Number.isSafeInteger(amount) || amount < 0 || amount !== 0 && amount < 100 || !cancel && amount === 0) { message('100 그레인 이상의 정수 금액을 입력해 주세요.'); return; }
+      if (!Number.isSafeInteger(amount) || amount < 0 || amount !== 0 && amount < 100 || !cancel && amount === 0) { message('100 그레이스킨 코인 이상의 정수 금액을 입력해 주세요.'); return; }
       if (BigInt(amount) > BigInt(state.me.wallet.balance)+BigInt(old)) { message('보유 잔액 안에서 티켓을 구매해 주세요.'); return; }
       state.pending = { userId: state.me.user.id, payload: { roundId: currentRound().id, slimeId: state.selectedId, amount, expectedRevision: state.me.revision, requestId: requestId() } };
     }
@@ -298,7 +298,7 @@
       state.pending = null; state.busy = false;
       if (operationEpoch !== state.privateEpoch || state.hidden || !state.personalActive) { message(''); return; }
       state.meStatus='loading';
-      message(operation.payload.amount ? '티켓 금액 '+money(operation.payload.amount)+' 그레인을 반영했어요.' : '선택 선수의 티켓을 취소했어요.');
+      message(operation.payload.amount ? '티켓 금액 '+money(operation.payload.amount)+' 그레이스킨 코인을 반영했어요.' : '선택 선수의 티켓을 취소했어요.');
       window.dispatchEvent(new CustomEvent('gracekin-account-change',{detail:{phase:'refresh',source:'slime-race'}}));
       if (!state.hidden && state.personalActive) await refreshMe();
     } catch (error) {
@@ -317,9 +317,9 @@
       const data = await request('history'); if (sequence !== state.historySeq || state.hidden || !state.personalActive) return;
       if (!data?.summary || !Array.isArray(data.rounds) || !Number.isFinite(data.summary.hitRate)) throw new Error('기록을 확인하지 못했어요.');
       state.history = data;
-      summary.textContent = '누적 티켓 '+money(data.summary.totalBet)+' 그레인 · 총 당첨 '+money(data.summary.payout)+' 그레인 · 손익 '+money(data.summary.profit)+' 그레인 · 적중률 '+(data.summary.hitRate*100).toFixed(1)+'%';
+      summary.textContent = '누적 티켓 '+money(data.summary.totalBet)+' 그레이스킨 코인 · 총 당첨 '+money(data.summary.payout)+' 그레이스킨 코인 · 손익 '+money(data.summary.profit)+' 그레이스킨 코인 · 적중률 '+(data.summary.hitRate*100).toFixed(1)+'%';
       const list = $('.sr-history-list'); if (!data.rounds.length) list.append(node('li',null,'아직 경기 기록이 없어요.'));
-      for (const record of data.rounds) { const item = node('li'); const winner = state.public?.roster.find(s => s.slimeId === record.winnerId)?.name || '결과 확인 중'; item.append(node('strong',null,historyLabel(record)+' · '+winner),node('br'),document.createTextNode('티켓 '+money(record.totalBet)+' · 총 당첨 '+money(record.payout)+' · 손익 '+money(record.profit)+' 그레인')); list.append(item); }
+      for (const record of data.rounds) { const item = node('li'); const winner = state.public?.roster.find(s => s.slimeId === record.winnerId)?.name || '결과 확인 중'; item.append(node('strong',null,historyLabel(record)+' · '+winner),node('br'),document.createTextNode('티켓 '+money(record.totalBet)+' · 총 당첨 '+money(record.payout)+' · 손익 '+money(record.profit)+' 그레이스킨 코인')); list.append(item); }
     } catch (error) { if (sequence !== state.historySeq || state.hidden || !state.personalActive) return; summary.textContent = error.status === 401 ? '로그인 후 내 기록을 확인해 주세요.' : error.message; $('[data-action="history-retry"]').hidden = false; }
   }
   function openDialog(history = false) {

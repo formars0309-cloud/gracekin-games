@@ -128,7 +128,7 @@ const economySnapshot = db => JSON.stringify({
   users: db.prepare('SELECT id,emailVerified,ageBand FROM user ORDER BY id').all(),
 });
 
-test('무료 그레인 정책은 공개되며 현금·유료재화·상품 교환·양도 경로와 임의 티켓 필드를 받지 않음', async () => scenario(async ({ app, mailbox, db }) => {
+test('무료 그레이스킨 코인 정책은 공개되며 현금·유료재화·상품 교환·양도 경로와 임의 티켓 필드를 받지 않음', async () => scenario(async ({ app, mailbox, db }) => {
   const login = await signup(app, mailbox), cookie = cookieFrom(login);
   const current = await state(app);
   assert.deepEqual(current.economy, { mode: 'free-only', purchasable: false, cashRedeemable: false, itemExchangeAllowed: false, transferable: false, paidCurrencyConvertible: false });
@@ -159,7 +159,7 @@ test('무료 그레인 정책은 공개되며 현금·유료재화·상품 교�
   assert.equal(economySnapshot(db), before);
 }, { slimeRaceAdultVerifier: () => true }));
 
-test('무료 그레인·요청 본문·헤더의 성인 자격 주장은 기본 구매 잠금을 해제하지 않음', async () => scenario(async ({ app, mailbox, db }) => {
+test('무료 그레이스킨 코인·요청 본문·헤더의 성인 자격 주장은 기본 구매 잠금을 해제하지 않음', async () => scenario(async ({ app, mailbox, db }) => {
   const login = await signup(app, mailbox), cookie = cookieFrom(login);
   const current = await state(app), before = economySnapshot(db);
   const result = await request(app, '/api/slime-race/tickets', {

@@ -190,7 +190,7 @@ export function createGrainAdmin(db, auth, { rewards, now = Date.now, adminUserI
         const table = row.targetType === 'post' ? 'community_posts' : 'community_comments';
         const target = db.prepare(`SELECT * FROM ${table} WHERE id=?`).get(row.targetId);
         return { id: row.id, reporter: { id: row.reporterId, name: db.prepare('SELECT name FROM user WHERE id=?').get(row.reporterId)?.name }, targetType: row.targetType, targetId: row.targetId,
-          reason: row.reason, description: row.description, status: row.status, createdAt: iso(row.createdAt), reviewedAt: iso(row.reviewedAt), target: target ? contentData(row.targetType, target) : null };
+          reason: row.reason === '계정·그레인 거래' ? '계정·그레이스킨 코인 거래' : row.reason, description: row.description, status: row.status, createdAt: iso(row.createdAt), reviewedAt: iso(row.reviewedAt), target: target ? contentData(row.targetType, target) : null };
       });
       return json({ reports });
     }

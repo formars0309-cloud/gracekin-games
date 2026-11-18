@@ -35,13 +35,13 @@
 </section>
 <section id="age-panel" class="panel" aria-labelledby="age-title" hidden>
 <p class="step-label">회원가입 · 1단계</p><h2 id="age-title" tabindex="-1">먼저 나이를 확인할게요</h2><p class="description">가입하는 분의 나이에 따라 안내해 드려요.<br> 아직 이름이나 이메일은 입력하지 않아도 돼요.</p>
-<p class="notice">신규 가입 이벤트 · 이메일 확인을 마치면 계정당 한 번 <strong>30,000 그레인</strong>을 받아요.</p>
+<p class="notice">신규 가입 이벤트 · 이메일 확인을 마치면 계정당 한 번 <strong>30,000 그레이스킨 코인</strong>을 받아요.</p>
 <div class="age-options"><button id="choose-adult" class="choice-button" type="button"><strong>만 14세 이상이에요</strong><span><i id="choose-adult-detail" class="choice-detail">이메일로 계정을 만들어요</i> <span aria-hidden="true">→</span></span></button><button id="choose-child" class="choice-button" type="button"><strong>만 14세 미만이에요</strong><span>보호자 동의부터 함께 진행해요 <span aria-hidden="true">→</span></span></button></div>
 <p class="description small">만 14세 미만은 법정대리인(보호자)의 동의 확인을 마친 뒤 가입할 수 있어요.</p><button type="button" class="text-button" data-view="signin">이미 계정이 있어요</button>
 </section>
 <section id="signup-panel" class="panel" aria-labelledby="signup-title" hidden>
 <p id="signup-step" class="step-label">회원가입 · 2단계</p><h2 id="signup-title" tabindex="-1">계정을 만들어요</h2><p id="signup-description" class="description">계정을 만들고 이메일을 확인하면 로그인할 수 있어요.</p>
-<p class="notice">이메일 확인 완료 후 <strong>30,000 그레인</strong>을 지급해요. 그레인은 이벤트와 커뮤니티 활동으로만 받는 무료 화폐예요. 돈으로 사거나 현금·상품으로 바꿀 수 없고, 다른 회원에게 줄 수 없어요.</p>
+<p class="notice">이메일 확인 완료 후 <strong>30,000 그레이스킨 코인</strong>을 지급해요. 그레이스킨 코인은 이벤트와 커뮤니티 활동으로만 받는 무료 화폐예요. 돈으로 사거나 현금·상품으로 바꿀 수 없고, 다른 회원에게 줄 수 없어요.</p>
 <form id="signup-form">
 <div class="field"><label for="signup-name">닉네임</label><input id="signup-name" name="name" autocomplete="nickname" minlength="2" maxlength="24" required><small>2~24자. 글과 댓글에 표시되는 이름이에요.</small></div>
 <div class="field"><label for="signup-email">로그인용 이메일</label><input id="signup-email" name="email" type="email" autocomplete="email" maxlength="254" required><small id="signup-email-help">가입 확인 메일을 받을 수 있는 주소를 입력해 주세요.</small></div>
@@ -84,10 +84,10 @@
 </section>
 <section id="member-panel" class="panel" aria-labelledby="member-title" hidden>
 <p class="step-label">내 계정</p><h2 id="member-title" tabindex="-1">반가워요</h2><p id="member-email" class="description"></p><p id="member-permission" class="notice"></p><section class="grain-wallet" aria-labelledby="grain-title" aria-busy="false" id="grain-wallet">
-<div class="grain-heading"><img src="/assets/currency/grain.png" width="48" height="48" alt=""><h3 id="grain-title">내 그레인</h3></div>
+<div class="grain-heading"><img src="/assets/currency/coin.webp" width="48" height="48" alt="그레이스킨 코인"><h3 id="grain-title">내 그레이스킨 코인</h3></div>
 <p id="grain-status" class="description" role="status">잔액을 불러오고 있어요.</p>
-<div id="grain-content" hidden><p class="grain-balance"><strong id="grain-balance"></strong> <span>그레인</span></p><p class="description small">그레인은 이벤트와 커뮤니티 활동으로만 받는 무료 화폐예요. 돈으로 사거나 현금·상품으로 바꿀 수 없고, 다른 회원에게 줄 수 없어요.</p><p id="grain-attendance" class="notice success" role="status" hidden></p><p id="grain-eligibility" class="notice" hidden></p><button id="grain-verify" class="text-button" type="button" hidden>인증 메일 다시 받기</button><p class="grain-pending-total">적립 예정 <strong id="grain-pending-total"></strong> 그레인</p><p id="grain-pending-description" class="description small">글·댓글은 유지 조건을 충족하면 확정돼요. 확정 전 삭제·숨김되거나 보상 자격이 바뀌면 지급되지 않을 수 있어요.</p><ul id="grain-pending" class="grain-entries"></ul><p id="grain-pending-empty" class="description" hidden>적립 예정인 보상이 없어요.</p><h4>이용 내역</h4><ul id="grain-entries" class="grain-entries"></ul><p id="grain-empty" class="description" hidden>아직 이용 내역이 없어요.</p></div>
-<p id="grain-error" class="form-message" role="alert" hidden></p><button id="grain-retry" class="text-button" type="button" hidden>그레인 다시 불러오기</button>
+<div id="grain-content" hidden><p class="grain-balance"><strong id="grain-balance"></strong> <span>그레이스킨 코인</span></p><p class="description small">그레이스킨 코인은 이벤트와 커뮤니티 활동으로만 받는 무료 화폐예요. 돈으로 사거나 현금·상품으로 바꿀 수 없고, 다른 회원에게 줄 수 없어요.</p><p id="grain-attendance" class="notice success" role="status" hidden></p><p id="grain-eligibility" class="notice" hidden></p><button id="grain-verify" class="text-button" type="button" hidden>인증 메일 다시 받기</button><p class="grain-pending-total">적립 예정 <strong id="grain-pending-total"></strong> 그레이스킨 코인</p><p id="grain-pending-description" class="description small">글·댓글은 유지 조건을 충족하면 확정돼요. 확정 전 삭제·숨김되거나 보상 자격이 바뀌면 지급되지 않을 수 있어요.</p><ul id="grain-pending" class="grain-entries"></ul><p id="grain-pending-empty" class="description" hidden>적립 예정인 보상이 없어요.</p><h4>이용 내역</h4><ul id="grain-entries" class="grain-entries"></ul><p id="grain-empty" class="description" hidden>아직 이용 내역이 없어요.</p></div>
+<p id="grain-error" class="form-message" role="alert" hidden></p><button id="grain-retry" class="text-button" type="button" hidden>그레이스킨 코인 다시 불러오기</button>
 </section><section id="login-methods" class="login-methods" aria-labelledby="login-methods-title" aria-busy="false" hidden>
 <h3 id="login-methods-title">로그인 수단</h3><p class="description small">로그인한 상태에서만 연결하거나 해제할 수 있어요. 마지막 하나는 해제할 수 없어요.</p>
 <ul id="login-method-list" class="login-method-list"></ul><p id="login-methods-error" class="form-message" role="alert" tabindex="-1" hidden></p>
@@ -96,12 +96,12 @@
 <div class="guest-return"><span>가입은 나중에 해도 괜찮아요.</span><a id="guest-link" href="https://gracekingames.com/">게임 둘러보기 <span aria-hidden="true">↗</span></a></div>
 </div>
 <section id="grain-policy" class="grain-policy" aria-labelledby="grain-policy-title">
-<div class="grain-heading"><img src="/assets/currency/grain.png" width="48" height="48" alt=""><h2 id="grain-policy-title">그레인 받는 방법</h2></div>
-<p class="description">그레인은 이벤트와 커뮤니티 활동으로만 받는 무료 화폐예요. 돈으로 사거나 현금·상품으로 바꿀 수 없고, 다른 회원에게 줄 수 없어요.</p>
+<div class="grain-heading"><img src="/assets/currency/coin.webp" width="48" height="48" alt="그레이스킨 코인"><h2 id="grain-policy-title">그레이스킨 코인 받는 방법</h2></div>
+<p class="description">그레이스킨 코인은 이벤트와 커뮤니티 활동으로만 받는 무료 화폐예요. 돈으로 사거나 현금·상품으로 바꿀 수 없고, 다른 회원에게 줄 수 없어요.</p>
 <p id="grain-policy-status" class="description" role="status">받는 방법을 불러오고 있어요.</p>
 <div id="grain-policy-content" hidden>
 <p class="grain-policy-eligibility">이메일 확인을 마친 계정만 받을 수 있어요. 만 14세 미만·보상 정지 계정은 활동·이벤트 보상 대상에서 제외돼요.</p>
-<table class="grain-policy-table" aria-describedby="grain-policy-limit grain-policy-delay"><caption>활동·운영자 확인·이벤트 보상</caption><colgroup><col class="grain-policy-method"><col class="grain-policy-amount"><col></colgroup><thead><tr><th scope="col">방법</th><th scope="col">지급량<br>(그레인)</th><th scope="col">횟수와 조건</th></tr></thead><tbody id="grain-policy-rows"></tbody></table>
+<table class="grain-policy-table" aria-describedby="grain-policy-limit grain-policy-delay"><caption>활동·운영자 확인·이벤트 보상</caption><colgroup><col class="grain-policy-method"><col class="grain-policy-amount"><col></colgroup><thead><tr><th scope="col">방법</th><th scope="col">지급량<br>(그레이스킨 코인)</th><th scope="col">횟수와 조건</th></tr></thead><tbody id="grain-policy-rows"></tbody></table>
 <ul class="grain-policy-notes"><li id="grain-policy-limit"></li><li id="grain-policy-delay"></li><li>글·댓글은 확정 전 삭제·숨김되면 취소돼요. 수정으로 다시 적립되지 않으며 확정 후 삭제는 회수하지 않아요.</li><li>이메일 확인 전 활동과 보상 기능 공개 전 활동은 소급 지급하지 않아요. 레이스는 현재 제공하지 않아요.</li></ul>
 </div>
 </section>

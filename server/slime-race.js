@@ -179,7 +179,7 @@ export function createSlimeRace(db, { now = Date.now, random = randomInt, startT
       if (current.revision === Number.MAX_SAFE_INTEGER) fail(422, 'REVISION_OVERFLOW', '티켓 변경 횟수를 확인해 주세요.');
       const previousAmount = current.bets.find(row => row.slimeId === body.slimeId)?.amount ?? 0;
       const delta = BigInt(body.amount) - BigInt(previousAmount);
-      if (delta > BigInt(current.wallet.balance)) fail(409, 'INSUFFICIENT_GRAIN', '보유 그레인이 부족합니다.');
+      if (delta > BigInt(current.wallet.balance)) fail(409, 'INSUFFICIENT_GRAIN', '보유 그레이스킨 코인이 부족합니다.');
       const nextBalance = safe(BigInt(current.wallet.balance) - delta);
       // 모든 선수에 나누어 담더라도 어느 한 선수가 이길 때의 지갑 합계를 안전 정수로 보장합니다.
       for (const row of round.entrants) {

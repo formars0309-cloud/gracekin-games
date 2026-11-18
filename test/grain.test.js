@@ -20,8 +20,8 @@ function clientHeaders(app) {
 }
 const request = (app, path, options = {}) => rawRequest(app, path, { ...options, headers: { ...clientHeaders(app), ...options.headers } });
 const registerAndLogin = (app, mailbox, body) => rawRegisterAndLogin(app, mailbox, body, clientHeaders(app));
-const password = '그레인시험-비밀번호-1234';
-const adult = email => ({ name: '그레인회원', email, password, ageBand: '14plus' });
+const password = '화폐시험-비밀번호-1234';
+const adult = email => ({ name: '화폐회원', email, password, ageBand: '14plus' });
 const post = (app, path, body, cookie) => request(app, path, { method: 'POST', body, cookie });
 async function scenario(callback, extra = {}) {
   const folder = await mkdtemp(join(tmpdir(), 'gracekin-grain-'));
@@ -145,7 +145,7 @@ test('본인만 지갑 조회·대상 및 금액 변조 거부·로그아웃 후
 }));
 
 async function approvedChild({ app, db, folder }, email) {
-  const response = await post(app, '/api/account/guardian-requests', { guardianName: '그레인보호자', guardianEmail: 'guardian@example.test' });
+  const response = await post(app, '/api/account/guardian-requests', { guardianName: '화폐보호자', guardianEmail: 'guardian@example.test' });
   assert.equal(response.status, 200);
   const cookie = cookieFrom(response);
   const id = (await request(app, '/api/account/guardian-request', { cookie })).body.request.requestNumber;

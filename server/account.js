@@ -62,7 +62,7 @@ export function createAccountService(db, auth, { origin, mailer, guardian, grain
     if (request.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
     if (url.pathname === '/api/account/config') return json({ emailAvailable: Boolean(mailer), registrationAvailable: Boolean(mailer), guardianConsentAvailable: guardian.enabled, guardianConsentMethod: guardian.method, socialProviders, socialSignupAvailable: Boolean(mailer) && socialProviders.length > 0, grainRewardPolicy: GRAIN_REWARD_POLICY });
     if (url.pathname === '/api/account/grain') {
-      if (url.search) fail(422, 'INVALID_INPUT', '그레인 조회에는 추가 항목을 보낼 수 없습니다.');
+      if (url.search) fail(422, 'INVALID_INPUT', '그레이스킨 코인 조회에는 추가 항목을 보낼 수 없습니다.');
       const session = await auth.api.getSession({ headers: request.headers, query: { disableRefresh: true } });
       const user = activeAccountUser(db, session?.user && db.prepare('SELECT id,name,email,emailVerified,ageBand FROM user WHERE id=?').get(session.user.id));
       if (!user) fail(401, 'UNAUTHORIZED', '로그인 후 이용해 주세요.');

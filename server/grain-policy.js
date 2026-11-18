@@ -1,4 +1,4 @@
-// 지급 코드와 비로그인 공개 안내가 함께 참조하는 그레인 보상 정책입니다.
+// 지급 코드와 비로그인 공개 안내가 함께 참조하는 그레이스킨 코인 보상 정책입니다.
 const deepFreeze = value => {
   for (const child of Object.values(value)) {
     if (child && typeof child === 'object') deepFreeze(child);

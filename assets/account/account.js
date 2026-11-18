@@ -261,7 +261,7 @@
       const detail = document.createElement('td'); detail.textContent = condition;
       row.append(title, amount, detail); byId('grain-policy-rows').append(row);
     }
-    byId('grain-policy-limit').textContent = `자동 활동 보상은 하루 합계 ${number(activity.dailyTotalLimit)} 그레인까지예요. 하루 한도는 한국 시간(KST) 0시를 기준으로 해요.`;
+    byId('grain-policy-limit').textContent = `자동 활동 보상은 하루 합계 ${number(activity.dailyTotalLimit)} 그레이스킨 코인까지예요. 하루 한도는 한국 시간(KST) 0시를 기준으로 해요.`;
     byId('grain-policy-delay').textContent = `글·댓글은 작성 후 ${hours}시간 유지하면 확정돼요. 확정 전에는 잔액과 별도로 ‘적립 예정’에 표시돼요. 서버 처리 시점에 따라 실제 확정이 늦어질 수 있어요.`;
     byId('grain-pending-description').textContent = `글·댓글을 작성한 뒤 ${hours}시간 동안 유지하면 확정돼요. 확정 전 삭제·숨김되거나 보상 자격이 바뀌면 지급되지 않을 수 있어요.`;
   }
@@ -277,9 +277,9 @@
       try { attendance = await request('/grain/attendance', {}); } catch (_) { /* 잔액 조회는 출석 응답 실패와 별개로 제공한다. */ }
       const data = await request('/account/grain');
       if (requestId !== walletRequest || state.user?.id !== userId) return;
-      if (!Number.isSafeInteger(data.balance) || data.balance < 0 || !Array.isArray(data.entries)) throw new Error('그레인 정보를 확인하지 못했어요. 다시 불러와 주세요.');
+      if (!Number.isSafeInteger(data.balance) || data.balance < 0 || !Array.isArray(data.entries)) throw new Error('그레이스킨 코인 정보를 확인하지 못했어요. 다시 불러와 주세요.');
       byId('grain-balance').textContent = new Intl.NumberFormat('ko-KR').format(data.balance);
-      if (attendance?.awarded) message('grain-attendance', `오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(attendance.amount)} 그레인을 받았어요.`);
+      if (attendance?.awarded) message('grain-attendance', `오늘 출석으로 ${new Intl.NumberFormat('ko-KR').format(attendance.amount)} 그레이스킨 코인을 받았어요.`);
       const eligibility = { eligible: '', unverified: '이메일을 확인하면 활동 보상을 받을 수 있어요. 확인 뒤 활동부터 적용하며 확인 전 활동은 소급 지급하지 않아요.', under14: '만 14세 미만 계정은 활동·이벤트 보상 대상이 아니에요. 기존 잔액은 그대로 유지해요.', suspended: '현재 활동·이벤트 보상이 정지된 계정이에요. 자세한 내용은 문의해 주세요.' };
       message('grain-eligibility', eligibility[data.rewardEligibility] || '');
       byId('grain-verify').hidden = data.rewardEligibility !== 'unverified';
@@ -288,7 +288,7 @@
       for (const item of pending) {
         const li = document.createElement('li');
         const label = document.createElement('span'); label.textContent = item.reason || (item.targetType === 'comment' ? '댓글 작성' : '글 작성');
-        const amount = document.createElement('strong'); amount.textContent = `${new Intl.NumberFormat('ko-KR').format(item.amount)} 그레인`;
+        const amount = document.createElement('strong'); amount.textContent = `${new Intl.NumberFormat('ko-KR').format(item.amount)} 그레이스킨 코인`;
         const time = document.createElement('time');
         const due = new Date(item.confirmsAt);
         if (!Number.isNaN(due.getTime())) time.dateTime = due.toISOString();
@@ -301,7 +301,7 @@
         const description = document.createElement('span');
         description.textContent = item.reason;
         const amount = document.createElement('strong');
-        amount.textContent = `${item.amount > 0 ? '+' : ''}${new Intl.NumberFormat('ko-KR').format(item.amount)} 그레인`;
+        amount.textContent = `${item.amount > 0 ? '+' : ''}${new Intl.NumberFormat('ko-KR').format(item.amount)} 그레이스킨 코인`;
         const time = document.createElement('time');
         time.dateTime = item.createdAt;
         time.textContent = new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.createdAt));

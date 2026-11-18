@@ -145,7 +145,7 @@ test('보상정지 HTTP: 예정 취소·출석 거절·레이스 eligibility 거
 test('신고 HTTP 접수·중복·본인금지·숨김 404와 댓글수 비노출', async () => scenario(async f => {
   const alice = cookieFrom(await f.login('alice')), bob = cookieFrom(await f.login('bob'));
   const id = (await post(f, alice)).body.post.id;
-  const report = cookie => f.req('/api/community/reports', { method: 'POST', cookie, body: { targetType: 'post', targetId: id, reason: '계정·그레인 거래', description: '거래 제안 확인' } });
+  const report = cookie => f.req('/api/community/reports', { method: 'POST', cookie, body: { targetType: 'post', targetId: id, reason: '계정·그레이스킨 코인 거래', description: '거래 제안 확인' } });
   assert.equal((await report(alice)).status, 403);
   assert.equal((await report(bob)).status, 201); assert.equal((await report(bob)).status, 409);
   const comment = await f.req(`/api/community/posts/${id}/comments`, { method: 'POST', cookie: bob, body: { body: '댓글 내용 열 글자 이상입니다.' } });

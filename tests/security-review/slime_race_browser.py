@@ -135,9 +135,9 @@ def main() -> None:
             page.locator('[data-action="ticket"]').click()
             page.locator('.sr-runner').nth(4).wait_for()
             assert page.locator('[data-action="buy"]').is_disabled(), '성인 미확인 구매가 열림'
-            assert page.locator('[data-economy-note]').inner_text() == '무료 그레인 · 현금 구매·환전·경품 교환 불가', '무료 정책 상시 안내 불일치'
+            assert page.locator('[data-economy-note]').inner_text() == '무료 그레이스킨 코인 · 현금 구매·환전·경품 교환 불가', '무료 정책 상시 안내 불일치'
             rules = page.locator('[data-rules]').inner_text()
-            assert all(word in rules for word in ['공용 화폐', '충전', '쿠폰', '유료 아이템', '양도', '유료 재화']), '무료 그레인 제한 안내 누락'
+            assert all(word in rules for word in ['공용 화폐', '충전', '쿠폰', '유료 아이템', '양도', '유료 재화']), '무료 그레이스킨 코인 제한 안내 누락'
             assert command('ledger')['state']['economy'] == {'mode': 'free-only', 'purchasable': False, 'cashRedeemable': False, 'itemExchangeAllowed': False, 'transferable': False, 'paidCurrencyConvertible': False}, '서버 공용 무료 정책 불일치'
             checks.append('구매창 무료 정책·전체 제한 안내와 실제 서버 free-only 계약 일치')
             assert page.locator('[data-action="sound"]').get_attribute('aria-pressed') == 'false', '첫 진입 무음 위반'
@@ -263,10 +263,10 @@ def main() -> None:
             assert len(added) == 1 and added[0]['reason'] == '출석' and added[0]['amount'] == policy['activity']['attendance']['amount'], '계정 진입 추가 원장이 출석 정책과 다름'
             assert after_account['me']['wallet']['balance'] == final['me']['wallet']['balance'] + added[0]['amount'], '계정 출석 후 공용 잔액 불일치'
             assert account_page.locator('#grain-balance').inner_text() == f"{after_account['me']['wallet']['balance']:,}", '계정 지갑과 현재 경주 공용 잔액 불일치'
-            account_page.screenshot(path=str(output / 'account-free-grain.png'), full_page=True)
+            account_page.screenshot(path=str(output / 'account-free-coin.png'), full_page=True)
             account_page.goto(fixture['origin'] + '/community/privacy/', wait_until='networkidle')
             assert account_page.get_by_role('rowheader', name='슬라임 레이스', exact=True).count() == 1, '방침의 경주 처리 항목 누락'
-            assert '무료 지급만 하는 사이트 공용 화폐' in account_page.locator('main').inner_text(), '방침의 무료 그레인 안내 누락'
+            assert '무료 지급만 하는 사이트 공용 화폐' in account_page.locator('main').inner_text(), '방침의 무료 그레이스킨 코인 안내 누락'
             checks.append('계정 화면 무료 안내·공용 잔액 일치·방침의 경주 처리 고지 확인')
             account_page.close()
             assert not errors, '브라우저 실행 오류: ' + '; '.join(errors)

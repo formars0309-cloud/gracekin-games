@@ -121,7 +121,7 @@ try {
     assert.equal(await page.locator('#article-badge').innerText(), '새 소식');
     await ready(page, path(game));
     await page.locator('#write-post').click();
-    assert.doesNotMatch(await page.locator('#editor-dialog').innerText(), /그레인|적립|보상/);
+    assert.doesNotMatch(await page.locator('#editor-dialog').innerText(), /그레이스킨 코인|적립|보상/);
     await page.locator('#post-category').selectOption('devnote');
     await page.locator(`input[name=cover][value="${game === 'gyeongguk' ? 'tile-notice' : 'hero'}"]`).check();
     await page.locator('#post-title').fill(`${game === 'gyeongguk' ? '경국지계' : '슬라임 라인'} 개발 소식`);

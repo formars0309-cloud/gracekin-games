@@ -53,10 +53,10 @@
       if (!user || typeof user.name !== 'string' || !user.name.trim() || !Number.isSafeInteger(user.grainBalance) || user.grainBalance < 0) throw new Error('계정 표시를 확인하지 못했습니다.');
       const amount = new Intl.NumberFormat('ko-KR').format(user.grainBalance);
       label.textContent = user.name;
-      balance.textContent = `${amount} 그레인`;
+      balance.textContent = `${amount} 코인`;
       grain.hidden = false;
-      link.setAttribute('aria-label', `${user.name}님, ${amount} 그레인, 내 계정 열기`);
-      link.setAttribute('title', `${user.name} · ${amount} 그레인`);
+      link.setAttribute('aria-label', `${user.name}님, ${amount} 그레이스킨 코인, 내 계정 열기`);
+      link.setAttribute('title', `${user.name} · ${amount} 그레이스킨 코인`);
     } catch (_) {
       if (current !== generation || document.hidden || suspended) return;
       label.textContent = '내 계정';

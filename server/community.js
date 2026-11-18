@@ -59,7 +59,7 @@ export function initializeCommunityPosts(db) {
 
 const BOARDS = { slimeline: ['free', 'guide', 'gallery', 'notice'], gyeongguk: ['free', 'deck', 'strategy', 'notice'] };
 const postFields = includeHidden => `p.*, u.name AS authorName, (SELECT COUNT(*) FROM community_comments c WHERE c.postId=p.id ${includeHidden ? '' : 'AND c.hiddenAt IS NULL'}) AS commentCount`;
-const REPORT_REASONS = new Set(['도배·광고','욕설·괴롭힘','개인정보 노출','계정·그레인 거래','버그·보안 제보 공개','기타']);
+const REPORT_REASONS = new Set(['도배·광고','욕설·괴롭힘','개인정보 노출','계정·그레인 거래','계정·그레이스킨 코인 거래','버그·보안 제보 공개','기타']);
 
 export function initializeCommunitySchema(db) {
   initializeCommunityPosts(db);
