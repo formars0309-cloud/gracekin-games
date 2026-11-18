@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createDefaultCharacter, characterError, JOBS } from '../assets/avatar/model.js';
+import { createAvatarPreset, createDefaultCharacter, characterError, JOBS } from '../assets/avatar/model.js';
 import { startServer } from '../server/app.js';
 import { approveGuardianRequest, deleteGuardianChild, withdrawGuardian } from '../server/guardian-review.js';
 import { request, cookieFrom, registerAndLogin } from './account-helpers.js';
@@ -46,6 +46,25 @@ async function fixture(t, options = {}) {
     },
   };
 }
+
+test('미소년과 미소녀의 외형은 독립적이며 어느 프리셋에서도 네 직업을 선택할 수 있다', () => {
+  const youth = createAvatarPreset('youth'), maiden = createAvatarPreset('maiden');
+  assert.deepEqual(createDefaultCharacter(), youth);
+  for (const key of ['jaw', 'eyes', 'nose', 'height', 'build', 'shoulders', 'hairStyle']) {
+    assert.notEqual(youth.appearance[key], maiden.appearance[key], key);
+  }
+  for (const id of ['youth', 'maiden']) {
+    const character = createAvatarPreset(id), fresh = createAvatarPreset(id);
+    assert.notEqual(character, fresh);
+    assert.notEqual(character.appearance, fresh.appearance);
+    assert.equal(character.job, 'guardian');
+    assert.equal(character.recommendedJob, null);
+    for (const job of JOBS) assert.equal(characterError({ ...character, job: job.id }), null);
+    character.appearance.jaw = 100;
+    assert.deepEqual(createAvatarPreset(id), fresh);
+  }
+  assert.throws(() => createAvatarPreset('미등록'), RangeError);
+});
 
 test('공유 모델은 독립된 기본 외모와 네 직업을 제공하고 정해진 필드·타입·경계를 검사한다', () => {
   const first = createDefaultCharacter(), second = createDefaultCharacter();

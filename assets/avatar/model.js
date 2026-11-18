@@ -10,16 +10,30 @@ const colors = ['skinColor', 'hairColor', 'eyeColor', 'clothColor'];
 const appearanceFields = [...proportions, 'hairStyle', ...colors];
 const jobIds = new Set(JOBS.map(job => job.id));
 
-export function createDefaultCharacter() {
+const presetAppearances = new Map([
+  ['youth', {
+    height: 64, build: 43, shoulders: 59, jaw: 44, eyes: 56, nose: 54,
+    hairStyle: 0, skinColor: '#e5b798', hairColor: '#3d3040', eyeColor: '#627d89', clothColor: '#526da2',
+  }],
+  ['maiden', {
+    height: 48, build: 31, shoulders: 36, jaw: 24, eyes: 73, nose: 34,
+    hairStyle: 2, skinColor: '#edc4ad', hairColor: '#754652', eyeColor: '#568275', clothColor: '#8d5d86',
+  }],
+]);
+
+export function createAvatarPreset(id) {
+  const appearance = presetAppearances.get(id);
+  if (!appearance) throw new RangeError('지원하지 않는 아바타 프리셋입니다.');
   return {
     name: '새별',
-    appearance: {
-      height: 50, build: 50, shoulders: 50, jaw: 50, eyes: 50, nose: 50,
-      hairStyle: 0, skinColor: '#e5b798', hairColor: '#48342e', eyeColor: '#57463b', clothColor: '#526da2',
-    },
+    appearance: { ...appearance },
     job: 'guardian',
     recommendedJob: null,
   };
+}
+
+export function createDefaultCharacter() {
+  return createAvatarPreset('youth');
 }
 
 function hasFields(value, fields) {
