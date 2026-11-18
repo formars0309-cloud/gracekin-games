@@ -19,3 +19,18 @@ a{color:inherit;text-decoration:none}button,input{font:inherit;touch-action:mani
 /* 공개 정책은 회원 전용 잔액과 분리하고 좁은 화면에서도 표 안에서 줄바꿈합니다. */
 .grain-policy{grid-column:1/-1;min-width:0;border:1px solid #e6c98a40;border-radius:12px;background:var(--surface);padding:28px;overflow-wrap:anywhere}.grain-policy .grain-heading{margin-bottom:14px}.grain-policy h2{font-size:21px;line-height:1.5;margin:0}.grain-policy .description{margin-bottom:18px}.grain-policy-eligibility{font-size:13px;color:var(--muted);margin:0 0 18px}.grain-policy-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px;line-height:1.8;text-align:left}.grain-policy-table caption{text-align:left;font-weight:600;color:#efd69e;padding-bottom:10px}.grain-policy-method{width:23%}.grain-policy-amount{width:29%}.grain-policy-table th,.grain-policy-table td{border-top:1px solid var(--border);padding:12px 10px;vertical-align:top;overflow-wrap:anywhere}.grain-policy-table thead th{color:var(--muted);font-size:12px}.grain-policy-table tbody th{font-weight:600}.grain-policy-table td:nth-child(2){color:#efd69e;font-variant-numeric:tabular-nums}.grain-policy-table td span{display:block}.grain-policy-notes{padding-left:18px;margin:20px 0 0;color:var(--muted);font-size:12px;line-height:1.9}.grain-policy-notes li+li{margin-top:8px}
 @media(max-width:650px){.grain-policy{margin-top:24px;padding:20px 16px}.grain-policy h2{font-size:19px}.grain-policy-table{font-size:12px}.grain-policy-table th,.grain-policy-table td{padding:10px 6px}.grain-policy-eligibility{font-size:12px}}
+
+.account-avatar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px; margin: 0 0 22px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface-soft); overflow-wrap: anywhere;
+}
+.account-avatar-copy { flex: 1; min-width: 0; }
+.account-avatar h3 { margin: 0 0 6px; font-size: 15px; }
+.account-avatar strong, .account-avatar-copy span { display: block; }
+.account-avatar-copy span, .account-avatar p { font-size: 12px; color: var(--muted); }
+.account-avatar p { margin: 4px 0; }
+.account-avatar a { display: inline-flex; min-height: 44px; align-items: center; color: var(--accent); font-size: 13px; text-decoration: underline; text-underline-offset: 4px; }
+.account-avatar .text-button { min-height: 44px; margin-inline-start: 8px; }
+.account-avatar-portrait { width: min(32%, 112px); aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--surface); }
+#signin-avatar-link { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }

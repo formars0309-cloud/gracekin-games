@@ -24,7 +24,7 @@
     const view = allowedViews.has(params.get('view')) ? params.get('view') : 'signin';
     const token = ['reset', 'verify'].includes(view) ? supplied : '';
     const clean = new URLSearchParams({ view });
-    if (['slimeline', 'gyeongguk'].includes(params.get('game'))) clean.set('game', params.get('game'));
+    if (['slimeline', 'gyeongguk', 'avatar'].includes(params.get('game'))) clean.set('game', params.get('game'));
     if (['notice', 'free', 'guide', 'gallery', 'deck', 'strategy'].includes(params.get('board'))) clean.set('board', params.get('board'));
     if (params.get('error') === 'INVALID_TOKEN') clean.set('error', 'INVALID_TOKEN');
     else if (params.has('error') && !isPages) clean.set('error', knownErrors.has(params.get('error')) ? params.get('error') : 'unknown_error');

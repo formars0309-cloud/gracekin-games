@@ -36,3 +36,26 @@ a{color:#e6c98a}button,input{font:inherit}button{cursor:pointer}button:disabled{
 }
 @media(max-width:360px){.gb-main{padding-left:8px;padding-right:8px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.gb-avatar-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 22px 24px;
+  border: 1px solid #776245;
+  border-radius: 9px;
+  background: linear-gradient(110deg, #31283a, #29222d 66%, #39302c);
+  text-decoration: none;
+}
+.gb-avatar-entry:hover { border-color: #e6c98a; }
+.gb-avatar-copy { min-width: 0; word-break: keep-all; overflow-wrap: anywhere; }
+.gb-avatar-copy h3 { color: #fff0d6; font-size: 22px; }
+.gb-avatar-copy p { margin-top: 5px; color: #d7cbdc; font-size: 13px; }
+.gb-avatar-open { flex: none; color: #e6c98a; font-size: 13px; font-weight: 600; }
+.gb-avatar-open span { margin-inline-start: 6px; }
+@media (max-width: 700px) {
+  .gb-avatar-entry { flex-wrap: wrap; gap: 12px; margin-top: 12px; padding: 16px 18px; }
+  .gb-games-heading { align-items: baseline; flex-wrap: wrap; row-gap: 4px; }
+}
