@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const root = fileURLToPath(new URL('../assets/character/', import.meta.url));
 const art = JSON.parse(readFileSync(path.join(root, 'manifest.json'), 'utf8'));
@@ -123,4 +124,17 @@ test('모든 납품 파일이 manifest에 연결되며 전체 6MB 이하이다',
   assert.ok(files.every(f => f.endsWith('.webp')), '납품은 WebP만 포함합니다');
   const bytes = files.reduce((sum, file) => sum + statSync(file).size, statSync(path.join(root, 'manifest.json')).size);
   assert.ok(bytes <= 6_000_000, `전체 용량 ${bytes}바이트가 예산을 지켜야 합니다`);
+});
+
+test('짙은 피부 합성 시 머리 가장자리에 기준 피부색 화소가 남지 않는다', () => {
+  // 실제 납품 WebP를 읽는다. 생성 함수나 보고서의 숫자를 재사용하지 않는다.
+  const script = fileURLToPath(new URL('../scripts/character-art/edge_audit.py', import.meta.url));
+  const result = spawnSync(process.env.CHARACTER_ART_PYTHON || 'python3', [script, '--root', root], { encoding: 'utf8' });
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  const measured = JSON.parse(result.stdout);
+  assert.equal(measured.layers, 12, '앞머리 8장과 뒷머리 4장을 실제로 검사해야 합니다');
+  assert.equal(measured.skinColoredEdgePixels, 0);
+  assert.equal(measured.accessoryLayers, 10, '귀·뿔 5장과 꼬리·날개 5장도 검사해야 합니다');
+  assert.equal(measured.skinColoredAccessoryEdgePixels, 0);
 });

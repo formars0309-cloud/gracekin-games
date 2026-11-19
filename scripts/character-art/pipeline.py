@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from scipy import ndimage as ndi
+from edge_cleanup import restore_outline
 
 SIZE = (1024, 1536)
 DELIVERY = (512, 768)
@@ -213,7 +214,7 @@ def accent_mask(job, art):
     return selected
 
 
-def save_art(root, relative, pixels, mask=False):
+def save_art(root, relative, pixels, mask=False, edge_reference=None, hair=False, delivery_reference=None):
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix('.webp.tmp')
@@ -222,8 +223,17 @@ def save_art(root, relative, pixels, mask=False):
         im = im.resize(DELIVERY, Image.Resampling.LANCZOS)
         im.save(temporary, 'WEBP', lossless=True, method=6)
     else:
+        if edge_reference is not None:
+            pixels = restore_outline(pixels, edge_reference, hair=hair)
         im = Image.fromarray(pixels).resize(DELIVERY, Image.Resampling.LANCZOS)
-        im.save(temporary, 'WEBP', quality=88, method=6, exact=True)
+        if edge_reference is not None:
+            reference = delivery_reference if delivery_reference is not None else np.array(
+                Image.fromarray(edge_reference).resize(DELIVERY, Image.Resampling.LANCZOS))
+            im = Image.fromarray(restore_outline(np.array(im), reference, hair=hair))
+            # 색 손실 압축의 크로마 번짐이 정리한 경계에 피부색을 다시 섞지 않게 한다.
+            im.save(temporary, 'WEBP', lossless=True, method=6, exact=True)
+        else:
+            im.save(temporary, 'WEBP', quality=88, method=6, exact=True)
     temporary.replace(path)
     if path.stat().st_size > 150_000:
         raise ValueError(f'파일 예산 초과: {path}')
@@ -261,6 +271,7 @@ def build(work, root, report):
                  'skinMask': None if race in {'dragon', 'moon'} else save_art(root, f'parts/body/{race}-skin.webp', race_skin & (body[..., 3] > 0), True),
                  'eyeMask': save_art(root, f'parts/body/{race}-eye.webp', eye, True),
                  'back': None, 'ears': None}
+        delivery_body = np.array(Image.open(root / entry['body']).convert('RGBA'))
         if race in {'cat', 'fox', 'rabbit', 'bear', 'dragon'}:
             art = extract(base, source, region(box=(240, 20, 780, 367)), 150)
             if race == 'dragon':
@@ -274,14 +285,14 @@ def build(work, root, report):
                 horns = ndi.binary_fill_holes(horns)
                 art = layer(art, horns)
             # 큰 머리카락과 겹치는 귀 뿌리도 남기되 민머리 색은 차분에서 제거한다.
-            entry['ears'] = save_art(root, f'parts/race/{race}-ears.webp', art)
+            entry['ears'] = save_art(root, f'parts/race/{race}-ears.webp', art, edge_reference=body, delivery_reference=delivery_body)
         if race in {'cat', 'fox', 'bear', 'dragon', 'fairy'}:
             allowed = region(box=(100, 675, 940, 1360))
             # 뒤층에는 기준 몸 바깥의 새 윤곽만 넣는다. 날개가 팔을 덮지 않는다.
             outside = base[..., 3] == 0
             outer = clean((source[..., 3] > 80) & outside & allowed, 150)
             outer = ndi.binary_dilation(outer, iterations=2) & outside & allowed
-            entry['back'] = save_art(root, f'parts/race/{race}-back.webp', layer(source, outer))
+            entry['back'] = save_art(root, f'parts/race/{race}-back.webp', layer(source, outer), edge_reference=body, delivery_reference=delivery_body)
         metrics[race]['deliveredLowerAlphaMismatchPixels'] = int(np.count_nonzero(
             body[700:, :, 3] != base[700:, :, 3]))
         if metrics[race]['deliveredLowerAlphaMismatchPixels']:
@@ -291,7 +302,7 @@ def build(work, root, report):
     for i, label in enumerate(HAIR, 1):
         front = extract(base, load(work / f'h{i}-front.png'), region(box=(220, 100, 790, 700)))
         entry = {'label': label,
-                 'front': save_art(root, f'parts/hair/h{i}-front.webp', front),
+                 'front': save_art(root, f'parts/hair/h{i}-front.webp', front, edge_reference=base, hair=True),
                  'mask': save_art(root, f'parts/hair/h{i}-front-mask.webp', front[..., 3] > 0, True),
                  'back': None, 'backMask': None}
         if i in LONG_HAIR:
@@ -300,9 +311,19 @@ def build(work, root, report):
             if i == 5:
                 mask &= ~region(box=(275, 888, 340, 950))
                 mask &= ~region(box=(674, 888, 733, 950))
-            entry['back'] = save_art(root, f'parts/hair/h{i}-back.webp', back)
+            entry['back'] = save_art(root, f'parts/hair/h{i}-back.webp', back, edge_reference=base, hair=True)
             entry['backMask'] = save_art(root, f'parts/hair/h{i}-back-mask.webp', mask, True)
         manifest['hair'][f'h{i}'] = entry
+        # 색 마스크와 그림 알파를 이중으로 흐리지 않는다. 경계 RGB도 완전히 색 이동한다.
+        for art_key, mask_key in [('front', 'mask'), ('back', 'backMask')]:
+            if entry[art_key]:
+                alpha = np.array(Image.open(root / entry[art_key]).getchannel('A')) > 0
+                current = np.array(Image.open(root / entry[mask_key]).convert('L'))
+                strength = np.where(alpha, 255, 0).astype('uint8')
+                if i == 5 and art_key == 'back':
+                    # 금색 머리끈의 수동 제외 영역은 유지한다.
+                    strength[(current == 0) & ndi.binary_erosion(alpha, iterations=3)] = 0
+                Image.fromarray(strength).save(root / entry[mask_key], 'WEBP', lossless=True, method=6)
 
     for job in JOBS:
         source = load(work / f'{job}.png')

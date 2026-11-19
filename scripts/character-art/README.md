@@ -24,6 +24,8 @@ python3 scripts/character-art/prepare.py /기존/부품/base.png /저장소밖/�
 /저장소밖/그림-작업/venv/bin/python scripts/character-art/pipeline.py --work /저장소밖/그림-작업
 /저장소밖/그림-작업/venv/bin/python -m unittest discover -s scripts/character-art -p 'test_*.py'
 node --test test/character-art.test.js
+python3 scripts/character-art/edge_audit.py
+/저장소밖/그림-작업/venv/bin/python scripts/character-art/edge_proofs.py
 ```
 
 `--root`와 `--report`로 출력 경로를 바꿀 수 있다. `--proof-only`는 기존 납품 부품에서 확인판만 다시 만든다. 확인판의 한글 글꼴은 macOS의 애플 산돌고딕을 사용하며 없으면 Pillow 기본 글꼴을 사용한다.
@@ -52,3 +54,13 @@ node --test test/character-art.test.js
 색상 마스크 파일은 RGB 세 채널이 같은 불투명 회색조 WebP다. 화면에서 마스크의 빨간 채널을 강도로 읽는다. **마스크 알파를 강도로 읽으면 안 된다.** 원본 부품 자체의 알파는 별도로 보존한다.
 
 납품은 512×768 WebP 82개이며, 파일당 150,000바이트·전체 6,000,000바이트 한도를 검사한다. 확인판 JPG 합계는 3,000,000바이트 한도로 검사한다. 원본 1024판과 중간 파일은 커밋하지 않는다.
+
+## 2차: 짙은 피부의 머리 경계 정리
+
+원본의 밝은 피부와 머리 선이 섞인 화소는 차분 임계값만으로 모두 걸러지지 않았다. 얇은 가닥의 알파를 깎으면 머리가 끊어지므로 `edge_cleanup.restore_outline`에서 알파를 그대로 두고 RGB만 가까운 어두운 선 색으로 바꾼다. 원본 1024판과 최종 512판에 모두 적용한다. 머리 앞·뒤 12개 층 전체의 경계 안쪽 3.5납품화소를 정리한다. 귀·뿔·꼬리·날개는 몸의 피부와 색이 비슷한 접점 경계만 정리한다. 노란 크림색 뿔은 피부색과 구분하며, 고정 피부 용인은 청록색 몸을 비교 기준으로 삼는다.
+
+정리한 머리와 종족 부속은 **무손실 WebP**로 저장해 손실 압축의 색 번짐이 재발하지 않게 한다. 머리 마스크는 투명 알파와 중복으로 흐려지지 않도록 부품이 있는 경계까지 흰색을 채운다. 금색 머리끈의 수동 제외 영역은 유지한다.
+
+`edge_audit.py`는 실제 납품 WebP를 다시 디코딩하고, 피부에 인접한 머리 경계 및 종족 부속 경계에 밝은 기준 피부 유사색이 남았는지 검사한다. 이 검사는 `test/character-art.test.js`에서 실행된다. `npm test` 환경에도 Python 3와 Pillow가 필요하며, `CHARACTER_ART_PYTHON`으로 사용할 파이썬을 지정할 수 있다. 이 회귀 검사 자체에는 NumPy나 SciPy가 필요 없다.
+
+`edge_proofs.py`는 s1·s6의 머리 8종, 긴 머리 뒤층, 종족 귀·뿔·꼬리·날개 확대 확인판을 만든다. `--before /이전/그림폴더`를 주면 h1·s6 수정 전후 비교판도 만든다. 고정 피부 두 종족은 s1·s6 요청에도 원래 피부가 그대로 보인다.

@@ -6,9 +6,31 @@ import numpy as np
 from PIL import Image
 
 from pipeline import extract, recolor
+from edge_cleanup import restore_outline
 
 
 class ColorTest(unittest.TestCase):
+    def test_hair_edge_skin_is_replaced_without_erasing_thin_alpha(self):
+        part = np.zeros((30, 30, 4), dtype='uint8')
+        part[8:22, 8:22] = [74, 42, 26, 255]
+        part[8, 9:21] = [244, 186, 148, 100]
+        reference = np.full(part.shape, [244, 186, 148, 255], dtype='uint8')
+        result = restore_outline(part, reference, hair=True)
+        np.testing.assert_array_equal(result[..., 3], part[..., 3])
+        self.assertTrue(np.all(result[8, 9:21, 0] <= 118))
+
+    def test_cream_horn_is_preserved_against_fixed_teal_skin(self):
+        part = np.zeros((30, 30, 4), dtype='uint8')
+        part[7:23, 7:23] = [233, 211, 155, 255]
+        part[7:23, 7] = [74, 42, 26, 255]
+        reference = np.full(part.shape, [87, 182, 173, 255], dtype='uint8')
+        result = restore_outline(part, reference)
+        np.testing.assert_array_equal(result, part)
+        # 몸에 겹쳐 들어간 뿔 뿌리의 낮은 채도 크림색도 기준 피부로 오인하지 않는다.
+        reference[:] = [202, 184, 158, 255]
+        part[8, 8] = [195, 180, 149, 255]
+        np.testing.assert_array_equal(restore_outline(part, reference), part)
+
     def test_lines_neutral_transparent_and_unmasked_are_preserved(self):
         pixels = np.array([[[30, 20, 10, 255], [180, 180, 180, 255],
                             [190, 95, 48, 0], [190, 95, 48, 255],
