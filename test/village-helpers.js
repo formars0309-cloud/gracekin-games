@@ -18,18 +18,16 @@ export const avatar = { v: 1, kind: 'placeholder', colors: { skin: '#ffe0bd', ha
 
 export async function scenario(callback, options = {}) {
   const folder = await mkdtemp(join(tmpdir(), 'gracekin-village-')), mailbox = [], sockets = [];
-  // 학년도·시행일 시험이 실행한 해에 따라 달라지지 않도록 기준 시각을 고정합니다.
+  // 시행일 시험이 실행 날짜에 따라 달라지지 않도록 기준 시각을 고정합니다.
   let app, db, time = options.initialTime ?? Date.parse('2026-11-28T12:00:00+09:00');
   const startOptions = { port: 0, dataDir: folder, secret: fixtureKey, mailer: async mail => mailbox.push(mail), now: () => time, trustFlyProxy: true, flyAppName: 'gracekin-games-community',
     guardianReplyTo: 'guardian@example.test', villageOpensAt: '2000-01-01T00:00:00Z', rateLimit: { authMax: 500, readMax: 5000, writeMax: 5000 }, ...options };
   try {
     app = await startServer(startOptions);
     db = new DatabaseSync(join(folder, 'community.sqlite')); db.exec('PRAGMA foreign_keys=ON');
-    const signup = async (suffix = 'member', { birthYear = 2000 } = {}) => {
+    const signup = async (suffix = 'member') => {
       const response = await registerAndLogin(app, mailbox, { name: `마을회원${suffix}`, email: `village-${suffix}@example.test`, password: '마을시험전용-1234-password', ageBand: '14plus' }, { 'fly-client-ip': `198.51.100.${signupIP++}` });
       assert.equal(response.status, 200);
-      // 기존 통신 시험은 이미 연도를 정한 회원을 준비하며, 새 입력 시험은 null을 지정합니다.
-      if (birthYear !== null) db.prepare('INSERT INTO village_profiles(userId,birthYear,createdAt,updatedAt) VALUES(?,?,?,?)').run(response.body.user.id, birthYear, time, time);
       return { id: response.body.user.id, cookie: cookieFrom(response), response };
     };
     const connect = (member, headers) => openSocket(app, member?.cookie, headers, sockets);
@@ -49,7 +47,7 @@ export function upgradeStatus(app, cookie, headers = {}) {
   });
 }
 
-export function seedMember(db, templateId, suffix, { child = false, userId, consentVersion = CONSENT_VERSION, birthYear } = {}) {
+export function seedMember(db, templateId, suffix, { child = false, userId, consentVersion = CONSENT_VERSION } = {}) {
   // 인원 경계 시험은 51번 비밀번호 해시 계산 대신 실제 인증 스키마에 세션을 준비합니다.
   // 서명된 쿠키는 프로덕션과 같은 better-auth getSession 경로에서 검증됩니다.
   const id = userId ?? randomUUID(), token = randomUUID(), user = { ...db.prepare('SELECT * FROM user WHERE id=?').get(templateId), id, name: `광장회원${suffix}`, email: `seed-${suffix}@example.test` };
@@ -59,9 +57,6 @@ export function seedMember(db, templateId, suffix, { child = false, userId, cons
     db.prepare("UPDATE user SET ageBand='under14' WHERE id=?").run(id);
     db.prepare(`INSERT INTO guardian_requests(id,capabilityHash,status,createdAt,expiresAt,consentVersion,consentText,childUserId) VALUES(?,?,'used',?,?,?, ?,?)`).run(randomUUID(), randomUUID(), Date.now(), Date.now() + 86400000, consentVersion, '격리 시험의 유효한 보호자 동의', id);
   }
-  const inheritedYear = db.prepare('SELECT birthYear FROM village_profiles WHERE userId=?').get(templateId)?.birthYear ?? 2000;
-  const chosenYear = birthYear === undefined ? (child ? 2013 : inheritedYear) : birthYear;
-  if (chosenYear !== null) db.prepare('INSERT INTO village_profiles(userId,birthYear,createdAt,updatedAt) VALUES(?,?,?,?)').run(id, chosenYear, Date.now(), Date.now());
   const session = { ...db.prepare('SELECT * FROM session WHERE userId=? LIMIT 1').get(templateId), id: randomUUID(), token, userId: id, createdAt: Date.now(), updatedAt: Date.now(), expiresAt: Date.now() + 86400000 };
   const columns = Object.keys(session);
   db.prepare(`INSERT INTO session(${columns.map(key => `"${key}"`).join(',')}) VALUES(${columns.map(() => '?').join(',')})`).run(...columns.map(key => session[key]));

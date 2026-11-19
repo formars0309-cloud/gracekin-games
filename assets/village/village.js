@@ -70,14 +70,13 @@ function received(message) {
   } else if (message.type === 'error') { if (!showAdmission(message)) status(message.message, true); }
 }
 function showAdmission(error) {
-  if (!['VILLAGE_NOT_OPEN', 'VILLAGE_GUARDIAN_CONSENT_REQUIRED', 'VILLAGE_PRESCHOOL', 'VILLAGE_ELEMENTARY_GUARDIAN_REQUIRED'].includes(error.code)) return false;
+  if (!['VILLAGE_NOT_OPEN', 'VILLAGE_GUARDIAN_CONSENT_REQUIRED'].includes(error.code)) return false;
   state.stopped = true; clearTimeout(state.reconnect); state.socket?.close();
   byId('entry-message').textContent = error.message; byId('entry-panel').hidden = false;
   byId('village-play').hidden = true; byId('login-panel').hidden = true;
   byId('tour-controls').hidden = true;
   byId('connection-status').textContent = error.message;
   if (byId('wardrobe-dialog').open) byId('wardrobe-dialog').close();
-  if (byId('birthyear-dialog').open) byId('birthyear-dialog').close();
   return true;
 }
 function applyVillage(village) {
@@ -85,6 +84,7 @@ function applyVillage(village) {
   document.documentElement.style.setProperty('--green', village.accent);
   document.documentElement.dataset.village = village.id;
   byId('village-title').textContent = village.name; document.title = `${village.name} · 분수 광장`;
+  configureChat();
   byId('village-play').setAttribute('aria-label', `${village.name} 분수 광장`);
   const operator = state.session.user.isOperator === true;
   byId('operator-label').hidden = !operator; byId('tour-controls').hidden = !operator;
@@ -94,6 +94,19 @@ function applyVillage(village) {
       const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; option.selected = item.id === village.id; select.append(option);
     }
   }
+}
+function configureChat() {
+  const free = state.villageId === 'general' && state.session.user.canFreeChat === true;
+  byId('child-chat-note').hidden = free; byId('chat-slot').hidden = !free;
+  if (free === Boolean(byId('chat-form'))) return;
+  const slot = byId('chat-slot'); slot.replaceChildren();
+  if (!free) return;
+  slot.append(byId('chat-template').content.cloneNode(true));
+  const form = byId('chat-form'), input = byId('chat-input');
+  form.addEventListener('submit', event => { event.preventDefault(); if (input.dataset.composing === 'true') return; const text = input.value.trim(); if (text && send({ type: 'chat', text })) input.value = ''; });
+  input.addEventListener('compositionstart', () => input.dataset.composing = 'true');
+  input.addEventListener('compositionend', () => input.dataset.composing = 'false');
+  input.addEventListener('keydown', event => { if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) event.preventDefault(); });
 }
 let worldChange = Promise.resolve();
 function loadWorld(path) {
@@ -116,18 +129,6 @@ function loadWorld(path) {
   });
   return worldChange;
 }
-function openBirthYear() {
-  byId('village-play').hidden = true;
-  const select = byId('birthyear-select'); select.replaceChildren();
-  const empty = document.createElement('option'); empty.value = ''; empty.textContent = '출생연도를 골라 주세요'; select.append(empty);
-  const limits = state.session.birthYearOptions;
-  for (let year = limits.maximumBirthYear; year >= limits.minimumBirthYear; year--) {
-    const option = document.createElement('option'); option.value = year; option.textContent = `${year}년`; select.append(option);
-  }
-  byId('birthyear-calendar').textContent = `${limits.schoolYear}학년도 기준으로 마을을 정해요. 미취학 어린이는 아직 입장할 수 없어요.`;
-  byId('birthyear-selection').hidden = false; byId('birthyear-confirm').hidden = true; byId('birthyear-status').textContent = '';
-  if (!byId('birthyear-dialog').open) byId('birthyear-dialog').showModal();
-}
 function connect() {
   if (state.stopped) return;
   clearTimeout(state.reconnect); byId('connection-status').textContent = '광장과 연결하고 있어요.';
@@ -141,14 +142,14 @@ function connect() {
     const wait = Math.min(30000, 1000 * 2 ** Math.min(state.retries++, 5));
     byId('connection-status').textContent = `연결이 잠시 끊겼어요. ${Math.ceil(wait / 1000)}초 뒤 다시 연결할게요.`;
     state.reconnect = setTimeout(async () => {
-      try { const current = await api('/village/session'); if (!current.user) { state.stopped = true; byId('login-panel').hidden = false; byId('connection-status').textContent = '로그인한 뒤 다시 입장해 주세요.'; return; } state.session = current; if (!current.profile) { state.socket = null; openBirthYear(); return; } connect(); }
+      try { const current = await api('/village/session'); if (!current.user) { state.stopped = true; byId('login-panel').hidden = false; byId('connection-status').textContent = '로그인한 뒤 다시 입장해 주세요.'; return; } state.session = current; applyVillage(current.village); connect(); }
       catch (error) { if (showAdmission(error)) return; if ([401, 403].includes(error.status)) { state.stopped = true; byId('login-panel').hidden = false; byId('connection-status').textContent = '로그인한 뒤 다시 입장해 주세요.'; } else connect(); }
     }, wait);
   });
   socket.addEventListener('error', () => { byId('connection-status').textContent = '마을 연결을 확인하고 있어요.'; });
 }
 function moveTo(goal) {
-  if (byId('birthyear-dialog').open || byId('wardrobe-dialog').open || byId('people-dialog').open || byId('report-dialog').open) return;
+  if (byId('wardrobe-dialog').open || byId('people-dialog').open || byId('report-dialog').open) return;
   const self = state.players.get(state.selfId); if (!self || !state.map) return;
   const start = { x: Math.round(self.x), y: Math.round(self.y) };
   const path = findPath(state.map, start, goal);
@@ -290,23 +291,6 @@ function createWorld(map) {
   return new Phaser.Game({type:Phaser.AUTO,parent:host,width:host.clientWidth,height:host.clientHeight,backgroundColor:'#cbd7b4',scene:Plaza,render:{antialias:true},scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH},audio:{noAudio:true},input:{keyboard:{target:host}},banner:false});
 }
 
-byId('birthyear-dialog').addEventListener('cancel', event => event.preventDefault());
-byId('birthyear-back').addEventListener('click', () => { byId('birthyear-selection').hidden = false; byId('birthyear-confirm').hidden = true; byId('birthyear-select').focus(); });
-byId('birthyear-form').addEventListener('submit', async event => {
-  event.preventDefault();
-  if (!event.currentTarget.reportValidity()) return;
-  if (byId('birthyear-confirm').hidden) {
-    byId('birthyear-confirm-text').textContent = `${byId('birthyear-select').value}년생으로 정할까요?`;
-    byId('birthyear-selection').hidden = true; byId('birthyear-confirm').hidden = false; byId('birthyear-save').focus(); return;
-  }
-  const button = byId('birthyear-save'); if (button.disabled) return; button.disabled = true;
-  try {
-    await api('/village/profile', { birthYear: Number(byId('birthyear-select').value), confirmed: true });
-    byId('birthyear-dialog').close(); await initialize();
-  } catch (error) {
-    if (!showAdmission(error)) { byId('birthyear-status').textContent = error.message; byId('birthyear-selection').hidden = false; byId('birthyear-confirm').hidden = true; }
-  } finally { button.disabled = false; }
-});
 byId('tour-start').addEventListener('click', () => send({ type: 'tour', villageId: byId('tour-select').value }));
 byId('wardrobe-fields').addEventListener('change',previewAvatar);
 byId('village-game').addEventListener('keydown',event=>{if(event.target===byId('village-game')&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))event.preventDefault();});
@@ -318,8 +302,6 @@ byId('wardrobe-form').addEventListener('submit',async event=>{
 });
 byId('wardrobe-dialog').addEventListener('cancel',event=>{if(!state.revision)event.preventDefault();});
 byId('wardrobe-cancel').addEventListener('click',()=>byId('wardrobe-dialog').close());byId('wardrobe-open').addEventListener('click',openWardrobe);
-byId('chat-form').addEventListener('submit',event=>{event.preventDefault();const input=byId('chat-input');if(input.dataset.composing==='true')return;const text=input.value.trim();if(text&&send({type:'chat',text}))input.value='';});
-byId('chat-input').addEventListener('compositionstart',()=>byId('chat-input').dataset.composing='true');byId('chat-input').addEventListener('compositionend',()=>byId('chat-input').dataset.composing='false');byId('chat-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.isComposing||event.keyCode===229))event.preventDefault();});
 byId('channel-change').addEventListener('click',()=>{const channelId=Number(byId('channel-select').value);if(channelId!==state.channelId)send({type:'channel',villageId:state.villageId,channelId});});
 byId('people-open').addEventListener('click',async()=>{renderPeople();byId('people-dialog').showModal();try{await renderBlocks();renderPeople();}catch(error){status(error.message,true);}});byId('people-close').addEventListener('click',()=>byId('people-dialog').close());byId('report-cancel').addEventListener('click',()=>byId('report-dialog').close());
 byId('report-form').addEventListener('submit',async event=>{event.preventDefault();const button=event.currentTarget.querySelector('[type="submit"]');button.disabled=true;try{await api('/village/reports',{targetId:reportTarget,reason:byId('report-reason').value.trim()});byId('report-dialog').close();status('신고를 접수했어요. 운영자가 확인할게요.');}catch(error){status(error.message,true);}finally{button.disabled=false;}});
@@ -328,14 +310,13 @@ async function initialize(){
   if(window.gracekinCommunityRedirecting)return;
   try{
     state.session=await api('/village/session');if(!state.session.user){byId('login-panel').hidden=false;byId('connection-status').textContent='로그인하면 마을에 들어갈 수 있어요.';return;}
-    if(!state.session.profile){openBirthYear();return;}
-    applyVillage(state.session.profile.village);
+    applyVillage(state.session.village);
     state.avatar=state.session.avatar?.data;state.revision=state.session.avatar?.revision||0;
-    byId('village-play').hidden=false;const free=state.session.user.canFreeChat===true;byId('chat-form').hidden=!free;byId('child-chat-note').hidden=free;
+    byId('village-play').hidden=false;
     byId('phrase-buttons').replaceChildren();byId('emote-buttons').replaceChildren();
     for(const phrase of state.session.phrases){const button=document.createElement('button');button.type='button';button.textContent=phrase.text;button.addEventListener('click',()=>send({type:'phrase',id:phrase.id}));byId('phrase-buttons').append(button);}
     for(const emote of state.session.emotes){const button=document.createElement('button');button.id=`emote-${emote.id}`;button.type='button';button.textContent=emote.label;button.addEventListener('click',()=>send({type:'emote',id:emote.id}));byId('emote-buttons').append(button);}
-    setChannels(state.session.channels);await renderBlocks();if(!window.Phaser&&document.readyState!=='complete')await new Promise(resolve=>window.addEventListener('load',resolve,{once:true}));if(!window.Phaser)throw new Error('마을 그림 도구를 불러오지 못했어요.');await loadWorld(state.session.profile.village.mapPath);
+    setChannels(state.session.channels);await renderBlocks();if(!window.Phaser&&document.readyState!=='complete')await new Promise(resolve=>window.addEventListener('load',resolve,{once:true}));if(!window.Phaser)throw new Error('마을 그림 도구를 불러오지 못했어요.');await loadWorld(state.session.village.mapPath);
     if(!state.revision)openWardrobe();else connect();
   }catch(error){if(showAdmission(error))return;byId('connection-status').textContent=error.message;if(error.status===401||error.status===403){byId('login-panel').hidden=false;status('회원 정보를 확인한 뒤 다시 입장해 주세요.');}else status('새로고침해 다시 입장해 주세요.',true);}
 }

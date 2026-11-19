@@ -7,33 +7,33 @@ import { CONSENT_VERSION, CONSENT_TEXT } from '../server/guardian.js';
 import { VILLAGE_OPENS_AT, VILLAGE_CLEANUP_INTERVAL, oneYearAgo, startVillageCleanup } from '../server/village/policy.js';
 import { createVillageStore } from '../server/village/store.js';
 
-test('중학생 마을에서도 어린이는 자유 채팅을 받지 않고 허용 회원은 모두 받으며 신고는 서버 기록을 사용한다', async () => scenario(async ({ app, db, signup, connect }) => {
-  const author = await signup('receive', { birthYear: 2012 }), adult = seedMember(db, author.id, '어른'), child = seedMember(db, author.id, '어린이', { child: true });
-  const sender = await connect(author), observer = await connect(adult), protectedPeer = await connect(child);
-  assert.equal((await protectedPeer.wait(message => message.type === 'welcome')).village.id, 'middle');
-  sender.send({ type: 'chat', text: '어른에게만 전달하는 대화' });
-  assert.equal((await observer.wait(message => message.text === '어른에게만 전달하는 대화')).kind, 'free');
+test('운영자로 둘러보는 어린이 수신자에게도 자유 대화는 보내지 않고 문구·감정만 보낸다', async () => scenario(async ({ app, db, signup, connect }) => {
+  const author = await signup('receive'), observerMember = seedMember(db, author.id, 'observer');
+  const child = seedMember(db, author.id, 'child-operator', { child: true, userId: 'village-child-operator' });
+  const sender = await connect(author), observer = await connect(observerMember), protectedPeer = await connect(child);
+  await protectedPeer.wait(message => message.type === 'welcome');
+  protectedPeer.send({ type: 'tour', villageId: 'general' });
+  await protectedPeer.wait(message => message.type === 'welcome' && message.village.id === 'general');
+  sender.send({ type: 'chat', text: '자유 대화 허용 회원에게만' });
+  assert.equal((await observer.wait(message => message.text === '자유 대화 허용 회원에게만')).kind, 'free');
   sender.send({ type: 'phrase', id: 'hello' });
   assert.equal((await protectedPeer.wait(message => message.text === '안녕!')).kind, 'phrase');
-  await observer.wait(message => message.text === '안녕!');
-  sender.send({ type: 'emote', id: 'wave' });
-  await protectedPeer.wait(message => message.type === 'emote'); await observer.wait(message => message.type === 'emote');
-  await delay(150);
-  assert.ok(!protectedPeer.messages.some(message => message.kind === 'free' || message.text === '어른에게만 전달하는 대화'));
+  sender.send({ type: 'emote', id: 'wave' }); await protectedPeer.wait(message => message.type === 'emote');
+  assert.ok(!protectedPeer.messages.some(message => message.kind === 'free'));
   const report = await request(app, '/api/village/reports', { method: 'POST', cookie: child.cookie, body: { targetId: author.id, reason: '서버 대화 확인 요청' } });
   assert.equal(report.status, 201);
   const snapshot = JSON.parse(db.prepare('SELECT snapshot FROM village_reports WHERE id=?').get(report.body.report.id).snapshot);
-  assert.equal(snapshot.find(message => message.kind === 'free').text, '어른에게만 전달하는 대화');
-}));
+  assert.equal(snapshot.find(message => message.kind === 'free').text, '자유 대화 허용 회원에게만');
+}, { adminUserIds: 'village-child-operator' }));
 
-test('수신자의 연령이 접속 중 어린이로 바뀌어도 자유 채팅을 보내지 않는다', async () => scenario(async ({ db, signup, connect }) => {
-  const author = await signup('age-refresh', { birthYear: 2012 }), member = seedMember(db, author.id, '변경회원', { child: true });
+test('접속 중 연령 구분이 바뀌면 연결을 종료하고 맞는 마을에 다시 입장한다', async () => scenario(async ({ db, signup, connect }) => {
+  const template = await signup('age-refresh'), member = seedMember(db, template.id, 'changed-member', { child: true });
   db.prepare("UPDATE user SET ageBand='14plus' WHERE id=?").run(member.id);
-  const sender = await connect(author), recipient = await connect(member); await recipient.wait(message => message.type === 'welcome');
+  const peer = await connect(member); assert.equal((await peer.wait(message => message.type === 'welcome')).village.id, 'general');
   db.prepare("UPDATE user SET ageBand='under14' WHERE id=?").run(member.id);
-  sender.send({ type: 'chat', text: '수신 시점 연령 확인' }); await sender.wait(message => message.text === '수신 시점 연령 확인');
-  sender.send({ type: 'phrase', id: 'thanks' }); await recipient.wait(message => message.text === '고마워');
-  assert.ok(!recipient.messages.some(message => message.kind === 'free'));
+  peer.send({ type: 'phrase', id: 'thanks' });
+  assert.equal((await peer.closeEvent).code, 4004);
+  const rejoined = await connect(member); assert.equal((await rejoined.wait(message => message.type === 'welcome')).village.id, 'kids');
 }));
 
 test('시행 전 일반 회원의 입장·옷장 저장은 거부하고 운영자는 허용하며 시행 시각부터 일반 회원을 허용한다', async () => scenario(async ({ app, db, signup, connect, advance }) => {
@@ -109,7 +109,6 @@ test('회원 삭제와 본인 차단 해제는 캐릭터·차단 관계를 즉�
   // 실제 회원 삭제와 같은 user 삭제가 외래키를 통해 관련 자료를 지웁니다.
   db.prepare('DELETE FROM user WHERE id=?').run(member.id);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM village_avatars').get().n, 0);
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM village_profiles WHERE userId=?').get(member.id).n, 0);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM village_blocks').get().n, 0);
 }));
 

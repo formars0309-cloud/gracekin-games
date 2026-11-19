@@ -87,10 +87,10 @@ test('충돌·지도 밖·비인접·과속 필드 이동은 서버 위치로 �
 }));
 
 test('유효한 보호자 동의 어린이는 자유 입력을 우회할 수 없고 정해진 말과 감정만 통과한다', async () => scenario(async ({ app, db, signup, connect }) => {
-  const adult = await signup('adult', { birthYear: 2012 }), child = seedMember(db, adult.id, 'child', { child: true });
+  const adult = await signup('adult'), child = seedMember(db, adult.id, 'child', { child: true }), friend = seedMember(db, adult.id, 'child-friend', { child: true });
   const childState = await request(app, '/api/village/session', { cookie: child.cookie });
   assert.equal(childState.status, 200); assert.equal(childState.body.user.canFreeChat, false);
-  const listener = await connect(adult), peer = await connect(child); await welcome(peer);
+  const listener = await connect(friend), peer = await connect(child); await welcome(peer);
   peer.send({ type: 'chat', text: '버튼을 우회한 자유 입력' }); await error(peer, 'CHILD_FREE_CHAT');
   peer.send({ type: 'phrase', id: 'hello' });
   assert.equal((await listener.wait(message => message.type === 'chat' && message.userId === child.id)).text, '안녕!');

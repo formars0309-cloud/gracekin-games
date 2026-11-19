@@ -185,7 +185,7 @@ server/village/**
 !server/village/store.js
 !server/village/filter.js
 !server/village/policy.js
-!server/village/age-group.js
+!server/village/villages.js
 !village/
 village/**
 !village/index.html

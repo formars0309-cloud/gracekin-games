@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { scenario, seedMember, request, delay } from './village-helpers.js';
 import { VILLAGE_OPENS_AT } from '../server/village/policy.js';
-import { VILLAGES } from '../server/village/age-group.js';
+import { VILLAGES } from '../server/village/villages.js';
 
 // 설치된 Playwright를 사용합니다. 별도 위치는 PLAYWRIGHT_MODULE로 지정할 수 있습니다.
 let chromium;
@@ -30,7 +30,7 @@ await scenario(async ({ app, db, signup }) => {
     browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
     const desktop = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ko-KR' });
     const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, locale: 'ko-KR' });
-    const alice = await signup('browser-one', { birthYear: null }), bob = await signup('browser-two', { birthYear: null });
+    const alice = await signup('browser-one'), bob = await signup('browser-two');
     db.prepare('UPDATE user SET name=? WHERE id=?').run('작은새', alice.id); db.prepare('UPDATE user SET name=? WHERE id=?').run('달빛친구', bob.id);
     const pages = [await desktop.newPage(), await mobile.newPage()], received = [[], []], sent = [[], []];
     for (const [index, page] of pages.entries()) {
@@ -42,15 +42,6 @@ await scenario(async ({ app, db, signup }) => {
       const cookie = [alice, bob][index].cookie.split(';').map(part => part.trim()).find(part => part.startsWith('gracekin.session_token='));
       await [desktop, mobile][index].addCookies([{ name: 'gracekin.session_token', value: cookie.slice(cookie.indexOf('=') + 1), url: app.origin, httpOnly: true, sameSite: 'Lax' }]);
       await page.goto(`${app.origin}/village/`, { waitUntil: 'networkidle' });
-      await page.locator('#birthyear-dialog').waitFor({ state: 'visible' });
-      assert.equal(sent[index].length, 0, '출생연도 확정 전에 소켓을 시작하면 안 됩니다.');
-      assert.equal(await page.locator('#wardrobe-dialog').isVisible(), false);
-      await page.locator('#birthyear-select').selectOption('2012');
-      await capture(page, `${index ? 'mobile' : 'desktop'}-birthyear-select.png`);
-      await page.locator('#birthyear-next').click();
-      await page.locator('#birthyear-confirm').waitFor({ state: 'visible' });
-      await capture(page, `${index ? 'mobile' : 'desktop'}-birthyear-confirm.png`);
-      await page.locator('#birthyear-save').click();
       await page.locator('#wardrobe-dialog').waitFor({ state: 'visible' });
       assert.equal(await page.locator('input[name=skin]').count(), 4);
       await page.locator('input[name=outfit]').nth(index + 1).check({ force: true });
@@ -79,56 +70,49 @@ await scenario(async ({ app, db, signup }) => {
     for (const [index, page] of pages.entries()) {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
       assert.equal(overflow, false, '화면이 가로로 넘치면 안 됩니다.');
-      const shot = `${index ? 'mobile' : 'desktop'}-plaza-chat.png`; await page.screenshot({ path: resolve(output, shot), fullPage: true }); report.screenshots.push(shot);
+      const shot = `${index ? 'mobile' : 'desktop'}-village-general.png`; await page.screenshot({ path: resolve(output, shot), fullPage: true }); report.screenshots.push(shot);
     }
     pass('390px·데스크톱 가로 넘침 없음·대화 화면 저장');
     // 키 입력 이동도 DOM 포커스와 실제 서버 변경분을 함께 확인합니다.
     const before = received[0].length; await pages[0].locator('#village-game').focus(); await pages[0].keyboard.down('ArrowDown'); await delay(550); await pages[0].keyboard.up('ArrowDown');
     await waitUntil(() => received[0].slice(before).some(message => message.type === 'snapshot' && message.players.some(player => player.id === alice.id)), '방향키 이동');
     pass('방향키 조작과 서버 위치 반영');
-    const child = seedMember(db, alice.id, 'browser-child', { child: true });
-    db.prepare('UPDATE user SET name=? WHERE id=?').run('고운별', child.id);
-    const childContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'ko-KR' });
-    const childCookie = child.cookie.split('=');
-    await childContext.addCookies([{ name: childCookie.shift(), value: childCookie.join('='), url: app.origin, httpOnly: true, sameSite: 'Lax' }]);
-    const childPage = await childContext.newPage(), childReceived = [];
-    childPage.on('pageerror', error => report.errors.push(error.message));
-    childPage.on('websocket', socket => socket.on('framereceived', frame => { try { childReceived.push(JSON.parse(frame.payload)); } catch {} }));
-    await childPage.goto(`${app.origin}/village/`, { waitUntil: 'networkidle' }); await childPage.locator('#wardrobe-save').click();
-    await childPage.waitForFunction(() => document.querySelector('#connection-status').textContent.includes('도착'));
-    assert.equal(await childPage.locator('#chat-form').isVisible(), false);
-    assert.equal(await childPage.locator('#child-chat-note').textContent(), '어린이 회원에게는 인사말과 감정표현만 보여요');
-    await pages[0].locator('#chat-input').fill('어린이에게 보이지 않을 자유 대화'); await pages[0].locator('#chat-send').click();
-    await pages[1].locator('#chat-log').getByText('어린이에게 보이지 않을 자유 대화', { exact: false }).waitFor();
-    await pages[0].locator('#phrase-buttons button').first().click();
-    await childPage.locator('#chat-log').getByText('안녕!', { exact: false }).waitFor();
-    await pages[0].locator('#emote-heart').click();
-    await waitUntil(() => childReceived.some(message => message.type === 'emote' && message.id === 'heart'), '어린이 감정 수신');
-    assert.equal(await childPage.locator('#chat-log').getByText('어린이에게 보이지 않을 자유 대화', { exact: false }).count(), 0);
-    assert.ok(!childReceived.some(message => message.kind === 'free'));
-    await childPage.screenshot({ path: resolve(output, 'mobile-child-chat.png'), fullPage: true }); report.screenshots.push('mobile-child-chat.png');
-    pass('어린이 자유 채팅 미수신·입력 숨김·안내·문구와 감정 수신');
+    const childPages = [], childReceived = [[], []];
+    for (const [index, width] of [1280, 390].entries()) {
+      const child = seedMember(db, alice.id, `browser-child-${index}`, { child: true });
+      db.prepare('UPDATE user SET name=? WHERE id=?').run(index ? '고운별' : '새싹친구', child.id);
+      const { page } = await memberContext(browser, app, child, width);
+      childPages.push(page);
+      page.on('websocket', socket => socket.on('framereceived', frame => { try { childReceived[index].push(JSON.parse(frame.payload)); } catch {} }));
+      await page.goto(`${app.origin}/village/`, { waitUntil: 'networkidle' });
+      await page.locator('#wardrobe-save').click();
+      await page.waitForFunction(() => document.querySelector('#connection-status').textContent.includes('도착'));
+      assert.equal(await page.locator('#chat-input').count(), 0);
+      assert.equal(await page.locator('#chat-form').count(), 0);
+      assert.equal(await page.locator('#child-chat-note').isVisible(), true);
+      assert.equal(await page.locator('#village-title').textContent(), VILLAGES.kids.name);
+      assert.equal(await page.locator('#tour-controls').isVisible(), false);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    }
+    await pages[0].locator('#chat-input').fill('다른 마을에는 전달하지 않는 대화'); await pages[0].locator('#chat-send').click();
+    await pages[1].locator('#chat-log').getByText('다른 마을에는 전달하지 않는 대화', { exact: false }).waitFor();
+    await childPages[0].locator('#phrase-buttons button').first().click();
+    await childPages[1].locator('#chat-log').getByText('안녕!', { exact: false }).waitFor();
+    await childPages[1].locator('#emote-heart').click();
+    await waitUntil(() => childReceived[0].some(message => message.type === 'emote' && message.id === 'heart'), '어린이 감정 수신');
+    assert.ok(childReceived.every(messages => !messages.some(message => message.kind === 'free' || message.villageId === 'general')));
+    assert.ok(received.every(messages => !messages.some(message => message.villageId === 'kids')));
+    for (const [index, page] of childPages.entries()) await capture(page, `${index ? 'mobile' : 'desktop'}-village-kids.png`);
+    for (const page of pages) {
+      assert.equal(await page.locator('#village-title').textContent(), VILLAGES.general.name);
+      assert.equal(await page.locator('#tour-controls').isVisible(), false);
+    }
+    pass('어린이 마을 두 화면에 자유 채팅 입력 요소 없음·인사말과 감정 전달·두 마을 소식 분리');
     const guest = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await guest.goto(`${app.origin}/village/`, { waitUntil: 'networkidle' }); await guest.locator('#login-panel').waitFor({ state: 'visible' });
     await guest.screenshot({ path: resolve(output, 'mobile-login.png'), fullPage: true }); report.screenshots.push('mobile-login.png');
     pass('비회원 로그인 안내');
-    const gallery = {};
-    for (const [id, year] of Object.entries({ elementary: 2017, middle: 2012, high: 2009, adult: 2000 })) {
-      const member = seedMember(db, alice.id, `header-${id}`, { child: id === 'elementary', birthYear: year }); gallery[id] = member;
-      db.prepare('UPDATE user SET name=? WHERE id=?').run('마을친구', member.id);
-      for (const [label, width] of [['desktop', 1280], ['mobile', 390]]) {
-        const { context, page } = await memberContext(browser, app, member, width);
-        await page.goto(`${app.origin}/village/`, { waitUntil: 'networkidle' });
-        if (await page.locator('#wardrobe-dialog').isVisible()) await page.locator('#wardrobe-save').click();
-        await page.waitForFunction(() => document.querySelector('#connection-status').textContent.includes('도착'));
-        assert.equal(await page.locator('#village-title').textContent(), VILLAGES[id].name);
-        assert.equal(await page.locator('#tour-controls').isVisible(), false);
-        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-        await capture(page, `${label}-village-${id}.png`); await context.close();
-      }
-      pass(`${VILLAGES[id].name} 전용 머리글·강조색·조작 화면 390px·데스크톱`);
-    }
-    const admin = seedMember(db, alice.id, 'browser-admin', { userId: 'village-browser-admin', birthYear: 2000 });
+    const admin = seedMember(db, alice.id, 'browser-admin', { userId: 'village-browser-admin' });
     db.prepare('UPDATE user SET name=? WHERE id=?').run('마을지기', admin.id);
     for (const [label, width] of [['desktop', 1280], ['mobile', 390]]) {
       const { context, page } = await memberContext(browser, app, admin, width);
@@ -140,26 +124,22 @@ await scenario(async ({ app, db, signup }) => {
         await page.locator('#tour-select').selectOption(id); await page.locator('#tour-start').click();
         await page.waitForFunction(name => document.querySelector('#village-title').textContent === name, VILLAGES[id].name);
         assert.equal(await page.locator('#operator-label').isVisible(), true);
+        assert.equal(await page.locator('#chat-input').count(), id === 'general' ? 1 : 0);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         await capture(page, `${label}-operator-${id}.png`); await delay(2100);
       }
-      pass(`${width}px 운영자 둘러보기로 네 마을 이동·운영자 표시`);
+      pass(`${width}px 운영자 둘러보기로 두 마을 이동·운영자 표시`);
       if (width === 1280) {
         await request(app, '/api/village/reports', { method: 'POST', cookie: bob.cookie, body: { targetId: alice.id, reason: '운영 화면 마을 이름 확인' } });
         await request(app, '/api/admin/village/mutes', { method: 'POST', cookie: admin.cookie, body: { targetId: bob.id, durationMinutes: 1, reason: '운영 화면 검수' } });
         await page.goto(`${app.origin}/account/admin/`, { waitUntil: 'networkidle' });
         await page.locator('#admin-content').waitFor({ state: 'visible' });
-        await page.locator('#admin-village-reports').getByText('중학생 마을', { exact: true }).waitFor();
-        await page.locator('#admin-village-mutes').getByText('중학생 마을', { exact: false }).waitFor();
-        await page.locator('#village-profile-target').fill(gallery.high.id);
-        await page.getByRole('button', { name: '회원 정보 확인', exact: true }).click();
-        await page.locator('#admin-village-profile').getByLabel('수정할 출생연도', { exact: true }).fill('2000');
-        await page.locator('#admin-village-profile').getByLabel('수정 사유', { exact: true }).fill('시험 회원의 출생연도 정정 요청 확인');
-        await page.getByRole('button', { name: '출생연도 수정', exact: true }).click();
-        await page.locator('#admin-village-profile').getByRole('heading', { name: '출생연도 수정 감사', exact: true }).waitFor();
-        assert.equal(db.prepare('SELECT birthYear FROM village_profiles WHERE userId=?').get(gallery.high.id).birthYear, 2000);
-        await page.locator('#admin-village-profile').scrollIntoViewIfNeeded();
-        await page.screenshot({ path: resolve(output, 'admin-birthyear-correction.png') }); report.screenshots.push('admin-birthyear-correction.png');
-        pass('운영자 화면의 마을별 신고·제한·출생연도 수정과 감사 기록');
+        await page.locator('#admin-village-reports').getByText('청소년·성인 마을', { exact: true }).waitFor();
+        await page.locator('#admin-village-mutes').getByText('청소년·성인 마을', { exact: false }).waitFor();
+        assert.equal(await page.locator('#village-profile-target').count(), 0);
+        await page.locator('#admin-village-reports').scrollIntoViewIfNeeded();
+        await page.screenshot({ path: resolve(output, 'admin-village-moderation.png') }); report.screenshots.push('admin-village-moderation.png');
+        pass('운영자 신고·제한 화면의 마을 이름과 제거한 회원 설정 화면 미존재');
       }
       await context.close();
     }

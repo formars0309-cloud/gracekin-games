@@ -6,7 +6,7 @@ import { loadVillageMap } from './map.js';
 import { createVillageStore, fields, PALETTE, DEFAULT_AVATAR, PHRASES, EMOTES } from './store.js';
 import { containsBlockedWord } from './filter.js';
 import { villageAdmission, startVillageCleanup } from './policy.js';
-import { VILLAGES, schoolCalendar, villageForBirthYear, validateBirthYear, villageName } from './age-group.js';
+import { VILLAGES, villageForUser, villageName } from './villages.js';
 
 const CAPACITY = 50, MAX_SPEED = 4, RETAIN_MS = 10 * 60 * 1000;
 
@@ -26,14 +26,14 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
   }
   const currentUser = userId => activeAccountUser(db, db.prepare('SELECT id,name,emailVerified,ageBand FROM user WHERE id=?').get(userId));
   function ownVillage(user) {
-    const profile = store.profile(user.id);
-    if (!profile) fail(409, 'BIRTH_YEAR_REQUIRED', '마을에 들어가기 전에 출생연도를 정해 주세요.');
-    const time = now(), village = villageForBirthYear(profile.birthYear, time);
-    if (village.id === 'elementary') {
-      if (accountAge(user) !== 'under14') fail(403, 'VILLAGE_ELEMENTARY_GUARDIAN_REQUIRED', '초등학생 마을은 보호자 동의가 확인된 어린이 회원만 들어갈 수 있어요.');
-      admission.assertGuardian(user);
-    }
-    return { profile, village, schoolYear: schoolCalendar(time).schoolYear };
+    const village = villageForUser(user);
+    village.assertEntry(user, admission);
+    return village;
+  }
+  function guardianState(user) {
+    if (accountAge(user) !== 'under14') return null;
+    const row = db.prepare('SELECT id,status,consentVersion FROM guardian_requests WHERE childUserId=?').get(user.id);
+    return JSON.stringify(row ?? null);
   }
   function selectedVillage(id) {
     const village = villages.get(id);
@@ -63,14 +63,9 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
     const user = row?.userId === player.user.id && Number(new Date(row.expiresAt)) > Date.now() && currentUser(player.user.id);
     if (!user) return disconnect(player, 'AUTH_REQUIRED', '로그인 또는 보호자 동의 상태를 확인해 주세요.', 4001);
     player.user = user;
-    const profile = store.profile(user.id);
-    if (!profile || profile.revision !== player.profileRevision || schoolCalendar(now()).schoolYear !== player.schoolYear || isAdmin(user) !== player.isOperator) return disconnect(player, 'VILLAGE_CHANGED', '학년도나 회원 정보가 바뀌었어요. 새 마을에 다시 연결할게요.', 4004);
-    try {
-      admission.assert(user);
-      const assignment = ownVillage(user);
-      if (assignment.village.id !== player.ownVillageId || assignment.schoolYear !== player.schoolYear) return disconnect(player, 'VILLAGE_CHANGED', '학년도가 바뀌었어요. 새 마을에 다시 연결할게요.', 4004);
-    }
+    try { admission.assert(user); ownVillage(user); }
     catch (error) { return disconnect(player, error.code, error.message, 4003); }
+    if (accountAge(user) !== player.ageBand || guardianState(user) !== player.guardianState || isAdmin(user) !== player.isOperator || ownVillage(user).id !== player.ownVillageId) return disconnect(player, 'VILLAGE_CHANGED', '회원의 연령 구분이나 동의 상태가 바뀌었어요. 맞는 마을에 다시 연결할게요.', 4004);
     return true;
   }
   function channel(villageId, id) {
@@ -85,7 +80,7 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
     for (const id of room.players) {
       const recipient = players.get(id);
       if (!recipient || !validPlayer(recipient) || recipient.villageId !== room.villageId || recipient.channelId !== room.id) continue;
-      if (value.type === 'chat' && value.kind === 'free' && accountAge(recipient.user) === 'under14') continue;
+      if (value.type === 'chat' && value.kind === 'free' && (recipient.villageId === 'kids' || accountAge(recipient.user) === 'under14')) continue;
       if (!senderId || !store.blocked(id, senderId)) send(recipient, value);
     }
   }
@@ -177,7 +172,7 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
         content = PHRASES.find(item => item.id === message.id)?.text;
         if (!content) fail(422, 'INVALID_PHRASE', '정해진 인사말을 골라 주세요.');
       } else {
-        if (accountAge(player.user) === 'under14') fail(403, 'CHILD_FREE_CHAT', '어린이 회원은 인사말 버튼을 이용해 주세요.');
+        if (player.villageId === 'kids' || accountAge(player.user) === 'under14') fail(403, 'CHILD_FREE_CHAT', '어린이 마을과 어린이 회원은 인사말 버튼을 이용해 주세요.');
         content = text(message.text, 1, 80, '채팅');
         if (/[\u0000-\u001f\u007f]/.test(content)) fail(422, 'INVALID_INPUT', '줄바꿈 없이 채팅을 입력해 주세요.');
         if (containsBlockedWord(content)) fail(422, 'BLOCKED_WORD', '사용할 수 없는 말이 들어 있습니다. 다른 표현으로 보내 주세요.');
@@ -211,8 +206,8 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
         releaseError(); socket.removeListener('close', releaseError);
         const old = players.get(user.id);
         if (old) { leaveRoom(old); players.delete(user.id); old.ws.close(4002, '다른 창에서 입장'); }
-        const player = { user, sessionId, ws, ownVillageId: assignment.village.id, profileRevision: assignment.profile.revision, schoolYear: assignment.schoolYear, isOperator: isAdmin(user), touring: false, avatar: store.avatar(user.id)?.data ?? DEFAULT_AVATAR, path: [], alive: true };
-        players.set(user.id, player); enterRoom(player, availableRoom(assignment.village.id));
+        const player = { user, sessionId, ws, ownVillageId: assignment.id, ageBand: accountAge(user), guardianState: guardianState(user), isOperator: isAdmin(user), touring: false, avatar: store.avatar(user.id)?.data ?? DEFAULT_AVATAR, path: [], alive: true };
+        players.set(user.id, player); enterRoom(player, availableRoom(assignment.id));
         if (old && old.villageId !== player.villageId) announceChannels(old.villageId);
         ws.on('message', (raw, binary) => receive(player, raw, binary));
         ws.on('pong', () => { player.alive = true; }); ws.on('error', () => {});
@@ -249,32 +244,21 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
     if (!user) fail(404, 'NOT_FOUND', '회원을 찾을 수 없습니다.');
     return user;
   }
-  function profileVillageId(userId) {
-    const profile = store.profile(userId);
-    if (!profile) return 'unassigned';
-    try { return villageForBirthYear(profile.birthYear, now()).id; } catch { return 'unassigned'; }
-  }
   async function handle(request, url) {
     const path = url.pathname, admin = path.startsWith('/api/admin/village/');
     if (!path.startsWith('/api/village/') && !admin) return null;
+    if (!['/api/village/session', '/api/village/map', '/api/village/avatar', '/api/village/blocks', '/api/village/reports', '/api/admin/village/reports', '/api/admin/village/mutes'].includes(path)) fail(404, 'NOT_FOUND', '마을 요청을 찾을 수 없습니다.');
     const { user } = await authenticate(request.headers);
     if (admin && !isAdmin(user)) fail(403, 'ADMIN_REQUIRED', '운영자 권한이 필요합니다.');
-    if (['/api/village/session', '/api/village/avatar', '/api/village/profile', '/api/village/map'].includes(path) || path === '/api/village/blocks' && request.method === 'POST') admission.assert(user);
+    if (['/api/village/session', '/api/village/avatar', '/api/village/map'].includes(path) || path === '/api/village/blocks' && request.method === 'POST') admission.assert(user);
     if (url.search) fail(422, 'INVALID_INPUT', '추가 조회 항목은 지원하지 않습니다.');
     if (path === '/api/village/session' && request.method === 'GET') {
-      const assignment = store.profile(user.id) ? ownVillage(user) : null;
-      return json({ user: { id: user.id, name: user.name, ageBand: accountAge(user), canFreeChat: accountAge(user) !== 'under14', isOperator: isAdmin(user) }, opensAt: admission.opensAt, profile: assignment ? { ...assignment.profile, village: assignment.village } : null, birthYearOptions: schoolCalendar(now()), villages: isAdmin(user) ? Object.values(VILLAGES) : [], avatar: store.avatar(user.id), palette: PALETTE, phrases: PHRASES, emotes: EMOTES, channels: assignment ? channelList(assignment.village.id) : [] });
-    }
-    if (path === '/api/village/profile' && request.method === 'POST') {
-      if (store.profile(user.id)) fail(409, 'BIRTH_YEAR_LOCKED', '출생연도는 본인이 바꿀 수 없어요. 잘못 입력했다면 문의 메일로 알려 주세요.');
-      const body = fields(await readJson(request), ['birthYear', 'confirmed']);
-      if (body.confirmed !== true) fail(422, 'CONFIRM_BIRTH_YEAR', '한 번 정하면 바꿀 수 없어요. 출생연도를 확인한 뒤 확정해 주세요.');
-      const village = validateBirthYear(user, body.birthYear, now());
-      return json({ profile: { ...store.saveProfile(user.id, body.birthYear), village } }, 201);
+      const village = ownVillage(user);
+      return json({ user: { id: user.id, name: user.name, ageBand: accountAge(user), canFreeChat: accountAge(user) !== 'under14', isOperator: isAdmin(user) }, opensAt: admission.opensAt, village, villages: isAdmin(user) ? Object.values(VILLAGES) : [], avatar: store.avatar(user.id), palette: PALETTE, phrases: PHRASES, emotes: EMOTES, channels: channelList(village.id) });
     }
     if (path === '/api/village/map' && request.method === 'GET') {
       const player = players.get(user.id);
-      const villageId = player && validPlayer(player) ? player.villageId : ownVillage(user).village.id;
+      const villageId = player && validPlayer(player) ? player.villageId : ownVillage(user).id;
       return json({ map: selectedVillage(villageId).map.map });
     }
     if (path === '/api/village/avatar' && request.method === 'PUT') {
@@ -306,7 +290,7 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
       const body = fields(await readJson(request), ['targetId', 'durationMinutes', 'reason']);
       const targetId = findUser(body.targetId).id, reason = text(body.reason, 2, 500, '처리 사유');
       if (!Number.isInteger(body.durationMinutes) || body.durationMinutes < 0 || body.durationMinutes > 10080) fail(422, 'INVALID_INPUT', '채팅 금지 시간은 0~10080분으로 입력해 주세요.');
-      const until = now() + body.durationMinutes * 60000, villageId = players.get(targetId)?.villageId ?? profileVillageId(targetId);
+      const until = now() + body.durationMinutes * 60000, villageId = players.get(targetId)?.villageId ?? villageForUser(findUser(targetId)).id;
       db.exec('BEGIN IMMEDIATE');
       try {
         db.prepare('INSERT INTO village_mutes(userId,until,reason,actorId,createdAt,villageId) VALUES(?,?,?,?,?,?) ON CONFLICT(userId) DO UPDATE SET until=excluded.until,reason=excluded.reason,actorId=excluded.actorId,createdAt=excluded.createdAt,villageId=excluded.villageId').run(targetId, until, reason, user.id, now(), villageId);
@@ -314,21 +298,6 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
       } catch (error) { db.exec('ROLLBACK'); throw error; }
       const player = players.get(targetId); if (player) send(player, { type: 'notice', message: body.durationMinutes ? `${body.durationMinutes}분 동안 채팅과 감정표현 사용이 제한됩니다.` : '채팅 제한이 해제되었습니다.' });
       return json({ mute: { userId: targetId, until, villageId, villageName: villageName(villageId) } });
-    }
-    const profilePath = /^\/api\/admin\/village\/profiles\/([^/]+)$/.exec(path);
-    if (profilePath && request.method === 'GET') {
-      const target = findUser(decodeURIComponent(profilePath[1])), villageId = profileVillageId(target.id);
-      const audit = db.prepare("SELECT actorId,reason,createdAt,details FROM village_admin_audit WHERE targetId=? AND action='birth_year_correction' ORDER BY createdAt DESC LIMIT 20").all(target.id).map(row => ({ ...row, details: JSON.parse(row.details) }));
-      return json({ user: { id: target.id, name: target.name, ageBand: accountAge(target) }, profile: store.profile(target.id), villageId, villageName: villageName(villageId), birthYearOptions: schoolCalendar(now()), audit });
-    }
-    if (path === '/api/admin/village/profiles' && request.method === 'POST') {
-      const body = fields(await readJson(request), ['targetId', 'birthYear', 'expectedRevision', 'reason']);
-      const target = findUser(body.targetId), reason = text(body.reason, 2, 500, '수정 사유');
-      admission.assertGuardian(target);
-      const village = validateBirthYear(target, body.birthYear, now());
-      const profile = store.correctProfile(user.id, target.id, body.birthYear, body.expectedRevision, reason, village.id);
-      const player = players.get(target.id); if (player) validPlayer(player);
-      return json({ profile: { ...profile, village } });
     }
     fail(404, 'NOT_FOUND', '마을 요청을 찾을 수 없습니다.');
   }
