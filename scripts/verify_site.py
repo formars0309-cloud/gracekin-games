@@ -278,6 +278,24 @@ def race_network_issues(source: str) -> list[str]:
     return network_issues(checked)
 
 
+def character_network_issues(source: str, *, renderer: bool = False) -> list[str]:
+    """캐릭터의 공개 그림 요청 또는 손님 외형 초안만 제한적으로 허용한다.
+
+    인증·성장 데이터는 기존 API 검사를 그대로 적용한다. 검토한 단일 호출을
+    정규화하며 다른 저장소 접근·동적 fetch가 추가되면 일반 검사에서 실패한다.
+    """
+    if renderer:
+        guard = "new URL(base).origin !== new URL(globalThis.location?.href || 'http://localhost/').origin || !base.endsWith('/')"
+        call = "fetch(new URL('manifest.json', base),"
+        if guard not in source or source.count(call) != 1:
+            return ['캐릭터 그림의 같은 출처·고정 manifest 요청 가드 확인 필요'] + network_issues(source)
+        return network_issues(source.replace(call, "fetch('/api/character-art-check',", 1))
+    required = ["export const DRAFT_KEY = 'gracekin-character-draft-v1';", 'storage.getItem(DRAFT_KEY)', 'storage.setItem(DRAFT_KEY, JSON.stringify(data))', 'storage?.removeItem(DRAFT_KEY)', 'storage = window.localStorage;']
+    if not all(snippet in source for snippet in required):
+        return ['캐릭터 손님 초안의 전용 키·읽기·쓰기 경계 확인 필요'] + network_issues(source)
+    return network_issues(source.replace('storage = window.localStorage;', 'storage = null;', 1))
+
+
 def host_router_issues(source: str) -> list[str]:
     """고정된 커뮤니티 호스트 이동 파일에는 API 호출이나 외부 목적지 추가를 허용하지 않는다."""
     issues = network_issues(source)
@@ -304,7 +322,7 @@ def css_references(source: str) -> list[str]:
 PENDING_FONT_MIGRATION = frozenset()
 FONT_STYLESHEET = 'assets/shared/fonts.css'
 FONT_PAGES = frozenset({
-    'index.html', 'games/index.html', 'privacy/index.html', 'account/index.html', 'account/admin/index.html', 'community/index.html',
+    'index.html', 'games/index.html', 'privacy/index.html', 'character/index.html', 'account/index.html', 'account/admin/index.html', 'community/index.html',
     'community/bug-report/index.html', 'community/privacy/index.html', 'community/terms/index.html',
     'games/slimeline/index.html', 'games/gyeongguk/index.html',
 })
@@ -484,6 +502,10 @@ def verify(root: Path) -> Report:
     dockerignore = root / '.dockerignore'
     check(dockerignore.is_file(), '운영 패키지 허용 목록 없음')
     docker_allowed = {line.strip()[1:] for line in dockerignore.read_text().splitlines() if line.strip().startswith('!')} if dockerignore.is_file() else set()
+    for folder in ('character', 'assets/character', 'server/character'):
+        if folder + '/**' in docker_allowed and folder + '/' in docker_allowed:
+            for path in (root / folder).rglob('*'):
+                docker_allowed.add(path.relative_to(root).as_posix() + ('/' if path.is_dir() else ''))
     dockerfile = root / 'Dockerfile'
     check(dockerfile.is_file(), '운영 이미지 Dockerfile 없음')
     copied = docker_copy_roots(dockerfile.read_text()) if dockerfile.is_file() else set()
@@ -493,10 +515,10 @@ def verify(root: Path) -> Report:
         check(path in copied or '.' in copied, f'{path}: Dockerfile COPY에서 운영 경로 누락')
     for path in sorted((root / 'server').glob('*.js')):
         check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 운영 패키지에서 서버 파일 누락')
-    required = [root / 'index.html', root / 'games/index.html', root / 'privacy/index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'community/account-deletion/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    required = [root / 'character/index.html', root / 'index.html', root / 'games/index.html', root / 'privacy/index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'community/account-deletion/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
-    paths = [root / 'index.html'] + sorted((root / 'privacy').glob('**/*.html')) + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
+    paths = [root / 'index.html'] + sorted((root / 'privacy').glob('**/*.html')) + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html')) + sorted((root / 'character').glob('**/*.html'))
     pages = {path: Page(path) for path in paths if path.is_file()}
     report.pages = len(pages)
     verify_fonts(root, pages, report)
@@ -521,7 +543,7 @@ def verify(root: Path) -> Report:
         rel = path.relative_to(root)
         check(not page.errors, f'{rel}: HTML 구조 오류 ({"; ".join(page.errors)})')
         scripts = [attrs for tag, attrs in page.tags if tag == 'script' and attrs.get('src') == 'https://cloud.umami.is/script.js']
-        if path.is_relative_to(root / 'account') or path == root / 'community/bug-report/index.html':
+        if path.is_relative_to(root / 'account') or path.is_relative_to(root / 'character') or path == root / 'community/bug-report/index.html':
             check(not scripts, f'{rel}: 계정·비공개 제보 화면에 외부 통계 스크립트가 있음')
             external_scripts = [attrs for tag, attrs in page.tags if tag == 'script' and urlsplit(attrs.get('src', '')).netloc]
             check(not external_scripts, f'{rel}: 계정·비공개 제보 화면에 외부 스크립트가 있음')
@@ -706,7 +728,10 @@ def verify(root: Path) -> Report:
         rel = path.relative_to(root)
         check(not any(pattern.search(content) for pattern in SECRET_PATTERNS), f'{rel}: 민감정보 의심 패턴 발견 (원문 비노출)')
         if path.suffix == '.js':
-            issues = race_network_issues(content) if rel.as_posix() == 'assets/slime-race/race.js' else network_issues(content, allow_summary=rel.as_posix() == 'assets/shared/account-header.js')
+            if rel.as_posix() in {'assets/character/character.js', 'assets/character/render.js'}:
+                issues = character_network_issues(content, renderer=rel.name == 'render.js')
+            else:
+                issues = race_network_issues(content) if rel.as_posix() == 'assets/slime-race/race.js' else network_issues(content, allow_summary=rel.as_posix() == 'assets/shared/account-header.js')
             for issue in issues:
                 check(False, f'{rel}: {issue}')
         if path.suffix == '.css':

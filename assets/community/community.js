@@ -137,6 +137,13 @@
   }
   const categoryLabel = post => NOTICE_CATEGORIES[post.category] || '새 소식';
   function appendAuthor(target, author) {
+    if (author.character) {
+      const portrait = make('canvas', null, 'author-portrait');
+      portrait.width = 64; portrait.height = 64; portrait.hidden = true;
+      portrait.setAttribute('role', 'img'); portrait.setAttribute('aria-label', `${author.name}님의 캐릭터`);
+      target.append(portrait);
+      import('/assets/character/render.js').then(({ renderCharacter }) => renderCharacter(portrait, { v: 1, race: author.character.race, job: author.character.job, appearance: author.character.appearance }, { mode: 'portrait', size: 64 })).then(() => { if (portrait.isConnected) portrait.hidden = false; }).catch(() => { portrait.remove(); });
+    }
     target.append(make('span', author.name, 'author-name'));
     if (author.isOperator) target.append(make('span', '운영자', 'operator-badge'));
   }

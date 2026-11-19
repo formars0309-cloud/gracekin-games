@@ -1,0 +1,6 @@
+검증 실패: 5개 / 3768개 확인
+- account/index.html (a.href): 운영 패키지에서 내부 자산 누락
+- character/index.html (link.href): 운영 패키지에서 내부 자산 누락
+- character/index.html (script.src): 운영 패키지에서 내부 자산 누락
+- character/index.html (a.href): 운영 패키지에서 내부 자산 누락
+- character/index.html (a.href): 운영 패키지에서 내부 자산 누락

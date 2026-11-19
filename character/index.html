@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<link rel="stylesheet" href="/assets/shared/fonts.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>캐릭터 만들기 · 그레이스킨게임즈</title>
+<meta name="description" content="열 가지 종족과 직업으로 나만의 꼬마 모험가를 만들어요. 함께 자라며 다음 모험을 준비하세요.">
+<meta name="theme-color" content="#0c0a10">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gracekingames.com/character/">
+<meta property="og:site_name" content="Gracekin Games">
+<meta property="og:title" content="캐릭터 만들기 · 그레이스킨게임즈">
+<meta property="og:description" content="나만의 꼬마 모험가를 만들고 다음 모험을 준비하세요.">
+<meta property="og:image" content="https://gracekingames.com/assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="/assets/shared/account-header.css">
+<link rel="stylesheet" href="/assets/shared/site.css">
+<link rel="stylesheet" href="/assets/character/character.css">
+<script defer src="/assets/shared/account-header.js"></script>
+<script type="module" src="/assets/character/character.js"></script>
+</head>
+<body>
+<a class="character-skip" href="#main">본문으로 바로가기</a>
+<div class="gb-root">
+<header class="gb-nav">
+<a class="gb-logo" href="https://gracekingames.com/"><img src="/assets/favicon.svg" width="36" height="36" alt=""><span>GRACEKIN GAMES</span></a>
+<nav class="gb-navlinks" aria-label="주 메뉴"><a href="https://gracekingames.com/games/">모든 게임</a><a href="/community/">커뮤니티</a><a href="/character/" aria-current="page">캐릭터 만들기</a></nav>
+<div class="account-header" data-account-header aria-busy="false"><a class="account-header-link" data-account-link href="/account/"><span class="account-header-name" data-account-label>내 계정</span><span class="account-header-grain" data-account-grain hidden><img src="/assets/currency/coin.webp" width="24" height="24" alt="그레이스킨 코인"><span data-account-balance></span></span></a><button class="account-header-retry" data-account-retry type="button" hidden>다시 확인</button></div>
+</header>
+<main class="gb-main character-main" id="main">
+<div class="character-heading"><p class="eyebrow">작은 모험의 시작</p><h1>나의 꼬마 모험가</h1><p>어떤 모습으로, 어떤 이야기를 만나게 될까요?</p></div>
+<p id="loading" role="status">캐릭터 공방의 문을 열고 있어요.</p>
+<p id="character-error" class="character-notice error" role="alert" hidden></p>
+<p id="character-result" class="character-notice" role="status" hidden></p>
+<button id="retry-load" type="button" hidden>다시 불러오기</button>
+<button id="conflict-reload" type="button" hidden>최신 캐릭터 다시 불러오기</button>
+<div id="character-app" class="character-layout" aria-busy="false" hidden>
+<aside class="character-preview" aria-labelledby="nickname">
+<div class="preview-top"><p id="nickname"></p><canvas id="portrait-canvas" width="96" height="96" role="img" aria-label="캐릭터 초상 미리보기"></canvas></div>
+<div class="character-stage"><canvas id="character-canvas" width="512" height="768" role="img" aria-label="캐릭터 전신 미리보기"></canvas></div>
+<p id="preview-caption"></p><p id="art-message" class="character-notice error" role="alert" hidden></p>
+<p id="draft-note" class="muted">손님으로도 만들어 볼 수 있어요. 초안은 이 브라우저에만 보관해요.</p>
+</aside>
+<section class="character-panel" aria-labelledby="panel-title">
+<ol id="step-list" class="step-list" aria-label="캐릭터 만들기 순서"><li aria-current="step">종족</li><li>꾸미기</li><li>직업</li><li>저장</li></ol>
+<h2 id="panel-title" tabindex="-1">종족 고르기</h2>
+<p id="selection-status" class="sr-only" role="status"></p>
+<p id="login-guide" class="muted">저장할 때 로그인이 필요해요. 캐릭터 이름은 계정 닉네임을 써요.</p>
+<a id="login-link" href="/account/?view=signin">로그인하고 돌아오기</a>
+<div id="wizard"><div id="step-content"></div><div class="wizard-actions"><button id="previous-step" type="button">이전</button><button id="next-step" class="primary" type="button">다음</button><button id="save-character" class="primary" type="button" hidden>이 모습으로 저장</button><button id="cancel-edit" type="button" hidden>변경 취소</button></div></div>
+<div id="member-view" hidden></div>
+</section>
+</div>
+<dialog id="reset-dialog" aria-labelledby="reset-title" aria-describedby="reset-description"><h2 id="reset-title">포인트를 다시 나눌까요?</h2><p id="reset-description">지금까지 분배한 포인트를 모두 돌려받아요. 초기화 후 다음 무료 초기화까지 30일을 기다려야 해요.</p><div class="wizard-actions"><button id="reset-cancel" type="button" autofocus>취소</button><button id="reset-confirm" class="primary" type="button">초기화하기</button></div></dialog>
+</main>
+<footer class="gb-foot"><strong>GRACEKIN GAMES</strong><span>작은 세계에서 만나는, 오래 남을 즐거움.</span><div class="gb-foot-links"><a href="/community/terms/">이용약관</a><a href="https://gracekingames.com/privacy/">개인정보처리방침</a><a href="/community/account-deletion/">계정 삭제 안내</a><a href="/community/bug-report/">버그 제보</a><a href="mailto:support@gracekingames.com">문의</a></div><span class="gb-copyright">© 2026 Gracekin Games</span></footer>
+</div>
+<noscript><p>캐릭터를 만들려면 자바스크립트가 필요해요. <a href="https://community.gracekingames.com/character/">커뮤니티의 캐릭터 만들기로 이동</a></p></noscript>
+</body>
+</html>

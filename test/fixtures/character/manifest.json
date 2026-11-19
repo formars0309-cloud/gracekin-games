@@ -1,0 +1,472 @@
+{
+  "v": 1,
+  "canvas": {
+    "w": 128,
+    "h": 192
+  },
+  "portrait": {
+    "x": 24,
+    "y": 22,
+    "size": 80
+  },
+  "order": [
+    "back",
+    "hairBack",
+    "body",
+    "outfit",
+    "hairFront",
+    "ears"
+  ],
+  "races": {
+    "human": {
+      "body": "body.png",
+      "skinMask": "skin.png",
+      "eyeMask": "eye.png",
+      "ears": null,
+      "back": null
+    },
+    "elf": {
+      "body": "body.png",
+      "skinMask": "skin.png",
+      "eyeMask": "eye.png",
+      "ears": null,
+      "back": null
+    },
+    "dwarf": {
+      "body": "body.png",
+      "skinMask": "skin.png",
+      "eyeMask": "eye.png",
+      "ears": null,
+      "back": null
+    },
+    "cat": {
+      "body": "body.png",
+      "skinMask": "skin.png",
+      "eyeMask": "eye.png",
+      "ears": "ears.png",
+      "back": "back.png"
+    },
+    "fox": {
+      "body": "body.png",
+      "skinMask": "skin.png",
+      "eyeMask": "eye.png",
+      "ears": "ears.png",
+      "back": "back.png"
+    },
+    "rabbit": {
+      "body": "body.png",
+      "skinMask": "skin.png",
+      "eyeMask": "eye.png",
+      "ears": "ears.png",
+      "back": null
+    },
+    "bear": {
+      "body": "body.png",
+      "skinMask": "skin.png",
+      "eyeMask": "eye.png",
+      "ears": "ears.png",
+      "back": null
+    },
+    "dragon": {
+      "body": "body.png",
+      "skinMask": null,
+      "eyeMask": "eye.png",
+      "ears": "ears.png",
+      "back": "back.png"
+    },
+    "fairy": {
+      "body": "body.png",
+      "skinMask": "skin.png",
+      "eyeMask": "eye.png",
+      "ears": null,
+      "back": "back.png"
+    },
+    "moon": {
+      "body": "body.png",
+      "skinMask": null,
+      "eyeMask": "eye.png",
+      "ears": null,
+      "back": null
+    }
+  },
+  "hair": {
+    "h1": {
+      "label": "헝클어진 짧은 머리",
+      "front": "hair.png",
+      "back": null,
+      "mask": "hair-mask.png",
+      "backMask": null
+    },
+    "h2": {
+      "label": "긴 생머리",
+      "front": "hair.png",
+      "back": null,
+      "mask": "hair-mask.png",
+      "backMask": null
+    },
+    "h3": {
+      "label": "단정한 단발",
+      "front": "hair.png",
+      "back": null,
+      "mask": "hair-mask.png",
+      "backMask": null
+    },
+    "h4": {
+      "label": "높은 포니테일",
+      "front": "hair.png",
+      "back": null,
+      "mask": "hair-mask.png",
+      "backMask": null
+    },
+    "h5": {
+      "label": "양 갈래 땋은 머리",
+      "front": "hair.png",
+      "back": null,
+      "mask": "hair-mask.png",
+      "backMask": null
+    },
+    "h6": {
+      "label": "뻗친 머리",
+      "front": "hair.png",
+      "back": null,
+      "mask": "hair-mask.png",
+      "backMask": null
+    },
+    "h7": {
+      "label": "둥근 보브",
+      "front": "hair.png",
+      "back": null,
+      "mask": "hair-mask.png",
+      "backMask": null
+    },
+    "h8": {
+      "label": "긴 웨이브",
+      "front": "hair.png",
+      "back": null,
+      "mask": "hair-mask.png",
+      "backMask": null
+    }
+  },
+  "outfits": {
+    "guardian": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    },
+    "windblade": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    },
+    "monk": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    },
+    "shadow": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    },
+    "ranger": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    },
+    "runesmith": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    },
+    "arcanist": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    },
+    "alchemist": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    },
+    "healer": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    },
+    "bard": {
+      "image": "outfit.png",
+      "accentMask": "accent.png"
+    }
+  },
+  "palettes": {
+    "hair": [
+      {
+        "id": "c1",
+        "label": "밤색",
+        "rgb": [
+          124,
+          74,
+          44
+        ]
+      },
+      {
+        "id": "c2",
+        "label": "금빛",
+        "rgb": [
+          205,
+          163,
+          67
+        ]
+      },
+      {
+        "id": "c3",
+        "label": "붉은밤",
+        "rgb": [
+          156,
+          65,
+          47
+        ]
+      },
+      {
+        "id": "c4",
+        "label": "흑갈색",
+        "rgb": [
+          53,
+          42,
+          43
+        ]
+      },
+      {
+        "id": "c5",
+        "label": "잿빛",
+        "rgb": [
+          128,
+          133,
+          145
+        ]
+      },
+      {
+        "id": "c6",
+        "label": "은빛",
+        "rgb": [
+          207,
+          211,
+          222
+        ]
+      },
+      {
+        "id": "c7",
+        "label": "분홍빛",
+        "rgb": [
+          212,
+          137,
+          169
+        ]
+      },
+      {
+        "id": "c8",
+        "label": "보랏빛",
+        "rgb": [
+          121,
+          87,
+          154
+        ]
+      },
+      {
+        "id": "c9",
+        "label": "바다빛",
+        "rgb": [
+          74,
+          130,
+          156
+        ]
+      },
+      {
+        "id": "c10",
+        "label": "숲빛",
+        "rgb": [
+          77,
+          129,
+          100
+        ]
+      }
+    ],
+    "eye": [
+      {
+        "id": "e1",
+        "label": "바다",
+        "rgb": [
+          50,
+          112,
+          157
+        ]
+      },
+      {
+        "id": "e2",
+        "label": "풀잎",
+        "rgb": [
+          62,
+          135,
+          92
+        ]
+      },
+      {
+        "id": "e3",
+        "label": "밤",
+        "rgb": [
+          108,
+          69,
+          45
+        ]
+      },
+      {
+        "id": "e4",
+        "label": "금",
+        "rgb": [
+          186,
+          138,
+          40
+        ]
+      },
+      {
+        "id": "e5",
+        "label": "보라",
+        "rgb": [
+          132,
+          83,
+          157
+        ]
+      },
+      {
+        "id": "e6",
+        "label": "붉은빛",
+        "rgb": [
+          174,
+          79,
+          77
+        ]
+      }
+    ],
+    "skin": [
+      {
+        "id": "s1",
+        "label": "살구",
+        "rgb": [
+          230,
+          179,
+          131
+        ]
+      },
+      {
+        "id": "s2",
+        "label": "밝은 살구",
+        "rgb": [
+          247,
+          210,
+          175
+        ]
+      },
+      {
+        "id": "s3",
+        "label": "꿀빛",
+        "rgb": [
+          204,
+          149,
+          95
+        ]
+      },
+      {
+        "id": "s4",
+        "label": "구릿빛",
+        "rgb": [
+          169,
+          113,
+          74
+        ]
+      },
+      {
+        "id": "s5",
+        "label": "짙은 갈색",
+        "rgb": [
+          119,
+          78,
+          54
+        ]
+      },
+      {
+        "id": "s6",
+        "label": "우윳빛",
+        "rgb": [
+          246,
+          223,
+          203
+        ]
+      }
+    ],
+    "accent": [
+      {
+        "id": "a1",
+        "label": "숲",
+        "rgb": [
+          70,
+          131,
+          99
+        ]
+      },
+      {
+        "id": "a2",
+        "label": "바다",
+        "rgb": [
+          57,
+          114,
+          154
+        ]
+      },
+      {
+        "id": "a3",
+        "label": "포도",
+        "rgb": [
+          126,
+          80,
+          146
+        ]
+      },
+      {
+        "id": "a4",
+        "label": "장미",
+        "rgb": [
+          163,
+          74,
+          91
+        ]
+      },
+      {
+        "id": "a5",
+        "label": "햇살",
+        "rgb": [
+          204,
+          156,
+          54
+        ]
+      },
+      {
+        "id": "a6",
+        "label": "밤",
+        "rgb": [
+          77,
+          69,
+          89
+        ]
+      },
+      {
+        "id": "a7",
+        "label": "산호",
+        "rgb": [
+          207,
+          113,
+          81
+        ]
+      },
+      {
+        "id": "a8",
+        "label": "민트",
+        "rgb": [
+          87,
+          160,
+          151
+        ]
+      }
+    ]
+  }
+}
