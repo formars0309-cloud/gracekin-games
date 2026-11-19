@@ -30,7 +30,7 @@ export function validateBirthYear(user, birthYear, time) {
   const village = villageForBirthYear(birthYear, time);
   if (accountAge(user) === 'under14') {
     if (birthYear < calendar.year - 14) fail(422, 'AGE_ACCOUNT_MISMATCH', '가입할 때 선택한 어린이 연령과 출생연도가 맞지 않아요. 보호자와 함께 문의해 주세요.');
-  } else if (birthYear > calendar.year - 13) fail(403, 'VILLAGE_CHILD_SIGNUP_REQUIRED', '어린이 회원은 보호자 동의 가입이 필요해요');
+  } else if (birthYear > calendar.year - 14) fail(403, 'VILLAGE_CHILD_SIGNUP_REQUIRED', '어린이 회원은 보호자 동의 가입이 필요해요');
   if (village.id === 'elementary' && accountAge(user) !== 'under14') fail(403, 'VILLAGE_ELEMENTARY_GUARDIAN_REQUIRED', '초등학생 마을은 보호자 동의가 확인된 어린이 회원만 들어갈 수 있어요.');
   return village;
 }

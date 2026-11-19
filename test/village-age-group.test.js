@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { schoolCalendar, villageForBirthYear, VILLAGES } from '../server/village/age-group.js';
+import { schoolCalendar, villageForBirthYear, validateBirthYear, VILLAGES } from '../server/village/age-group.js';
 import { createVillageStore } from '../server/village/store.js';
 import { scenario, seedMember, request, upgradeStatus, avatar, delay } from './village-helpers.js';
 
@@ -24,6 +24,19 @@ test('서울 3월 1일 경계와 2026·2027학년도의 네 마을·미취학을
   }
   assert.equal(schoolCalendar(Date.parse('2027-02-28T15:00:00Z')).schoolYear, 2027);
   assert.ok(Object.values(VILLAGES).every(village => village.mapPath === '/assets/village/maps/plaza.json'));
+});
+
+test('14plus·legacy 출생연도 상한은 학년도가 아닌 올해에서 14년을 뺀 해다', () => {
+  for (const ageBand of ['14plus', 'legacy']) {
+    for (const date of ['2026-02-28T23:59:59+09:00', '2026-03-01T00:00:00+09:00', '2026-11-28T12:00:00+09:00']) {
+      const time = Date.parse(date);
+      assert.throws(() => validateBirthYear({ ageBand }, 2013, time), { code: 'VILLAGE_CHILD_SIGNUP_REQUIRED' });
+      assert.equal(validateBirthYear({ ageBand }, 2012, time).id, 'middle');
+    }
+    const nextYear = Date.parse('2027-03-01T00:00:00+09:00');
+    assert.throws(() => validateBirthYear({ ageBand }, 2014, nextYear), { code: 'VILLAGE_CHILD_SIGNUP_REQUIRED' });
+    assert.equal(validateBirthYear({ ageBand }, 2013, nextYear).id, 'middle');
+  }
 });
 
 test('출생연도는 명시적 확인 뒤 한 번만 저장하고 옷장·입장보다 먼저 요구한다', async () => scenario(async ({ app, signup, connect, db }) => {
@@ -52,11 +65,11 @@ test('가입 연령과 출생연도 일관성을 확인하며 v5 어린이만 �
   assert.equal((await saveYear(app, child, 2011)).body.error.code, 'AGE_ACCOUNT_MISMATCH');
   assert.equal((await saveYear(app, child, 2017)).status, 201);
   const small = await connect(child); assert.equal((await welcome(small)).village.id, 'elementary');
-  assert.equal((await saveYear(app, adult, 2015)).body.error.message, '어린이 회원은 보호자 동의 가입이 필요해요');
+  assert.equal((await saveYear(app, adult, 2013)).body.error.message, '어린이 회원은 보호자 동의 가입이 필요해요');
   const legacy = seedMember(db, adult.id, 'legacy-age', { birthYear: null }); db.prepare("UPDATE user SET ageBand='legacy' WHERE id=?").run(legacy.id);
-  assert.equal((await saveYear(app, legacy, 2015)).status, 403);
+  assert.equal((await saveYear(app, legacy, 2013)).body.error.code, 'VILLAGE_CHILD_SIGNUP_REQUIRED');
   assert.equal((await saveYear(app, adult, 2012)).body.profile.village.id, 'middle');
-  assert.equal((await saveYear(app, legacy, 2000)).body.profile.village.id, 'adult');
+  assert.equal((await saveYear(app, legacy, 2012)).body.profile.village.id, 'middle');
   const old = seedMember(db, adult.id, 'v4-child', { child: true, birthYear: 2017, consentVersion: '2026-10-16-v4' });
   assert.equal((await request(app, '/api/village/session', { cookie: old.cookie })).body.error.code, 'VILLAGE_GUARDIAN_CONSENT_REQUIRED');
   assert.equal(await upgradeStatus(app, old.cookie), 403);
@@ -68,11 +81,13 @@ test('가입 연령과 출생연도 일관성을 확인하며 v5 어린이만 �
   assert.equal(await upgradeStatus(app, adult.cookie), 403);
 }));
 
-test('2월에는 계정 연령 검사를 통과하는 연도라도 보호자 동의 없는 초등학생 입장을 따로 막는다', async () => scenario(async ({ app, db, signup }) => {
+test('2월에도 2013년생 입력을 거부하며 저장소의 잘못된 초등학생 배정도 따로 막는다', async () => scenario(async ({ app, db, signup }) => {
   const adult = await signup('feb-elementary', { birthYear: null });
-  assert.equal((await saveYear(app, adult, 2013)).body.error.code, 'VILLAGE_ELEMENTARY_GUARDIAN_REQUIRED');
+  assert.equal((await saveYear(app, adult, 2013)).body.error.code, 'VILLAGE_CHILD_SIGNUP_REQUIRED');
   db.prepare("UPDATE user SET ageBand='legacy' WHERE id=?").run(adult.id);
-  assert.equal((await saveYear(app, adult, 2013)).status, 403);
+  assert.equal((await saveYear(app, adult, 2013)).body.error.code, 'VILLAGE_CHILD_SIGNUP_REQUIRED');
+  db.prepare('INSERT INTO village_profiles(userId,birthYear,createdAt,updatedAt) VALUES(?,?,?,?)').run(adult.id, 2013, Date.now(), Date.now());
+  assert.equal((await request(app, '/api/village/session', { cookie: adult.cookie })).body.error.code, 'VILLAGE_ELEMENTARY_GUARDIAN_REQUIRED');
 }, { initialTime: Date.parse('2026-02-28T23:59:59+09:00') }));
 
 test('네 마을은 같은 채널 번호라도 입장·이동·채팅·감정·신고와 채널 목록을 공유하지 않는다', async () => scenario(async ({ app, db, signup, connect }) => {
@@ -130,6 +145,7 @@ test('운영자 출생연도 수정은 권한·사유·동시 수정을 검사�
   assert.equal((await correct(app, target, target, 2000, 1)).status, 403);
   const loaded = await request(app, lookupPath, { cookie: admin.cookie }); assert.equal(loaded.body.profile.birthYear, 2009); assert.equal(loaded.body.villageName, '고등학생 마을');
   assert.equal((await correct(app, admin, target, 2000, 1, '')).status, 422);
+  assert.equal((await correct(app, admin, target, 2013, 1)).body.error.code, 'VILLAGE_CHILD_SIGNUP_REQUIRED');
   assert.equal((await correct(app, admin, target, 2017, 1)).status, 403);
   const changed = await correct(app, admin, target, 2000, 1); assert.equal(changed.status, 200); assert.equal(changed.body.profile.village.id, 'adult');
   await error(peer, 'VILLAGE_CHANGED'); assert.equal((await peer.closeEvent).code, 4004);
