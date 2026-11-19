@@ -39,6 +39,7 @@ function render() {
   all('[data-job]').forEach(node => node.setAttribute('aria-pressed', String(node.dataset.job === character.job)));
   all('[data-preset]').forEach(node => node.setAttribute('aria-pressed', String(sameLook(presets[Number(node.dataset.preset)].character.appearance, a))));
   all('[data-hair]').forEach(node => node.setAttribute('aria-pressed', String(Number(node.dataset.hair) === a.hairStyle)));
+  all('[data-face-base]').forEach(node => node.setAttribute('aria-pressed', String(node.dataset.faceBase === a.faceBase)));
   all('input[data-appearance]').forEach(node => {
     const key = node.dataset.appearance;
     if (node.value !== String(a[key])) node.value = a[key];
@@ -135,6 +136,9 @@ for (const [index, preset] of presets.entries()) {
   } catch { art.hidden = true; }
 }
 JOBS.forEach(job => byId('jobs').append(button(job.label, 'job', job.id, () => change({ ...character, job: job.id }))));
+all('[data-face-base]').forEach(node => node.addEventListener('click', () => {
+  change({ ...character, appearance: { ...character.appearance, faceBase: node.dataset.faceBase } });
+}));
 for (const [key, title] of Object.entries(shapeFields)) addField(key, title, ['height', 'build', 'shoulders'].includes(key) ? 'body-fields' : 'face-fields', 'range');
 for (const [key, title] of Object.entries(colorFields)) addField(key, title, 'color-fields', 'color');
 ['짧은 머리', '양 갈래 땋은 머리', '높이 묶은 머리', '양쪽 올림머리'].forEach((label, i) => byId('hair-fields').append(button(label, 'hair', i, () => change({ ...character, appearance: { ...character.appearance, hairStyle: i } }))));

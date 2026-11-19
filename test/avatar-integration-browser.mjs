@@ -168,7 +168,7 @@ try {
     assert.equal(archive.suggestedFilename(), 'avatar-gamekit.zip');
     const zip = await archive.path();
     const snapshot = JSON.parse(execFileSync('unzip', ['-p', zip, 'avatar.json']));
-    assert.deepEqual(snapshot, { version: 1, id: saved.id, revision: 1, character: { appearance: expected.appearance, job: member.job } });
+    assert.deepEqual(snapshot, { version: 2, id: saved.id, revision: 1, character: { appearance: expected.appearance, job: member.job } });
     if (captures) {
       for (const [entry, label] of [['pawn.png', '게임말'], ['sprites.png', '동작시트']]) {
         await writeFile(join(captures, member.device + '-' + label + '.png'), execFileSync('unzip', ['-p', zip, entry]));

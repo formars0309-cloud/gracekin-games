@@ -1,3 +1,5 @@
+import { normalizeCharacter } from './model.js';
+
 const byId = id => document.getElementById(id);
 const guest = 'guest';
 const prefix = 'member:';
@@ -6,7 +8,10 @@ const prefix = 'member:';
 export function mountRecords({ current, replace, makeDefault, validDraft, validateName }) {
   const drafts = new Map();
   for (const item of Array.isArray(history.state?.avatarDrafts) ? history.state.avatarDrafts : []) {
-    if (Array.isArray(item) && typeof item[0] === 'string' && validDraft(item[1]?.character) && Number.isSafeInteger(item[1].revision)) drafts.set(item[0], item[1]);
+    if (Array.isArray(item) && typeof item[0] === 'string' && validDraft(item[1]?.character) && Number.isSafeInteger(item[1].revision)) {
+      const [key, draft] = item;
+      drafts.set(key, { ...draft, character: normalizeCharacter(draft.character) });
+    }
   }
   let owner = guest, revision = 0, saved = null, pending = null;
   let ready = false, busy = false, retry = false, timer, refreshQueued = false;
@@ -80,7 +85,7 @@ export function mountRecords({ current, replace, makeDefault, validDraft, valida
     const { avatar } = await decode(await fetch('/api/avatar/me', { ...options(), headers: { 'X-Avatar-Owner': account.slice(prefix.length) } }));
     if (avatar === null) return null;
     if (!avatar?.id || !Number.isSafeInteger(avatar.revision) || avatar.revision < 1 || !validDraft(avatar.character)) throw new Error('저장된 기록을 읽을 수 없어요.');
-    return avatar;
+    return { ...avatar, character: normalizeCharacter(avatar.character) };
   }
   function useGuest() {
     const changed = owner !== guest;
@@ -188,7 +193,7 @@ export function mountRecords({ current, replace, makeDefault, validDraft, valida
     const result = await decode(response);
     if (!result.avatar?.id || !Number.isSafeInteger(result.avatar.revision) || !validDraft(result.avatar.character)) throw new Error('저장 결과를 확인하지 못했어요.');
     if (await identity() !== owner) { refreshQueued = true; return; }
-    saved = result.avatar;
+    saved = { ...result.avatar, character: normalizeCharacter(result.avatar.character, character.appearance) };
     revision = saved.revision;
     if (same(current(), character)) {
       replace(saved.character, false);

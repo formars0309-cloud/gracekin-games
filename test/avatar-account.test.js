@@ -55,6 +55,7 @@ test('미소년과 미소녀의 외형은 독립적이며 어느 프리셋에서
   }
   for (const id of ['youth', 'maiden']) {
     const character = createAvatarPreset(id), fresh = createAvatarPreset(id);
+    assert.equal(character.appearance.faceBase, id);
     assert.notEqual(character, fresh);
     assert.notEqual(character.appearance, fresh.appearance);
     assert.equal(character.job, 'guardian');
@@ -90,7 +91,8 @@ test('공유 모델은 독립된 기본 외모와 네 직업을 제공하고 정
   for (const key of Object.keys(second.appearance)) {
     const appearance = { ...second.appearance };
     delete appearance[key];
-    assert.ok(characterError({ ...second, appearance }));
+    if (key === 'faceBase') assert.equal(characterError({ ...second, appearance }), null);
+    else assert.ok(characterError({ ...second, appearance }));
   }
   for (const key of Object.keys(second)) {
     const partial = { ...second };
@@ -99,6 +101,37 @@ test('공유 모델은 독립된 기본 외모와 네 직업을 제공하고 정
   }
   assert.equal(characterError({ ...second, name: '🌟'.repeat(24) }), null);
   for (const name of ['  ', '별'.repeat(25), '별\n빛', null]) assert.ok(characterError({ ...second, name }));
+});
+
+test('구버전 행을 조회하고 다시 편집할 때 원형을 유지하며 명시적인 저장에서만 행을 갱신한다', async t => {
+  const { app, db, login } = await fixture(t);
+  const { cookie, userId } = await login('old-avatar@example.test');
+  const id = randomUUID();
+  const legacy = createAvatarPreset('maiden');
+  delete legacy.appearance.faceBase;
+  const oldJson = JSON.stringify(legacy);
+  db.prepare('INSERT INTO avatars (id, userId, revision, character) VALUES (?, ?, 3, ?)').run(id, userId, oldJson);
+  const response = await request(app, api, { cookie });
+  assert.deepEqual(response.body.avatar, { id, revision: 3, character: createAvatarPreset('maiden') });
+  const row = db.prepare('SELECT character, revision FROM avatars WHERE id=?').get(id);
+  assert.equal(row.character, oldJson);
+  assert.equal(row.revision, 3);
+
+  // 과거 클라이언트가 전체 비율을 반대 프리셋으로 편집해도 종전 원형을 복원한다.
+  const edited = createAvatarPreset('youth');
+  delete edited.appearance.faceBase;
+  for (const revision of [3, 4]) {
+    const saved = await put(app, cookie, revision, edited);
+    assert.deepEqual(saved.body.avatar, {
+      id, revision: revision + 1, character: { ...edited, appearance: { ...edited.appearance, faceBase: 'maiden' } },
+    });
+  }
+  edited.appearance.faceBase = 'youth';
+  assert.deepEqual((await put(app, cookie, 5, edited)).body.avatar, { id, revision: 6, character: edited });
+  assert.equal(JSON.parse(db.prepare('SELECT character FROM avatars WHERE id=?').get(id).character).appearance.faceBase, 'youth');
+
+  const other = await login('old-create@example.test');
+  assert.deepEqual((await put(app, other.cookie, 0, legacy)).body.avatar.character, createAvatarPreset('maiden'));
 });
 
 test('새 회원이 저장하고 수정하면 재시작 후에도 같은 아바타와 버전을 조회한다', async t => {
@@ -203,6 +236,8 @@ test('유효 세션·같은 출처·올바른 본문이 있어야 저장하며 �
     {}, { ...character, job: null }, { ...character, recommendedJob: '미등록' },
     { ...character, appearance: { ...character.appearance, eyes: 101 } },
     { ...character, appearance: { ...character.appearance, other: 1 } },
+    { ...character, appearance: { ...character.appearance, faceBase: '미등록' } },
+    { ...character, appearance: { ...character.appearance, faceBase: null } },
     { ...character, name: ' ' }, { ...character, email: 'extra@example.test' },
   ]) assert.equal((await save({ ...body, character: invalid })).status, 422);
   assert.equal((await save({ revision: 1 })).status, 422);

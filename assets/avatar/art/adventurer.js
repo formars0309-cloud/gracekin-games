@@ -1,3 +1,4 @@
+import { resolveFaceBase } from '../model.js';
 import { Sculpture, TAU, BONE, add, dye, mix, rgb } from './sculpt.js';
 import { sculptHead } from './portrait.js';
 import { jewel, vestments, JOB_LABELS } from './regalia.js';
@@ -7,7 +8,7 @@ const numbers = ['height', 'build', 'shoulders', 'jaw', 'eyes', 'nose'];
 
 export function readAppearance(character) {
   const raw = character?.appearance || {},
-    appearance = {};
+    appearance = { faceBase: resolveFaceBase(raw) };
   for (const key of numbers)
     appearance[key] = Number.isFinite(raw[key]) ? Math.max(0, Math.min(100, raw[key])) : 50;
   for (const [key, defaultColor] of Object.entries(colors))

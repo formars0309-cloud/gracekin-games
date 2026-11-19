@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startServer } from '../server/app.js';
 import { registerAndLogin } from './account-helpers.js';
+import { createAvatarPreset } from '../assets/avatar/model.js';
 
 const { chromium, webkit } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const engine = process.env.AVATAR_BROWSER === 'webkit' ? webkit : chromium;
@@ -30,6 +31,13 @@ try {
     await mkdir(captures, { recursive: true });
     await page.screenshot({ path: join(captures, title + '.png'), fullPage: true });
   };
+  const oldDraft = { ...createAvatarPreset('maiden'), name: '옛 초안', job: 'ranger', recommendedJob: 'healer' };
+  delete oldDraft.appearance.faceBase;
+  await page.addInitScript(draft => {
+    if (location.pathname === '/games/avatar/' && !history.state?.avatarDrafts) {
+      history.replaceState({ avatarDrafts: [['guest', { revision: 0, character: draft }]] }, '');
+    }
+  }, oldDraft);
   await page.goto(app.origin + '/games/avatar/');
   await $('#login').waitFor({ state: 'visible' });
   await page.waitForFunction(() => document.querySelectorAll('#presets canvas').length === 3 && document.querySelector('#render-status').hidden);
@@ -40,6 +48,28 @@ try {
   }
   assert.equal(await page.getByRole('region', { name: '게임 자산 내보내기' }).count(), 1);
   assert.equal(await page.getByRole('button', { name: '게임 파일 만들기' }).isVisible(), true);
+  await checkName(oldDraft.name);
+  await $('[data-section=face]').click();
+  const faceChoice = base => $('[data-face-base=' + base + ']');
+  assert.equal(await faceChoice('maiden').getAttribute('aria-pressed'), 'true');
+  await $('[data-hair="0"]').click();
+  for (const [field, action] of [['jaw', 'End'], ['eyes', 'Home'], ['nose', 'End']]) {
+    await $('#' + field).press(action);
+  }
+  assert.equal(await faceChoice('maiden').getAttribute('aria-pressed'), 'true');
+  const guestCharacter = () => page.evaluate(() => history.state.avatarDrafts.find(([owner]) => owner === 'guest')[1].character);
+  await faceChoice('maiden').focus();
+  const edited = await guestCharacter();
+  assert.equal(edited.appearance.faceBase, 'maiden');
+  await faceChoice('youth').press('Enter');
+  assert.deepEqual(await guestCharacter(), { ...edited, appearance: { ...edited.appearance, faceBase: 'youth' } });
+  await $('#undo').click();
+  assert.deepEqual(await guestCharacter(), edited);
+  await $('#redo').click();
+  await page.reload();
+  await checkName(oldDraft.name);
+  assert.equal(await faceChoice('youth').getAttribute('aria-pressed'), 'true');
+  await $('[data-preset="0"]').click();
   await capture('작업대');
   await $('#hero-name').fill('새벽별');
   await $('[data-job=ranger]').click();
@@ -90,6 +120,8 @@ try {
   await page.getByRole('button', { name: '별빛치유사 적용' }).click();
   assert.equal(await $('[data-job=healer]').getAttribute('aria-pressed'), 'true');
   assert.match(await $('#recommendation').textContent(), /별빛치유사/);
+  await $('[data-section=face]').click();
+  await faceChoice('youth').click();
   await page.reload();
   await checkName('새벽별');
   assert.match(await $('#recommendation').textContent(), /별빛치유사/);
@@ -116,6 +148,8 @@ try {
   await page.waitForFunction(() => document.querySelector('#sync-status').textContent.includes('계정에 저장했어요'));
   const savedAvatar = async () => (await (await context.request.get(app.origin + '/api/avatar/me')).json()).avatar;
   const saved = await savedAvatar();
+  assert.equal(saved.character.appearance.faceBase, 'youth');
+  assert.equal(saved.character.appearance.hairStyle, 3);
   assert.equal(saved.character.appearance.height, 100);
   assert.equal(saved.character.appearance.clothColor, '#aa6633');
   assert.equal(saved.character.recommendedJob, 'healer');

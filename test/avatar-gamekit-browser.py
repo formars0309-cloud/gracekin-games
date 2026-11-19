@@ -81,8 +81,9 @@ def verify_archive(path, expected):
         assert sorted(archive.namelist()) == ['atlas.json', 'avatar.json', 'pawn.png', 'portrait.png', 'sprites.png']
         snapshot = json.loads(archive.read('avatar.json'))
         character = expected['character']
-        assert snapshot == dict(version=1, id=expected['id'], revision=expected['revision'],
-                                character=dict(job=character['job'], appearance=character['appearance']))
+        appearance = {'faceBase': 'maiden', **character['appearance']}
+        assert snapshot == dict(version=2, id=expected['id'], revision=expected['revision'],
+                                character=dict(job=character['job'], appearance=appearance))
         atlas = json.loads(archive.read('atlas.json'))
         assert atlas['version'] == 1 and atlas['origin'] == 'top-left' and atlas['units'] == 'px'
         assert atlas['frameSize'] == dict(w=192, h=192)
@@ -129,7 +130,7 @@ def run(options):
             route.fulfill(content_type='text/javascript', body=FIXTURE)
         elif url.path.startswith('/assets/avatar/') and '..' not in url.path:
             name = url.path.removeprefix('/assets/avatar/')
-            folder = ASSETS if name in ('gamekit.js', 'gamekit-zip.js') else options.renderer_root
+            folder = ASSETS if name in ('gamekit.js', 'gamekit-zip.js', 'model.js') else options.renderer_root
             module = folder / name
             if module.is_file():
                 route.fulfill(content_type='text/javascript', path=module)

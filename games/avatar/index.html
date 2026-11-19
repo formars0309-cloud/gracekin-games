@@ -69,7 +69,16 @@
             <fieldset><legend>직업</legend><div id="jobs" class="jobs"></div><p id="recommendation" class="note" hidden></p></fieldset>
           </div>
           <div data-pane="body" hidden><h3>몸의 비율</h3><div id="body-fields"></div></div>
-          <div data-pane="face" hidden><h3>얼굴의 윤곽</h3><div id="face-fields"></div><fieldset><legend>머리 모양</legend><div class="hair" id="hair-fields"></div></fieldset></div>
+          <div data-pane="face" hidden>
+            <fieldset class="first-choice"><legend>얼굴 원형</legend>
+              <div class="face-bases">
+                <button type="button" data-face-base="youth">미소년 얼굴</button>
+                <button type="button" data-face-base="maiden">미소녀 얼굴</button>
+              </div>
+            </fieldset>
+            <h3>얼굴의 윤곽</h3><div id="face-fields"></div>
+            <fieldset><legend>머리 모양</legend><div class="hair" id="hair-fields"></div></fieldset>
+          </div>
           <div data-pane="color" hidden><h3>모험가의 팔레트</h3><div id="color-fields"></div></div>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import { packGameFiles } from './gamekit-zip.js';
+import { isFaceBase, resolveFaceBase } from './model.js';
 
 const boardSize = 512;
 const cellSize = 192;
@@ -14,6 +15,7 @@ const jobs = ['guardian', 'ranger', 'arcanist', 'healer'];
 
 export function gameSnapshot(avatar) {
   const { id, revision, character } = avatar;
+  if (avatar.version !== undefined && avatar.version !== 1 && avatar.version !== 2) throw new Error('지원하지 않는 아바타 파일 버전입니다.');
   if ((id !== null && (typeof id !== 'string' || !id.length)) ||
       !Number.isSafeInteger(revision) || revision < 0 || (id === null && revision !== 0)) {
     throw new Error('아바타 저장 정보를 확인해 주세요.');
@@ -34,7 +36,9 @@ export function gameSnapshot(avatar) {
     }
     appearance[key] = value;
   }
-  return { version: 1, id, revision, character: { appearance, job: character.job } };
+  if ((avatar.version === 2 || Object.hasOwn(source, 'faceBase')) && !isFaceBase(source.faceBase)) throw new Error('얼굴 원형을 확인해 주세요.');
+  appearance.faceBase = resolveFaceBase(source);
+  return { version: 2, id, revision, character: { appearance, job: character.job } };
 }
 
 function surface(width, height) {

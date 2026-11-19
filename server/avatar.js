@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { characterError } from '../assets/avatar/model.js';
+import { characterError, normalizeCharacter } from '../assets/avatar/model.js';
 import { activeAccountUser } from './account.js';
 import { fail, json, readJson } from './security.js';
 
 function avatarResponse(row) {
-  return json({ avatar: row ? { id: row.id, revision: row.revision, character: JSON.parse(row.character) } : null });
+  return json({ avatar: row ? { id: row.id, revision: row.revision, character: normalizeCharacter(JSON.parse(row.character)) } : null });
 }
 
 export function createAvatarRoutes(db, auth) {
@@ -39,7 +39,12 @@ export function createAvatarRoutes(db, auth) {
     }
     const error = characterError(character);
     if (error) fail(422, 'INVALID_INPUT', error);
-    const data = JSON.stringify({ ...character, name: character.name.trim() });
+    let previousAppearance;
+    if (revision > 0 && !Object.hasOwn(character.appearance, 'faceBase')) {
+      const previous = current.get(user.id);
+      if (previous?.revision === revision) previousAppearance = JSON.parse(previous.character).appearance;
+    }
+    const data = JSON.stringify({ ...normalizeCharacter(character, previousAppearance), name: character.name.trim() });
     const row = revision === 0 ? create.get(randomUUID(), user.id, data) : update.get(data, user.id, revision);
     if (!row) fail(409, 'AVATAR_REVISION_CONFLICT', '저장 버전이 다릅니다. 최신 아바타를 불러와 확인해 주세요.');
     return avatarResponse(row);
