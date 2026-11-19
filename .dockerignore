@@ -176,3 +176,11 @@ privacy/**
 !assets/home/hero-pano-2560.webp
 !assets/home/hero-pano-3840.webp
 !assets/home/hero-pano-5120.webp
+
+# 캐릭터 화면·공용 모델·그림·서버 모듈
+!character/
+!character/**
+!assets/character/
+!assets/character/**
+!server/character/
+!server/character/**

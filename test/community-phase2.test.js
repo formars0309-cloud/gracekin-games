@@ -206,7 +206,7 @@ test('새 소식 목록·읽기·검색·댓글과 운영자 표시는 공개되
       const list = await f.api('/api/community/posts?game=gyeongguk&board=notice&q=이번', undefined, actor);
       assert.equal(list.body.total, 1); assert.equal(list.body.posts[0].commentCount, 2);
       const detail = await f.api(`/api/community/posts/${id}?game=gyeongguk`, undefined, actor);
-      assert.deepEqual(detail.body.post.author, { name: '운영자 별명', isOperator: true });
+      assert.deepEqual(detail.body.post.author, { name: '운영자 별명', isOperator: true, character: null });
       assert.equal(detail.body.post.canEdit, actor === 'operator-private-id');
       assert.equal(detail.body.post.category, 'event'); assert.equal(detail.body.post.cover, 'tile-notice');
       for (const response of [created, list, detail, memberComment, operatorComment]) assert.doesNotMatch(JSON.stringify(response.body), /private-id|example\.test|authorId|ADMIN_USER_IDS|"email"/);
