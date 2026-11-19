@@ -143,6 +143,34 @@ class RaceNetworkBoundaryTests(unittest.TestCase):
 
 
 class PublicAssetTests(unittest.TestCase):
+    def test_docker_requires_copy_for_each_allowed_operational_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / '.dockerignore').write_text('**\n!Dockerfile\n!.dockerignore\n!package.json\n!package-lock.json\n!index.html\n!privacy/\n!privacy/index.html\n!scripts/\n!scripts/guardian-review.mjs\n')
+            dockerfile = root / 'Dockerfile'
+            dockerfile.write_text('FROM node:24\nCOPY index.html ./index.html\nCOPY scripts/guardian-review.mjs ./scripts/guardian-review.mjs\n')
+            missing = 'privacy: Dockerfile COPY에서 운영 경로 누락'
+            failures = SITE.verify(root).failures
+            self.assertEqual([failure for failure in failures if 'COPY에서 운영 경로 누락' in failure], [missing])
+            original = dockerfile.read_text()
+            for ignored in ['# COPY privacy/ ./privacy/\n', 'COPY index.html ./privacy/\n', 'COPY --from=builder privacy/ ./privacy/\n']:
+                with self.subTest(ignored=ignored):
+                    dockerfile.write_text(original + ignored)
+                    self.assertIn(missing, SITE.verify(root).failures)
+            dockerfile.write_text(original + 'COPY privacy/ ./privacy/\n')
+            self.assertFalse(any('COPY에서 운영 경로 누락' in failure for failure in SITE.verify(root).failures))
+            dockerfile.write_text('FROM node:24\nCOPY privacy/ ./privacy/\nCOPY scripts/guardian-review.mjs ./scripts/guardian-review.mjs\n')
+            self.assertIn('index.html: Dockerfile COPY에서 운영 경로 누락', SITE.verify(root).failures)
+
+    def test_docker_copy_supports_multiple_sources_json_options_and_continuations(self):
+        for source in [
+            'COPY account/ privacy/ ./',
+            'COPY ["account/", "privacy/", "./"]',
+            'COPY --chown=node:node account/ \\\n privacy/ ./',
+        ]:
+            with self.subTest(source=source):
+                self.assertEqual(SITE.docker_copy_roots(source), {'account', 'privacy'})
+
     def test_docker_requires_server_module_and_asset_parent_allowances(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

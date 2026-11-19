@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import argparse
 from html.parser import HTMLParser
+import json
 from pathlib import Path
 import re
+import shlex
 import sys
 from urllib.parse import unquote, urlsplit
 
@@ -450,6 +452,30 @@ def docker_allows(path: Path, allowed: set[str]) -> bool:
     return path.as_posix() in allowed and all(parent.as_posix() + '/' in allowed for parent in path.parents if parent != Path('.'))
 
 
+def docker_copy_roots(source: str) -> set[str]:
+    """주석·목적지를 제외하고 빌드 문맥에서 COPY하는 최상위 경로를 모은다."""
+    copied = set()
+    for line in re.sub(r'\\\r?\n', ' ', source).splitlines():
+        instruction = re.match(r'^\s*COPY\s+(.+)$', line, re.I)
+        if not instruction:
+            continue
+        arguments = instruction[1]
+        # 다른 이미지·단계의 파일은 현재 빌드 문맥의 복사를 증명하지 않는다.
+        if re.search(r'(?:^|\s)--from(?:=|\s)', arguments):
+            continue
+        arguments = re.sub(r'^(?:--\S+\s+)+', '', arguments)
+        try:
+            paths = json.loads(arguments) if arguments.startswith('[') else shlex.split(arguments)
+        except ValueError:
+            continue
+        if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+            continue
+        for path in paths[:-1]:
+            parts = Path(path).parts
+            copied.add(parts[0] if parts else '.')
+    return copied
+
+
 def verify(root: Path) -> Report:
     root = root.resolve()
     report = Report()
@@ -457,6 +483,13 @@ def verify(root: Path) -> Report:
     dockerignore = root / '.dockerignore'
     check(dockerignore.is_file(), '운영 패키지 허용 목록 없음')
     docker_allowed = {line.strip()[1:] for line in dockerignore.read_text().splitlines() if line.strip().startswith('!')} if dockerignore.is_file() else set()
+    dockerfile = root / 'Dockerfile'
+    check(dockerfile.is_file(), '운영 이미지 Dockerfile 없음')
+    copied = docker_copy_roots(dockerfile.read_text()) if dockerfile.is_file() else set()
+    for path in sorted({Path(path).parts[0] for path in docker_allowed if Path(path).parts}):
+        if path in {'Dockerfile', '.dockerignore'} or re.fullmatch(r'package.*\.json', path):
+            continue
+        check(path in copied or '.' in copied, f'{path}: Dockerfile COPY에서 운영 경로 누락')
     for path in sorted((root / 'server').glob('*.js')):
         check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 운영 패키지에서 서버 파일 누락')
     required = [root / 'index.html', root / 'games/index.html', root / 'privacy/index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'community/account-deletion/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
