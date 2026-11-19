@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from html.parser import HTMLParser
 import json
 from pathlib import Path
@@ -293,6 +294,24 @@ def host_router_issues(source: str) -> list[str]:
     return list(dict.fromkeys(issues))
 
 
+def village_network_issues(source: str) -> list[str]:
+    """마을만 고정된 같은 출처 소켓과 공용 맵 한 개를 허용한다."""
+    socket_call = "new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/village/ws`)"
+    map_call = "fetch('/assets/village/maps/plaza.json')"
+    issues = []
+    if source.count(socket_call) != 1 or source.count(map_call) != 1:
+        issues.append('마을의 고정 WebSocket 출처·경로 또는 단일 공용 맵 요청 확인 필요')
+    checked = source.replace(socket_call, 'Object.create(null)', 1).replace(map_call, "fetch('/api/village/map')", 1)
+    return issues + network_issues(checked)
+
+
+VILLAGE_VENDOR_HASHES = {
+    'assets/vendor/phaser-3.90.0.min.js': 'e92ddef111ba42e92d316979c732311757093688ea1810591cb7aa2858eba7a7',
+    # 원본 MIT 라이선스의 문안은 유지하고 저장소 검사에 맞춰 CRLF만 LF로 바꿨다.
+    'assets/vendor/phaser-3.90.0-LICENSE.txt': 'c3123cd25de4eccf1fd5a5a0a6fc872299116d1dbbb48b00f2554a4c35220a65',
+}
+
+
 def css_references(source: str) -> list[str]:
     clean = re.sub(r'/\*.*?\*/', '', source, flags=re.S)
     urls = [match.group(2).strip() for match in re.finditer(r'url\(\s*([\"\']?)(.*?)\1\s*\)', clean, re.I | re.S)]
@@ -304,7 +323,7 @@ def css_references(source: str) -> list[str]:
 PENDING_FONT_MIGRATION = frozenset()
 FONT_STYLESHEET = 'assets/shared/fonts.css'
 FONT_PAGES = frozenset({
-    'index.html', 'games/index.html', 'privacy/index.html', 'account/index.html', 'account/admin/index.html', 'community/index.html',
+    'index.html', 'games/index.html', 'privacy/index.html', 'account/index.html', 'account/admin/index.html', 'community/index.html', 'village/index.html',
     'community/bug-report/index.html', 'community/privacy/index.html', 'community/terms/index.html',
     'games/slimeline/index.html', 'games/gyeongguk/index.html',
 })
@@ -429,7 +448,7 @@ def verify_fonts(root: Path, pages: dict[Path, Page], report: Report) -> None:
                 report.check(False, f'{rel} (인라인 CSS): {issue}')
     # 공개 CSS 범위만 순회한다. 서버·설치 모듈·시험 fixture는 검사에 섞지 않는다.
     css_files = set(root.glob('*.css'))
-    for folder in ('assets', 'games', 'community', 'account'):
+    for folder in ('assets', 'games', 'community', 'account', 'village'):
         css_files.update((root / folder).rglob('*.css'))
     for path in sorted(css_files):
         rel = path.relative_to(root).as_posix()
@@ -440,7 +459,7 @@ def verify_fonts(root: Path, pages: dict[Path, Page], report: Report) -> None:
 def production_files(root: Path, pages: dict[Path, Page]) -> list[Path]:
     # 서버 소스·시험 fixture·설치 모듈·DB·로컬 인계 자료를 브라우저 코드로 읽지 않는다.
     files = set(pages)
-    for folder in ('assets', 'games', 'community', 'privacy'):
+    for folder in ('assets', 'games', 'community', 'privacy', 'village'):
         for suffix in ('*.js', '*.css'):
             files.update((root / folder).rglob(suffix))
     if (root / 'README.md').is_file():
@@ -491,12 +510,12 @@ def verify(root: Path) -> Report:
         if path in {'Dockerfile', '.dockerignore'} or re.fullmatch(r'package.*\.json', path):
             continue
         check(path in copied or '.' in copied, f'{path}: Dockerfile COPY에서 운영 경로 누락')
-    for path in sorted((root / 'server').glob('*.js')):
+    for path in sorted((root / 'server').rglob('*.js')):
         check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 운영 패키지에서 서버 파일 누락')
-    required = [root / 'index.html', root / 'games/index.html', root / 'privacy/index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'community/account-deletion/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    required = [root / 'index.html', root / 'games/index.html', root / 'privacy/index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'community/account-deletion/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html', root / 'village/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
-    paths = [root / 'index.html'] + sorted((root / 'privacy').glob('**/*.html')) + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
+    paths = [root / 'index.html'] + sorted((root / 'privacy').glob('**/*.html')) + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html')) + sorted((root / 'village').glob('**/*.html'))
     pages = {path: Page(path) for path in paths if path.is_file()}
     report.pages = len(pages)
     verify_fonts(root, pages, report)
@@ -521,7 +540,7 @@ def verify(root: Path) -> Report:
         rel = path.relative_to(root)
         check(not page.errors, f'{rel}: HTML 구조 오류 ({"; ".join(page.errors)})')
         scripts = [attrs for tag, attrs in page.tags if tag == 'script' and attrs.get('src') == 'https://cloud.umami.is/script.js']
-        if path.is_relative_to(root / 'account') or path == root / 'community/bug-report/index.html':
+        if path.is_relative_to(root / 'account') or path.is_relative_to(root / 'village') or path == root / 'community/bug-report/index.html':
             check(not scripts, f'{rel}: 계정·비공개 제보 화면에 외부 통계 스크립트가 있음')
             external_scripts = [attrs for tag, attrs in page.tags if tag == 'script' and urlsplit(attrs.get('src', '')).netloc]
             check(not external_scripts, f'{rel}: 계정·비공개 제보 화면에 외부 스크립트가 있음')
@@ -655,7 +674,7 @@ def verify(root: Path) -> Report:
             links = page.footer_links if relative in {'index.html', 'games/index.html', 'privacy/index.html'} else page.links
             check(any(link.get('href') in deletion_urls for link in links), f'{relative}: 계정 삭제 안내 링크 없음' + (' (바닥글)' if relative == 'index.html' else ''))
 
-    for private_path in ('account/admin/index.html', 'community/bug-report/index.html'):
+    for private_path in ('account/admin/index.html', 'community/bug-report/index.html', 'village/index.html'):
         private_page = pages.get(root / private_path)
         if private_page:
             check(any(tag == 'meta' and attrs.get('name') == 'robots' and 'noindex' in attrs.get('content', '') for tag, attrs in private_page.tags), f'{private_path}: 비공개 도구의 검색 색인 제외 없음')
@@ -704,14 +723,34 @@ def verify(root: Path) -> Report:
     for path in production_files(root, pages):
         content = path.read_text()
         rel = path.relative_to(root)
+        if rel.as_posix() == 'assets/vendor/phaser-3.90.0.min.js':
+            # 검토한 외부 라이브러리의 범용 네트워크 코드는 바이트 해시로 고정한다.
+            # 다른 vendor 파일과 수정한 배포물은 일반 검사를 그대로 받는다.
+            continue
         check(not any(pattern.search(content) for pattern in SECRET_PATTERNS), f'{rel}: 민감정보 의심 패턴 발견 (원문 비노출)')
         if path.suffix == '.js':
-            issues = race_network_issues(content) if rel.as_posix() == 'assets/slime-race/race.js' else network_issues(content, allow_summary=rel.as_posix() == 'assets/shared/account-header.js')
+            issues = village_network_issues(content) if rel.as_posix() == 'assets/village/village.js' else race_network_issues(content) if rel.as_posix() == 'assets/slime-race/race.js' else network_issues(content, allow_summary=rel.as_posix() == 'assets/shared/account-header.js')
             for issue in issues:
                 check(False, f'{rel}: {issue}')
         if path.suffix == '.css':
             for value in css_references(content):
                 inspect_resource(path, value, f'{rel} (CSS url)')
+    for relative, digest in VILLAGE_VENDOR_HASHES.items():
+        vendor = root / relative
+        check(vendor.is_file() and hashlib.sha256(vendor.read_bytes()).hexdigest() == digest, f'{relative}: 검토한 Phaser 3.90.0 배포물·라이선스 해시 불일치')
+        check(docker_allows(Path(relative), docker_allowed), f'{relative}: 운영 패키지에서 배포물·라이선스 누락')
+    for page in (home, catalog):
+        if page:
+            def is_village_link(href: str) -> bool:
+                path = unquote(urlsplit(href).path)
+                if path == '/village' or path.startswith('/village/'):
+                    return True
+                try:
+                    target = local_target(root, page.path, href)
+                except ValueError:
+                    return False
+                return bool(target and target[0].is_relative_to(root / 'village'))
+            check(not any(is_village_link(link.get('href', '')) for link in page.links), f'{page.path.relative_to(root)}: 비공개 마을 진입 링크 발견')
     return report
 
 

@@ -176,3 +176,27 @@ privacy/**
 !assets/home/hero-pano-2560.webp
 !assets/home/hero-pano-3840.webp
 !assets/home/hero-pano-5120.webp
+
+# 비공개 마을 시험판의 서버·공용 맵·자체 호스팅 렌더러
+!server/village/
+server/village/**
+!server/village/index.js
+!server/village/map.js
+!server/village/store.js
+!server/village/filter.js
+!village/
+village/**
+!village/index.html
+!assets/village/
+assets/village/**
+!assets/village/village.js
+!assets/village/village.css
+!assets/village/avatar.js
+!assets/village/pathfinding.js
+!assets/village/maps/
+assets/village/maps/**
+!assets/village/maps/plaza.json
+!assets/vendor/
+assets/vendor/**
+!assets/vendor/phaser-3.90.0.min.js
+!assets/vendor/phaser-3.90.0-LICENSE.txt

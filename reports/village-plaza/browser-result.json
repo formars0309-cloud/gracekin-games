@@ -1,0 +1,20 @@
+{
+  "passed": [
+    "데스크톱 입장·3색 옷장 저장·캔버스 표시",
+    "390px 모바일 입장·3색 옷장 저장·캔버스 표시",
+    "클릭 A* 경로·서버 이동이 다른 브라우저에 반영",
+    "두 브라우저 양방향 채팅·기록 창",
+    "모바일 감정표현이 상대에게 전달",
+    "390px·데스크톱 가로 넘침 없음·대화 화면 저장",
+    "방향키 조작과 서버 위치 반영",
+    "비회원 로그인 안내"
+  ],
+  "screenshots": [
+    "desktop-wardrobe.png",
+    "mobile-wardrobe.png",
+    "desktop-plaza-chat.png",
+    "mobile-plaza-chat.png",
+    "mobile-login.png"
+  ],
+  "errors": []
+}

@@ -19,6 +19,7 @@ COPY index.html ./index.html
 COPY games/ ./games/
 COPY community/ ./community/
 COPY account/ ./account/
+COPY village/ ./village/
 COPY privacy/ ./privacy/
 COPY scripts/guardian-review.mjs ./scripts/guardian-review.mjs
 COPY assets/ ./assets/

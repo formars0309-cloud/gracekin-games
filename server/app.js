@@ -18,6 +18,7 @@ import { createGrainRewards } from './grain-rewards.js';
 import { createGrainAdmin } from './grain-admin.js';
 import { createSlimeRace } from './slime-race.js';
 import { createSlimeRaceRoutes } from './slime-race-routes.js';
+import { createVillage } from './village/index.js';
 import { createGuardianService, guardianIsActive } from './guardian.js';
 import { automaticGuardianSettings, createAutomaticGuardianReview, GUARDIAN_WEBHOOK_PATH } from './guardian-auto.js';
 import { cleanupGuardianEvidence } from './guardian-review.js';
@@ -30,14 +31,14 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=
 const AUTH_PATHS = new Set(['/api/auth/sign-up/email', '/api/auth/sign-in/email', '/api/auth/sign-out', '/api/auth/change-password', '/api/auth/send-verification-email', '/api/auth/request-password-reset', '/api/auth/reset-password']);
 
 function staticAllowed(path) {
-  return path === '/index.html' || path === '/privacy/index.html' || (/^\/(games|community|account|assets)\//.test(path) && Boolean(TYPES[extname(path)]));
+  return path === '/index.html' || path === '/privacy/index.html' || (/^\/(games|community|account|assets|village)\//.test(path) && Boolean(TYPES[extname(path)]));
 }
 
 async function serveStatic(request, path, root) {
   if (!['GET', 'HEAD'].includes(request.method)) fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
   if (path === '/') path = '/index.html';
   if (path === '/privacy/') path = '/privacy/index.html';
-  if (path.endsWith('/') && /^\/(games|community|account)\//.test(path)) path += 'index.html';
+  if (path.endsWith('/') && /^\/(games|community|account|village)\//.test(path)) path += 'index.html';
   if (!staticAllowed(path)) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
   let target;
   try {
@@ -88,7 +89,7 @@ export async function startServer(options = {}) {
   await chmod(dataDir, 0o700);
   const mailer = createMailer(options);
   const signupContext = new AsyncLocalStorage();
-  let accounts, guardian, grain, cleanupTimer, slimeRace, rewards;
+  let accounts, guardian, grain, cleanupTimer, slimeRace, rewards, village;
   const secret = await loadSecret(dataDir, production, options.secret ?? process.env.BETTER_AUTH_SECRET);
   let db, handler, origin, allowedHost;
   const server = createServer((req, res) => {
@@ -189,6 +190,7 @@ export async function startServer(options = {}) {
     initializeCommunitySchema(db);
     rewards = createGrainRewards(db, { now: options.now, startTimer: options.grainRewardsStartTimer, onTimerError: () => { console.error('그레이스킨 코인 보상 자동 확정 실패: 저장소 상태를 확인해 주세요.'); } });
     const grainAdmin = createGrainAdmin(db, auth, { rewards, now: options.now, adminUserIds: options.adminUserIds ?? process.env.ADMIN_USER_IDS });
+    village = await createVillage({ server, db, auth, root: DEFAULT_ROOT, origin, legacyHosts, production, isAdmin: grainAdmin.isAdmin, now: options.now, trustFlyProxy });
     accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, rewards, socialProviders: social.providers, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
     const community = createCommunity(db, auth, { rewards, isAdmin: grainAdmin.isAdmin, now: options.now });
     const accountSummary = createAccountSummary(db, auth, { origin });
@@ -261,6 +263,8 @@ export async function startServer(options = {}) {
           if (!session?.user) fail(401, 'AUTH_REQUIRED', '로그인 후 이용해 주세요.');
           return hardened(json(rewards.attendance(session.user)));
         }
+        const villageResponse = await village.handle(request, url);
+        if (villageResponse) return hardened(villageResponse);
         const adminResponse = await grainAdmin.handle(request, url);
         if (adminResponse) return hardened(adminResponse);
         if (path.startsWith('/api/account/')) return hardened(await accounts.handle(request, url));
@@ -274,6 +278,7 @@ export async function startServer(options = {}) {
         clearInterval(cleanupTimer);
         slimeRace?.close();
         rewards?.close();
+        await village?.close();
         await new Promise((resolve, reject) => { server.close(error => error ? reject(error) : resolve()); server.closeIdleConnections(); });
         db.close();
       },
@@ -282,6 +287,7 @@ export async function startServer(options = {}) {
     clearInterval(cleanupTimer);
     slimeRace?.close();
     rewards?.close();
+    await village?.close();
     await new Promise(resolve => server.close(() => resolve()));
     db?.close();
     throw error;
