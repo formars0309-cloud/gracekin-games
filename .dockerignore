@@ -187,3 +187,5 @@ assets/avatar/art/**
 !assets/avatar/art/pose.js
 !assets/avatar/art/regalia.js
 !assets/avatar/art/sculpt.js
+!assets/avatar/art/face.js
+!assets/avatar/art/face-data.js

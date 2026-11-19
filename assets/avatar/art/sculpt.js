@@ -78,7 +78,7 @@ export class Sculpture {
     }
     if (!faceted) {
       data.forEach((_, i) => vertex(i, unit(normals[i])));
-      this.indices.push(...triangles.map((i) => base + i));
+      for (const i of triangles) this.indices.push(base + i);
     }
   }
 
