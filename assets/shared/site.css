@@ -10,3 +10,15 @@
 .gb-foot{width:calc(100% - 64px);max-width:1116px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:30px auto 0;padding:26px 0;border-top:1px solid #392a40;color:#b3a5be;font-size:12px}.gb-foot strong{font-family:var(--font-brand);font-size:12px;font-weight:400;letter-spacing:.14em;color:#c5b19b}.gb-foot a{color:#d9c6ac;text-decoration:none}.gb-foot-links{display:flex;gap:12px 16px;flex-wrap:wrap}.gb-copyright{flex-basis:100%;font-size:11px}
 @media(max-width:760px){.gb-nav{padding:12px 16px;gap:8px;flex-wrap:wrap}.gb-logo{font-size:12px;letter-spacing:.15em;gap:7px}.gb-logo img{width:30px;height:30px}.gb-nav>.account-header{flex:0 1 53%;max-width:53%;margin-left:auto;justify-content:flex-end}.gb-navlinks{flex:1 1 100%;justify-content:center;gap:24px;order:3;margin:0}.gb-main{padding:32px 16px 16px}.gb-foot{width:calc(100% - 32px);margin:24px auto 0;padding:20px 0;align-items:flex-start;flex-direction:column;gap:10px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* 대표 사이트 네 페이지에만 적용하는 그림 로고와 네 개의 메뉴 탭. */
+.gb-logo-brand{flex:none;line-height:0}.gb-logo-brand img{display:block;width:auto;height:40px}
+.gb-navlinks[data-site-tabs]{gap:24px;align-items:flex-start;min-width:0}
+[data-site-tabs]>a,[data-site-tabs] .account-header-link{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0;font-size:14px;line-height:1.5;color:#ded3e5;text-decoration:none}
+[data-site-tabs]>a[aria-current=page]{color:#f2dfb7;text-decoration:underline;text-underline-offset:8px;text-decoration-thickness:2px}
+[data-site-tabs]>a{flex:none}[data-site-tabs]>.account-header{position:relative;display:block;flex:0 1 auto;min-width:0;margin:0;color:#ded3e5}
+[data-site-tabs] .account-header-link{position:relative;flex-wrap:nowrap;gap:6px}[data-site-tabs] .account-header-name{flex:none}
+[data-site-tabs] [data-account-state=guest] .account-header-link{padding:0 12px;border-radius:6px;background:#e6c98a;color:#211924;text-shadow:none}
+[data-site-tabs] .account-header-grain{position:static;flex-wrap:nowrap;gap:3px;min-width:0;font-size:11px;white-space:nowrap}[data-site-tabs] .account-header-grain img{width:20px;height:20px}[data-site-tabs] [data-account-balance]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+[data-site-tabs] .account-header-retry{position:absolute;right:0;top:100%;white-space:nowrap;border-radius:4px;background:#211a29;color:#f3ecdf;padding:2px 6px;font-size:11px;line-height:1.5}
+[data-site-tabs] .account-header-retry{min-height:24px}
+@media(max-width:760px){.gb-logo-brand img{height:40px}.gb-nav:has([data-site-tabs]){padding-bottom:28px}.gb-navlinks[data-site-tabs]{flex:1 1 100%;justify-content:space-between;gap:10px;order:3;margin:0}[data-site-tabs]>a,[data-site-tabs] .account-header-link{font-size:13px;min-height:44px}.gb-navlinks[data-site-tabs]>.account-header{flex:0 1 auto;max-width:none;margin:0}}

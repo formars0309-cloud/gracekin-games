@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""대문·게임 분류·방침 안내를 정적 서버에서 화면 크기별로 검수한다."""
+"""대문·게임 분류·방침·캐릭터 안내를 정적 서버에서 화면 크기별로 검수한다."""
 import json
 import os
 from pathlib import Path
@@ -14,10 +14,10 @@ from urllib.request import urlopen
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = Path('/tmp/gracekin-pano-shots')
+OUTPUT = Path('/tmp/gracekin-logo-shots')
 SIZES = [
-    (1512, 860), (1440, 790), (1920, 950), (1920, 1080),
-    (2560, 1300), (3440, 1300), (1180, 740), (1024, 1024), (390, 844),
+    (1512, 860), (1440, 900), (1440, 790), (1920, 950), (1920, 1080),
+    (2560, 1300), (3440, 1300), (1180, 740), (1024, 1024), (390, 844), (360, 740),
     # 지정 화면에 없는 3:2판과 이미지 전환 경계도 확인한다.
     (1001, 1000), (1200, 800), (1501, 1000),
 ]
@@ -44,11 +44,16 @@ def run():
             raise RuntimeError('정적 서버 시작 대기 시간 초과')
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
+            context = browser.new_context()
+            context.route(re.compile(r'https://[^/]*umami\.(?:is|com)/'), lambda route: route.abort())
+            context.route('**/api/account/summary', lambda route: route.fulfill(json={'user': None}))
             for width, height in SIZES:
-                context = browser.new_context(viewport={'width': width, 'height': height}, device_scale_factor=2 if width < 700 else 1)
-                context.route(re.compile(r'https://[^/]*umami\.(?:is|com)/'), lambda route: route.abort())
                 page = context.new_page()
-                for label, path in [('home', '/'), ('games', '/games/'), ('privacy', '/privacy/')]:
+                page.set_viewport_size({'width': width, 'height': height})
+                paths = [('home', '/')]
+                if (width, height) in [(1440, 900), (390, 844), (360, 740)]:
+                    paths += [('games', '/games/'), ('privacy', '/privacy/'), ('character', '/character/')]
+                for label, path in paths:
                     page.goto(origin + path, wait_until='networkidle')
                     page.evaluate('document.fonts.ready')
                     page.locator('img').evaluate_all('(images) => Promise.all(images.map(image => image.decode()))')
@@ -58,7 +63,34 @@ def run():
                         scrollHeight: document.documentElement.scrollHeight,
                         image: document.querySelector('.gb-backdrop img')?.currentSrc.split('/').pop() ?? null
                     })''')
-                    assert metrics['scrollWidth'] == width, (label, metrics)
+                    metrics['horizontalOverflow'] = max(0, metrics['scrollWidth'] - width)
+                    assert metrics['horizontalOverflow'] == 0, (label, metrics)
+                    logos = page.locator('img[alt="Gracekin Games"]')
+                    assert logos.count() == 1
+                    metrics['logo'] = logos.evaluate('(image) => ({loaded: image.complete && image.naturalWidth > 0, source: image.currentSrc.split("/").pop(), width: image.getBoundingClientRect().width, height: image.getBoundingClientRect().height})')
+                    assert metrics['logo']['loaded'], (label, metrics)
+                    tabs = page.locator('[data-site-tabs] a')
+                    assert tabs.all_text_contents() == ['모든 게임', '커뮤니티', '의견 보내기', '로그인']
+                    assert [tabs.nth(i).get_attribute('href') for i in range(4)] == [
+                        '/games/', 'https://community.gracekingames.com/community/',
+                        'https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform', '/account/']
+                    assert page.locator('[data-account-header]').get_attribute('data-account-state') == 'guest'
+                    assert tabs.nth(3).get_attribute('aria-label') == '그레이스킨게임즈 계정 로그인'
+                    assert tabs.nth(3).evaluate('(link) => getComputedStyle(link).backgroundColor') == 'rgb(230, 201, 138)'
+                    tab_metrics = tabs.evaluate_all('(links) => links.map(link => {const r = link.getBoundingClientRect(), s = getComputedStyle(link); return {top:r.top, bottom:r.bottom, left:r.left, right:r.right, height:r.height, fontSize:s.fontSize}})')
+                    assert len({tab['top'] for tab in tab_metrics}) == 1, (label, tab_metrics)
+                    assert len({tab['height'] for tab in tab_metrics}) == 1, (label, tab_metrics)
+                    assert len({tab['fontSize'] for tab in tab_metrics}) == 1, (label, tab_metrics)
+                    gaps = [tab_metrics[i+1]['left'] - tab_metrics[i]['right'] for i in range(3)]
+                    assert max(gaps) - min(gaps) < 1, (label, gaps)
+                    current = page.locator('[data-site-tabs] [aria-current="page"]')
+                    assert current.count() == (1 if label == 'games' else 0)
+                    metrics['tabs'] = tab_metrics
+                    if width <= 760:
+                        assert logos.bounding_box()['y'] + logos.bounding_box()['height'] <= tab_metrics[0]['top'], (label, metrics)
+                    if label == 'character':
+                        assert page.locator('meta[name="robots"]').get_attribute('content') == 'noindex'
+                        assert page.locator('.gb-character-links a').all_text_contents() == ['모든 게임 둘러보기', '커뮤니티 새 소식 보기']
                     if label == 'home':
                         assert metrics['scrollHeight'] <= height, metrics
                         shape = 'tall' if width <= height else 'wide' if width / height <= 1.5 else 'pano'
@@ -90,16 +122,24 @@ def run():
                         metrics['horizontalOverflow'] = max(0, metrics['scrollWidth'] - width)
                         metrics['verticalScroll'] = max(0, metrics['scrollHeight'] - height)
                         assert page.locator('#games, .gb-game').count() == 0
-                        assert page.locator('[data-umami-event="hero-games"]').get_attribute('href') == '/games/'
+                        assert page.locator('h1').inner_text().replace('\n', ' ').split() == ['게임의', '세계로,', '함께', '떠나요.']
+                        button = page.locator('[data-umami-event="hero-character"]')
+                        assert button.get_attribute('href') == '/character/'
+                        assert button.inner_text() == '캐릭터 생성 게임으로 시작하기'
+                        assert page.locator('[data-umami-event="hero-games"], [data-umami-event="hero-community"], .gb-hero-subtitle, .gb-hero-brand').count() == 0
+                        assert (240 <= metrics['logo']['width'] <= 280) if width <= 760 else (420 <= metrics['logo']['width'] <= 480)
+                        assert button.bounding_box()['height'] >= 50
                         layout = page.evaluate('''() => {
                             const rect = selector => document.querySelector(selector).getBoundingClientRect();
-                            const nav = rect('.gb-nav'), copy = rect('.gb-hero-copy'), foot = rect('.gb-legal');
-                            return {navBottom: nav.bottom, copyTop: copy.top, copyBottom: copy.bottom, footerTop: foot.top};
+                            const nav = rect('.gb-nav'), copy = rect('.gb-hero-copy'), foot = rect('.gb-legal'), title = rect('h1');
+                            return {navBottom: nav.bottom, copyTop: copy.top, copyBottom: copy.bottom, footerTop: foot.top, titleTop: title.top};
                         }''')
-                        assert layout['navBottom'] <= layout['copyTop'] < layout['copyBottom'] <= layout['footerTop'], layout
+                        assert layout['navBottom'] <= (layout['titleTop'] if width <= 760 else layout['copyTop']), layout
+                        assert layout['copyBottom'] <= layout['footerTop'], layout
                         metrics['layout'] = layout
                     page.screenshot(path=str(OUTPUT / f'{label}-{width}x{height}.png'), full_page=True)
                     results.append({'page': label, **metrics})
+                    print(f'화면 확인: {label} {width}×{height}', flush=True)
                     if label == 'games':
                         for category, expected in [('puzzle', ['puzzle']), ('card', ['card']), ('board', [])]:
                             page.locator(f'[data-filter="{category}"]').click()
@@ -118,6 +158,55 @@ def run():
                         assert page.locator('.gb-game:visible').count() == 2
                         page.go_back(wait_until='networkidle')
                         assert page.locator('[data-filter="card"]').get_attribute('aria-pressed') == 'true'
+                page.close()
+            context.close()
+            for width, height in [(1440, 900), (390, 844), (360, 740)]:
+                context = browser.new_context(viewport={'width': width, 'height': height})
+                context.route(re.compile(r'https://[^/]*umami\.(?:is|com)/'), lambda route: route.abort())
+                state = {'error': False, 'balance': 30300}
+                def summary(route):
+                    route.fulfill(status=503 if state['error'] else 200, json={'user': {'name': '긴이름의모험가' * 4, 'grainBalance': state['balance']}})
+                context.route('**/api/account/summary', summary)
+                page = context.new_page()
+                for label, path in [('home', '/'), ('games', '/games/'), ('privacy', '/privacy/'), ('character', '/character/')]:
+                    state['error'] = False
+                    page.goto(origin + path, wait_until='networkidle')
+                    assert page.locator('[data-account-label]').inner_text() == '내 계정'
+                    assert page.locator('[data-account-grain]').is_visible()
+                    assert page.locator('[data-account-balance]').inner_text() == '30,300 코인'
+                    assert page.evaluate('document.documentElement.scrollWidth === innerWidth')
+                    assert page.locator('[data-account-link]').get_attribute('aria-label') == f'{"긴이름의모험가" * 4}님, 30,300 그레이스킨 코인, 내 계정 열기'
+                    account_layout = page.locator('[data-account-link]').evaluate('''link => {
+                        const label = link.querySelector('[data-account-label]').getBoundingClientRect();
+                        const coin = link.querySelector('[data-account-grain]').getBoundingClientRect();
+                        const amount = link.querySelector('[data-account-balance]');
+                        return {sameLine: Math.abs(label.top + label.height / 2 - coin.top - coin.height / 2) < 1,
+                                beside: label.right <= coin.left, amountFits: amount.scrollWidth <= amount.clientWidth + 1};
+                    }''')
+                    assert all(account_layout.values()), (width, label, account_layout)
+                    tab_tops = page.locator('[data-site-tabs] a').evaluate_all('(links) => links.map(link => link.getBoundingClientRect().top)')
+                    assert len(set(tab_tops)) == 1, (width, label, tab_tops)
+                    if label == 'home':
+                        assert page.evaluate('document.documentElement.scrollHeight <= innerHeight')
+                    page.screenshot(path=str(OUTPUT / f'{label}-signed-in-{width}x{height}.png'), full_page=True)
+                    state['error'] = True
+                    page.reload(wait_until='networkidle')
+                    assert page.locator('[data-account-retry]').is_visible()
+                    assert page.locator('[data-account-label]').inner_text() == '내 계정'
+                    assert page.evaluate('document.documentElement.scrollWidth === innerWidth')
+                    page.screenshot(path=str(OUTPUT / f'{label}-retry-{width}x{height}.png'), full_page=True)
+                    state['error'] = False
+                    page.locator('[data-account-retry]').click()
+                    page.wait_for_function('!document.querySelector("[data-account-grain]").hidden')
+                    assert page.locator('[data-account-label]').inner_text() == '내 계정'
+                    assert not page.locator('[data-account-retry]').is_visible()
+                state['balance'] = 9007199254740991
+                page.goto(origin + '/', wait_until='networkidle')
+                assert page.locator('[data-account-balance]').inner_text() == '9,007,199,254,740,991 코인'
+                assert page.evaluate('document.documentElement.scrollWidth === innerWidth')
+                assert '9,007,199,254,740,991 그레이스킨 코인' in page.locator('[data-account-link]').get_attribute('aria-label')
+                page.screenshot(path=str(OUTPUT / f'home-large-balance-{width}x{height}.png'), full_page=True)
+                print(f'계정 상태 확인: {width}×{height}', flush=True)
                 context.close()
             context = browser.new_context(java_script_enabled=False)
             page = context.new_page()

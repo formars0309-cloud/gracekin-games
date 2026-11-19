@@ -176,3 +176,14 @@ privacy/**
 !assets/home/hero-pano-2560.webp
 !assets/home/hero-pano-3840.webp
 !assets/home/hero-pano-5120.webp
+
+# 새 영문 로고와 캐릭터 만들기 준비 안내
+!character/
+character/**
+!character/index.html
+!assets/brand/
+assets/brand/**
+!assets/brand/logo-1200.webp
+!assets/brand/logo-600.webp
+!assets/brand/logo-300.webp
+!assets/brand/logo-600.png

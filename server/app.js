@@ -30,14 +30,14 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=
 const AUTH_PATHS = new Set(['/api/auth/sign-up/email', '/api/auth/sign-in/email', '/api/auth/sign-out', '/api/auth/change-password', '/api/auth/send-verification-email', '/api/auth/request-password-reset', '/api/auth/reset-password']);
 
 function staticAllowed(path) {
-  return path === '/index.html' || path === '/privacy/index.html' || (/^\/(games|community|account|assets)\//.test(path) && Boolean(TYPES[extname(path)]));
+  return path === '/index.html' || path === '/privacy/index.html' || (/^\/(games|character|community|account|assets)\//.test(path) && Boolean(TYPES[extname(path)]));
 }
 
 async function serveStatic(request, path, root) {
   if (!['GET', 'HEAD'].includes(request.method)) fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
   if (path === '/') path = '/index.html';
   if (path === '/privacy/') path = '/privacy/index.html';
-  if (path.endsWith('/') && /^\/(games|community|account)\//.test(path)) path += 'index.html';
+  if (path.endsWith('/') && /^\/(games|character|community|account)\//.test(path)) path += 'index.html';
   if (!staticAllowed(path)) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
   let target;
   try {

@@ -20,6 +20,7 @@ COPY games/ ./games/
 COPY community/ ./community/
 COPY account/ ./account/
 COPY privacy/ ./privacy/
+COPY character/ ./character/
 COPY scripts/guardian-review.mjs ./scripts/guardian-review.mjs
 COPY assets/ ./assets/
 RUN <<'SHELL'

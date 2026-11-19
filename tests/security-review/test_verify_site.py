@@ -238,9 +238,8 @@ class StoreLaunchTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         hero = ('<section class="gb-home-intro" aria-labelledby="hero-title">'
-                '<h1 id="hero-title">보드게임의 세계로, <br>함께 떠나요.</h1>'
-                '<a href="/games/" data-umami-event="hero-games">게임 둘러보기</a>'
-                '<a href="https://community.gracekingames.com/community/" data-umami-event="hero-community">커뮤니티 둘러보기</a></section>')
+                '<h1 id="hero-title">게임의 세계로, <br>함께 떠나요.</h1>'
+                '<a href="/character/" data-umami-event="hero-character">캐릭터 생성 게임으로 시작하기</a></section>')
         cards = ''.join(f'<a href="/games/{game}/" data-umami-event="homepage-{game}" data-umami-event-from="{position}">게임 홈페이지 →</a>'
                         for game in SITE.GAME_URLS for position in ('card-image', 'card-button'))
         picture = ('<picture><source media="(max-aspect-ratio: 1/1)" width="2160" height="3240" sizes="100vw" srcset="'
@@ -255,8 +254,18 @@ class StoreLaunchTests(unittest.TestCase):
         filters = ''.join(f'<button data-filter="{category}" aria-pressed="false">{label}</button>' for category, label in [('all', '전체'), ('puzzle', '퍼즐'), ('card', '카드 대전'), ('board', '보드게임')])
         self.write('games/index.html', cards + filters + '<div id="board-empty">보드게임은 준비 중이에요. 첫 게임이 열리면 커뮤니티 새 소식으로 알려 드릴게요.</div><a href="https://community.gracekingames.com/community/">커뮤니티</a>' + '<footer>' + self.DELETION + '<a href="/privacy/">개인정보처리방침</a></footer>')
         self.write('privacy/index.html', ''.join(f'<a href="{url}">방침</a>' for url in SITE.PRIVACY_URLS) + '<footer>' + self.DELETION + '<a href="/privacy/">개인정보처리방침</a></footer>')
-        self.write('.dockerignore', '!assets/\n!assets/home/\n' + ''.join(f'!{relative}\n' for relative in SITE.HOME_IMAGES))
-        for relative in SITE.HOME_IMAGES:
+        self.write('character/index.html', '<meta name="robots" content="noindex"><h1>캐릭터 만들기</h1>'
+                   '<a href="/games/">모든 게임 둘러보기</a><a href="https://community.gracekingames.com/community/">커뮤니티 새 소식 보기</a>'
+                   '<footer>' + self.DELETION + '<a href="/privacy/">개인정보처리방침</a></footer>')
+        for relative in ('index.html', 'games/index.html', 'privacy/index.html', 'character/index.html'):
+            tabs = ''.join(f'<a href="{url}"' + (' aria-current="page"' if relative == 'games/index.html' and label == '모든 게임' else '')
+                           + (' data-umami-event="feedback-form"' if label == '의견 보내기' else '') + f'>{label}</a>'
+                           for label, url in SITE.SITE_TABS)
+            nav = '<nav>' + tabs + '</nav><div data-account-header data-account-site-tab></div>'
+            logo = '<img src="/assets/brand/logo-600.png" alt="Gracekin Games">'
+            self.write(relative, nav + logo + (self.root / relative).read_text())
+        self.write('.dockerignore', '!assets/\n!assets/home/\n!assets/brand/\n' + ''.join(f'!{relative}\n' for relative in SITE.HOME_IMAGES + SITE.BRAND_IMAGES))
+        for relative in SITE.HOME_IMAGES + SITE.BRAND_IMAGES:
             path = self.root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b'')
@@ -281,7 +290,7 @@ class StoreLaunchTests(unittest.TestCase):
     def launch_failures(self):
         # 자산·계정 API가 없는 최소 문서 픽스처에서 출시 동선 검사만 확인한다.
         return [failure for failure in SITE.verify(self.root).failures
-                if any(marker in failure for marker in ('웹 체험 링크', 'Google Play 스토어', '계정 삭제 안내', '필수 페이지 없음: community/account-deletion/index.html', '대문:', '게임 목록:', '방침 안내:', '통합 개인정보처리방침'))]
+                if any(marker in failure for marker in ('웹 체험 링크', 'Google Play 스토어', '계정 삭제 안내', '필수 페이지 없음: community/account-deletion/index.html', '대문:', '게임 목록:', '방침 안내:', '통합 개인정보처리방침', '상단 네 탭', '상단 탭', '계정 탭 상태', '현재 페이지 탭', '새 영문 로고', '로고:', '캐릭터 준비:', '필수 페이지 없음: character/index.html'))]
 
     def test_pending_store_and_web_trial_links_are_allowed(self):
         self.assertEqual(self.launch_failures(), [])
@@ -302,11 +311,11 @@ class StoreLaunchTests(unittest.TestCase):
     def test_home_rejects_wrong_heading_and_accessibility_name(self):
         original = (self.root / 'index.html').read_text()
         for before, after in [
-            ('보드게임의 세계로,', '보드게임 세상으로,'),
+            ('게임의 세계로,', '보드게임 세상으로,'),
             ('<br>함께 떠나요.', ''),
             ('aria-labelledby="hero-title"', 'aria-labelledby="missing"'),
             ('id="hero-title"', ''),
-            ('</main>', '<h1>보드게임의 세계로, 함께 떠나요.</h1></main>'),
+            ('</main>', '<h1>게임의 세계로, 함께 떠나요.</h1></main>'),
             ('class="gb-home-intro"', 'class="gb-stage"'),
         ]:
             with self.subTest(after=after):
@@ -315,27 +324,75 @@ class StoreLaunchTests(unittest.TestCase):
 
     def test_home_rejects_missing_duplicate_or_misdirected_hero_buttons(self):
         original = (self.root / 'index.html').read_text()
-        for event, label in [('hero-games', '게임 둘러보기'), ('hero-community', '커뮤니티 둘러보기')]:
+        for event, label in [('hero-character', '캐릭터 생성 게임으로 시작하기')]:
             for before, after in [
                 (f'data-umami-event="{event}"', 'data-umami-event="wrong-event"'),
                 (label, '잘못된 문구'),
-                ('</main>', f'<a href="/games/" data-umami-event="{event}">{label}</a></main>'),
-                ('href="/games/"' if event == 'hero-games' else 'href="https://community.gracekingames.com/community/"', 'href="#letter"'),
+                ('</main>', f'<a href="/character/" data-umami-event="{event}">{label}</a></main>'),
+                ('href="/character/"', 'href="#letter"'),
             ]:
                 with self.subTest(event=event, after=after):
                     self.write('index.html', original.replace(before, after))
                     self.assertTrue(any(f'대문: {event} 단추' in failure for failure in self.launch_failures()))
 
     def test_home_requires_all_hero_images_and_docker_permissions(self):
-        for relative in SITE.HOME_IMAGES:
+        for relative in SITE.HOME_IMAGES + SITE.BRAND_IMAGES:
+            prefix = '대문' if relative in SITE.HOME_IMAGES else '로고'
             with self.subTest(relative=relative):
                 (self.root / relative).unlink()
-                self.assertIn(f'대문: {relative} 자산 또는 운영 패키지 허용 누락', self.launch_failures())
+                self.assertIn(f'{prefix}: {relative} 자산 또는 운영 패키지 허용 누락', self.launch_failures())
                 (self.root / relative).write_bytes(b'')
                 original = (self.root / '.dockerignore').read_text()
                 self.write('.dockerignore', original.replace('!' + relative, relative))
-                self.assertIn(f'대문: {relative} 자산 또는 운영 패키지 허용 누락', self.launch_failures())
+                self.assertIn(f'{prefix}: {relative} 자산 또는 운영 패키지 허용 누락', self.launch_failures())
                 self.write('.dockerignore', original)
+
+    def test_home_rejects_old_copy_and_buttons_and_requires_catalog_tab(self):
+        original = (self.root / 'index.html').read_text()
+        for remaining in ['<p class="gb-hero-subtitle">설명</p>', '<p class="gb-hero-brand">GRACEKIN GAMES</p>',
+                          '<a href="/games/" data-umami-event="hero-games">게임 둘러보기</a>',
+                          '<a href="https://community.gracekingames.com/community/" data-umami-event="hero-community">커뮤니티 둘러보기</a>']:
+            self.write('index.html', original + remaining)
+            self.assertIn('대문: 이전 설명·단추가 남아 있음', self.launch_failures())
+        self.write('index.html', original.replace('href="/games/"', 'href="/wrong/"'))
+        self.assertIn('대문: 모든 게임 상단 메뉴 없음', self.launch_failures())
+
+    def test_site_tabs_require_order_urls_feedback_tracking_and_account_tab_states(self):
+        for relative in ('index.html', 'games/index.html', 'privacy/index.html', 'character/index.html'):
+            original = (self.root / relative).read_text()
+            for before, after, expected in [
+                ('>모든 게임</a>', '>커뮤니티</a>', '상단 네 탭'),
+                ('href="/account/"', 'href="/wrong/"', '상단 네 탭'),
+                ('href="https://community.gracekingames.com/community/"', 'href="/wrong/"', '상단 네 탭'),
+                (f'href="{SITE.FEEDBACK_URL}"', 'href="#letter"', '상단 네 탭'),
+                ('data-umami-event="feedback-form"', '', '상단 탭'),
+                ('data-umami-event="feedback-form"', 'data-umami-event="feedback-form" target="_blank"', '상단 탭'),
+                ('data-account-site-tab', '', '계정 탭 상태'),
+                ('alt="Gracekin Games"', 'alt=""', '새 영문 로고'),
+                (' aria-current="page"', '', '현재 페이지 탭') if relative == 'games/index.html' else
+                ('>모든 게임</a>', ' aria-current="page">모든 게임</a>', '현재 페이지 탭'),
+            ]:
+                with self.subTest(relative=relative, expected=expected, after=after):
+                    self.write(relative, original.replace(before, after))
+                    self.assertTrue(any(expected in failure for failure in self.launch_failures()))
+            # 목적지·문구가 모두 맞아도 탭 순서를 바꾸면 실패해야 한다.
+            self.write(relative, original.replace('<nav>', '<nav><a href="/account/">내 계정</a>').replace('<a href="/account/">내 계정</a></nav>', '</nav>'))
+            self.assertTrue(any('상단 네 탭' in failure for failure in self.launch_failures()))
+            self.write(relative, original)
+
+    def test_character_requires_page_noindex_heading_and_both_links(self):
+        relative = 'character/index.html'
+        original = (self.root / relative).read_text()
+        (self.root / relative).unlink()
+        self.assertIn(f'필수 페이지 없음: {relative}', self.launch_failures())
+        for before, after, expected in [
+            ('content="noindex"', 'content="index"', 'noindex'),
+            ('<h1>캐릭터 만들기</h1>', '', '제목'),
+            ('모든 게임 둘러보기', '다른 문구', '모든 게임 둘러보기'),
+            ('커뮤니티 새 소식 보기', '다른 문구', '커뮤니티 새 소식 보기'),
+        ]:
+            self.write(relative, original.replace(before, after))
+            self.assertTrue(any('캐릭터 준비:' in failure and expected in failure for failure in self.launch_failures()))
 
     def test_home_rejects_wrong_picture_order_and_default(self):
         original = (self.root / 'index.html').read_text()

@@ -3,6 +3,8 @@
   'use strict';
   const header = document.querySelector('[data-account-header]');
   if (!header) return;
+  // 대표 사이트 네 탭에만 상태별 단추와 내 계정·잔액 표시를 적용합니다.
+  const siteTab = header.getAttribute('data-account-site-tab') !== null;
   const link = header.querySelector('[data-account-link]');
   const label = header.querySelector('[data-account-label]');
   const grain = header.querySelector('[data-account-grain]');
@@ -11,7 +13,7 @@
   const params = new URLSearchParams(location.search);
   const pathGame = location.pathname.match(/^\/games\/(slimeline|gyeongguk)\//)?.[1];
   const game = pathGame || (['slimeline', 'gyeongguk'].includes(params.get('game')) ? params.get('game') : null);
-  link.href = `/account/${game ? `?game=${game}` : ''}`;
+  link.href = `/account/${game && !siteTab ? `?game=${game}` : ''}`;
   const pages = location.protocol === 'https:' && ['gracekingames.com', 'www.gracekingames.com'].includes(location.hostname);
   let generation = 0, controller = null, suspended = false;
 
@@ -19,6 +21,7 @@
     generation += 1;
     controller?.abort();
     controller = null;
+    if (siteTab) header.setAttribute('data-account-state', 'loading');
     label.textContent = message;
     balance.textContent = '';
     grain.hidden = true;
@@ -45,6 +48,7 @@
       const data = await response.json();
       if (current !== generation || document.hidden || suspended) return;
       if (data.user === null) {
+        if (siteTab) header.setAttribute('data-account-state', 'guest');
         label.textContent = '로그인';
         link.setAttribute('aria-label', '그레이스킨게임즈 계정 로그인');
         return;
@@ -52,13 +56,15 @@
       const user = data.user;
       if (!user || typeof user.name !== 'string' || !user.name.trim() || !Number.isSafeInteger(user.grainBalance) || user.grainBalance < 0) throw new Error('계정 표시를 확인하지 못했습니다.');
       const amount = new Intl.NumberFormat('ko-KR').format(user.grainBalance);
-      label.textContent = user.name;
+      if (siteTab) header.setAttribute('data-account-state', 'member');
+      label.textContent = siteTab ? '내 계정' : user.name;
       balance.textContent = `${amount} 코인`;
       grain.hidden = false;
       link.setAttribute('aria-label', `${user.name}님, ${amount} 그레이스킨 코인, 내 계정 열기`);
       link.setAttribute('title', `${user.name} · ${amount} 그레이스킨 코인`);
     } catch (_) {
       if (current !== generation || document.hidden || suspended) return;
+      if (siteTab) header.setAttribute('data-account-state', 'error');
       label.textContent = '내 계정';
       balance.textContent = '';
       grain.hidden = true;

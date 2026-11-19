@@ -26,6 +26,10 @@ HOME_IMAGES = tuple(f'assets/home/hero-{shape}-{size}.webp'
                     for shape, sizes in [('wide', (1600, 2560, 3840)), ('tall', (720, 1080, 1440, 2160)),
                                          ('pano', (1920, 2560, 3840, 5120))]
                     for size in sizes)
+BRAND_IMAGES = tuple(f'assets/brand/{name}' for name in ('logo-1200.webp', 'logo-600.webp', 'logo-300.webp', 'logo-600.png'))
+FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform'
+SITE_TABS = [('모든 게임', '/games/'), ('커뮤니티', 'https://community.gracekingames.com/community/'),
+             ('의견 보내기', FEEDBACK_URL), ('내 계정', '/account/')]
 PRIVACY_URLS = {
     'https://community.gracekingames.com/community/privacy/',
     'https://slimeline.gracekingames.com/privacy.html',
@@ -63,6 +67,7 @@ class Page(HTMLParser):
         self.headings: list[dict[str, str]] = []
         self.heading = None
         self.footer_links: list[dict[str, str]] = []
+        self.nav_links: list[dict[str, str]] = []
         self.ids: set[str] = set()
         self.stack: list[str] = []
         self.anchor = None
@@ -86,6 +91,8 @@ class Page(HTMLParser):
         if tag == 'a':
             self.anchor = {'text': '', **attrs}
             self.links.append(self.anchor)
+            if 'nav' in self.stack:
+                self.nav_links.append(self.anchor)
             if 'footer' in self.stack:
                 self.footer_links.append(self.anchor)
         if tag not in VOID:
@@ -304,7 +311,7 @@ def css_references(source: str) -> list[str]:
 PENDING_FONT_MIGRATION = frozenset()
 FONT_STYLESHEET = 'assets/shared/fonts.css'
 FONT_PAGES = frozenset({
-    'index.html', 'games/index.html', 'privacy/index.html', 'account/index.html', 'account/admin/index.html', 'community/index.html',
+    'index.html', 'games/index.html', 'privacy/index.html', 'character/index.html', 'account/index.html', 'account/admin/index.html', 'community/index.html',
     'community/bug-report/index.html', 'community/privacy/index.html', 'community/terms/index.html',
     'games/slimeline/index.html', 'games/gyeongguk/index.html',
 })
@@ -493,10 +500,10 @@ def verify(root: Path) -> Report:
         check(path in copied or '.' in copied, f'{path}: Dockerfile COPY에서 운영 경로 누락')
     for path in sorted((root / 'server').glob('*.js')):
         check(docker_allows(path.relative_to(root), docker_allowed), f'{path.relative_to(root)}: 운영 패키지에서 서버 파일 누락')
-    required = [root / 'index.html', root / 'games/index.html', root / 'privacy/index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'community/account-deletion/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
+    required = [root / 'index.html', root / 'games/index.html', root / 'privacy/index.html', root / 'character/index.html', root / 'community/index.html', root / 'community/privacy/index.html', root / 'community/terms/index.html', root / 'community/account-deletion/index.html', root / 'account/index.html', root / 'account/admin/index.html', root / 'community/bug-report/index.html'] + [root / f'games/{game}/index.html' for game in GAME_URLS]
     for path in required:
         check(path.is_file(), f'필수 페이지 없음: {path.relative_to(root)}')
-    paths = [root / 'index.html'] + sorted((root / 'privacy').glob('**/*.html')) + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
+    paths = [root / 'index.html'] + sorted((root / 'character').glob('**/*.html')) + sorted((root / 'privacy').glob('**/*.html')) + sorted((root / 'games').glob('**/*.html')) + sorted((root / 'community').glob('**/*.html')) + sorted((root / 'account').glob('**/*.html'))
     pages = {path: Page(path) for path in paths if path.is_file()}
     report.pages = len(pages)
     verify_fonts(root, pages, report)
@@ -562,15 +569,18 @@ def verify(root: Path) -> Report:
               '대문: 레이스 섹션·스크립트·스타일 참조가 남아 있음')
         heroes = [attrs for tag, attrs in home.tags if tag == 'section' and 'gb-home-intro' in (attrs.get('class') or '').split()]
         check(len(heroes) == 1, '대문: gb-home-intro 섹션은 하나여야 함')
-        check(len(home.headings) == 1 and ' '.join(home.headings[0]['text'].split()) == '보드게임의 세계로, 함께 떠나요.',
+        check(len(home.headings) == 1 and ' '.join(home.headings[0]['text'].split()) == '게임의 세계로, 함께 떠나요.',
               '대문: h1 문구·개수 불일치')
         check(len(heroes) == 1 and len(home.headings) == 1 and bool(home.headings[0].get('id'))
               and heroes[0].get('aria-labelledby') == home.headings[0]['id'], '대문: h1 접근성 이름 연결 불일치')
-        for event, href, label in [('hero-games', '/games/', '게임 둘러보기'),
-                                   ('hero-community', 'https://community.gracekingames.com/community/', '커뮤니티 둘러보기')]:
+        for event, href, label in [('hero-character', '/character/', '캐릭터 생성 게임으로 시작하기')]:
             buttons = [link for link in home.links if link.get('data-umami-event') == event]
             check(len(buttons) == 1 and buttons[0].get('href') == href and buttons[0]['text'].strip() == label,
                   f'대문: {event} 단추 문구·목적지·이벤트 불일치')
+        check(not any(attrs.get('data-umami-event') in {'hero-games', 'hero-community'}
+                      or {'gb-hero-brand', 'gb-hero-subtitle', 'gb-hero-secondary'} & set(attrs.get('class', '').split())
+                      for _, attrs in home.tags), '대문: 이전 설명·단추가 남아 있음')
+        check(any(link.get('href') == '/games/' for link in home.nav_links), '대문: 모든 게임 상단 메뉴 없음')
         check('games' not in home.ids and not any(name.startswith('gb-game')
               for _, attrs in home.tags for name in (attrs.get('class') or '').split()), '대문: 게임 카드·목록이 남아 있음')
         check(not any(link.get('href') == f'/games/{game}/' for link in home.links for game in GAME_URLS),
@@ -598,6 +608,36 @@ def verify(root: Path) -> Report:
                 candidates = [candidate.strip() for candidate in attrs.get('srcset', '').split(',')]
                 check(len(candidates) == len(expected) and set(candidates) == expected, f'대문: {shape} srcset 불일치')
 
+    for relative in BRAND_IMAGES:
+        resource = Path(relative)
+        check((root / resource).is_file() and docker_allows(resource, docker_allowed),
+              f'로고: {resource} 자산 또는 운영 패키지 허용 누락')
+    for relative in ('index.html', 'games/index.html', 'privacy/index.html', 'character/index.html'):
+        page = pages.get(root / relative)
+        if not page:
+            continue
+        check([(link['text'].strip(), link.get('href')) for link in page.nav_links] == SITE_TABS,
+              f'{relative}: 상단 네 탭 순서·문구·목적지 불일치')
+        check(len(page.nav_links) == 4 and page.nav_links[2].get('data-umami-event') == 'feedback-form'
+              and all(link.get('target', '_self') == '_self' for link in page.nav_links),
+              f'{relative}: 상단 탭 통계·같은 창 이동 불일치')
+        check(any('data-account-header' in attrs and 'data-account-site-tab' in attrs
+                  for _, attrs in page.tags), f'{relative}: 계정 탭 상태 표시 설정 없음')
+        current = [link for link in page.nav_links if link.get('aria-current') == 'page']
+        check((len(current) == 1 and current[0].get('href') == '/games/') if relative == 'games/index.html' else not current,
+              f'{relative}: 현재 페이지 탭 표시 불일치')
+        logos = [attrs for tag, attrs in page.tags if tag == 'img' and attrs.get('alt') == 'Gracekin Games']
+        check(len(logos) == 1 and logos[0].get('src') == '/assets/brand/logo-600.png', f'{relative}: 새 영문 로고 누락')
+    character = pages.get(root / 'character/index.html')
+    if character:
+        check(any(tag == 'meta' and attrs.get('name') == 'robots' and attrs.get('content') == 'noindex'
+                  for tag, attrs in character.tags), '캐릭터 준비: noindex 누락')
+        check(len(character.headings) == 1 and character.headings[0]['text'].strip() == '캐릭터 만들기',
+              '캐릭터 준비: 제목 불일치')
+        for label, href in [('모든 게임 둘러보기', '/games/'), ('커뮤니티 새 소식 보기', 'https://community.gracekingames.com/community/')]:
+            check(any(link.get('href') == href and link['text'].strip() == label for link in character.links),
+                  f'캐릭터 준비: {label} 링크 누락')
+
     catalog = pages.get(root / 'games/index.html')
     if catalog:
         for game, url in GAME_URLS.items():
@@ -614,7 +654,7 @@ def verify(root: Path) -> Report:
     privacy = pages.get(root / 'privacy/index.html')
     if privacy:
         check(PRIVACY_URLS.issubset({link.get('href') for link in privacy.links}), '방침 안내: 서비스별 방침 링크 누락')
-    for relative in ('index.html', 'games/index.html', 'privacy/index.html'):
+    for relative in ('index.html', 'games/index.html', 'privacy/index.html', 'character/index.html'):
         page = pages.get(root / relative)
         if page:
             links = [link for link in page.footer_links if link.get('href') == '/privacy/']
@@ -649,10 +689,10 @@ def verify(root: Path) -> Report:
         check(not any(tag == 'meta' and 'noindex' in attrs.get('content', '').lower()
                       for tag, attrs in deletion_page.tags), 'community/account-deletion/index.html: 계정 삭제 안내에 noindex가 있음')
     deletion_urls = {'/community/account-deletion/', 'https://community.gracekingames.com/community/account-deletion/'}
-    for relative in ('index.html', 'games/index.html', 'privacy/index.html', 'community/privacy/index.html', 'community/terms/index.html', 'account/index.html'):
+    for relative in ('index.html', 'games/index.html', 'privacy/index.html', 'character/index.html', 'community/privacy/index.html', 'community/terms/index.html', 'account/index.html'):
         page = pages.get(root / relative)
         if page:
-            links = page.footer_links if relative in {'index.html', 'games/index.html', 'privacy/index.html'} else page.links
+            links = page.footer_links if relative in {'index.html', 'games/index.html', 'privacy/index.html', 'character/index.html'} else page.links
             check(any(link.get('href') in deletion_urls for link in links), f'{relative}: 계정 삭제 안내 링크 없음' + (' (바닥글)' if relative == 'index.html' else ''))
 
     for private_path in ('account/admin/index.html', 'community/bug-report/index.html'):

@@ -5,16 +5,18 @@ import { runInNewContext } from 'node:vm';
 
 const source = await readFile(new URL('../assets/shared/account-header.js', import.meta.url), 'utf8');
 const flush = () => new Promise(resolve => setImmediate(resolve));
-function screen(url = 'https://gracekingames.com/') {
+function screen(url = 'https://gracekingames.com/', siteTab = false) {
   const listeners = {}, documentListeners = {}, calls = [], nodes = new Map(), timers = new Map();
   let nextTimer = 0;
   function node(selector) {
     if (!nodes.has(selector)) nodes.set(selector, { textContent: '', hidden: false, attributes: {}, events: {},
+      getAttribute(name) { return this.attributes[name] ?? null; },
       setAttribute(name, value) { this.attributes[name] = value; }, removeAttribute(name) { delete this.attributes[name]; },
       addEventListener(name, callback) { this.events[name] = callback; }, querySelector: node,
     });
     return nodes.get(selector);
   }
+  if (siteTab) node('[data-account-header]').setAttribute('data-account-site-tab', '');
   const document = { hidden: false, querySelector: node, addEventListener(name, callback) { documentListeners[name] = callback; } };
   const window = { addEventListener(name, callback) { listeners[name] = callback; } };
   function fetch(url, options) {
@@ -100,5 +102,66 @@ test('로컬·게임별 계정 링크 문맥과 긴 닉네임·큰 잔액의 접
     assert.equal(link(ui).attributes['aria-label'], `${name}님, 9,007,199,254,740,991 그레이스킨 코인, 내 계정 열기`);
     ui.event('focus'); ui.calls[1].respond({ user: { name, grainBalance: '0' } }); await flush();
     assert.equal(balance(ui).textContent, ''); assert.equal(grain(ui).hidden, true); assert.equal(retry(ui).hidden, false);
+  }
+});
+
+
+test('네 탭의 확인 중·실패 상태는 내 계정과 다시 확인을 표시함', async () => {
+  for (const path of ['/', '/games/', '/privacy/', '/character/']) {
+    const ui = screen(`https://gracekingames.com${path}?game=gyeongguk`, true);
+    const header = ui.node('[data-account-header]');
+    assert.equal(link(ui).href, '/account/');
+    assert.equal(label(ui).textContent, '내 계정');
+    assert.equal(header.attributes['data-account-state'], 'loading');
+    assert.equal(header.attributes['aria-busy'], 'true');
+    assert.equal(grain(ui).hidden, true);
+    ui.calls[0].reject(new Error('시험용 연결 실패')); await flush();
+    assert.equal(header.attributes['data-account-state'], 'error');
+    assert.equal(label(ui).textContent, '내 계정');
+    assert.equal(retry(ui).hidden, false);
+    assert.equal(grain(ui).hidden, true);
+    retry(ui).events.click();
+    assert.equal(header.attributes['data-account-state'], 'loading');
+    assert.equal(retry(ui).hidden, true);
+    ui.calls[1].respond({ user: null }); await flush();
+    assert.equal(header.attributes['data-account-state'], 'guest');
+    assert.equal(label(ui).textContent, '로그인');
+  }
+});
+
+test('네 탭의 비로그인 상태는 로그인 단추·고정 목적지·접근성 이름을 표시함', async () => {
+  for (const path of ['/', '/games/', '/privacy/', '/character/']) {
+    const ui = screen(`https://gracekingames.com${path}`, true);
+    ui.calls[0].respond({ user: null }); await flush();
+    assert.equal(ui.node('[data-account-header]').attributes['data-account-state'], 'guest');
+    assert.equal(label(ui).textContent, '로그인');
+    assert.equal(link(ui).href, '/account/');
+    assert.equal(link(ui).attributes['aria-label'], '그레이스킨게임즈 계정 로그인');
+    assert.equal(grain(ui).hidden, true);
+    assert.equal(retry(ui).hidden, true);
+  }
+});
+
+test('네 탭의 로그인 상태는 내 계정·코인 잔액을 표시하고 이름·전체 화폐 접근성을 보존함', async () => {
+  for (const path of ['/', '/games/', '/privacy/', '/character/']) {
+    const ui = screen(`https://gracekingames.com${path}`, true);
+    ui.calls[0].respond({ user: { name: '로그인회원', grainBalance: 30300 } }); await flush();
+    assert.equal(ui.node('[data-account-header]').attributes['data-account-state'], 'member');
+    assert.equal(label(ui).textContent, '내 계정');
+    assert.equal(balance(ui).textContent, '30,300 코인');
+    assert.equal(grain(ui).hidden, false);
+    assert.equal(link(ui).attributes['aria-label'], '로그인회원님, 30,300 그레이스킨 코인, 내 계정 열기');
+    assert.equal(link(ui).attributes.title, '로그인회원 · 30,300 그레이스킨 코인');
+    ui.event('blur');
+    assert.equal(balance(ui).textContent, '');
+    assert.equal(label(ui).textContent, '내 계정');
+    ui.event('focus'); ui.calls[1].respond({ user: null }); await flush();
+    assert.equal(label(ui).textContent, '로그인');
+    ui.event('gracekin-account-change', { detail: { phase: 'clear' } });
+    assert.equal(label(ui).textContent, '내 계정');
+    ui.event('gracekin-account-change', { detail: { phase: 'refresh' } });
+    ui.calls[2].respond({ user: { name: '다시로그인회원', grainBalance: 42 } }); await flush();
+    assert.equal(label(ui).textContent, '내 계정');
+    assert.equal(balance(ui).textContent, '42 코인');
   }
 });

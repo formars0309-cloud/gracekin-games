@@ -194,12 +194,13 @@ test('자기 댓글 삭제·글 삭제시 댓글 연쇄 삭제', async () => {
 test('정적 파일 allowlist·일반/인코딩 경로 탈출·symlink 보호', async () => {
   const allowed = await request(app, '/'); assert.equal(allowed.status, 200); assert.match(allowed.headers['content-type'], /text\/html/);
   assert.equal((await request(app, '/assets/favicon.svg')).status, 200);
-  for (const path of ['/games/', '/privacy/', '/privacy/index.html']) {
+  for (const path of ['/games/', '/privacy/', '/privacy/index.html', '/character/', '/character/index.html']) {
     const page = await request(app, path);
     assert.equal(page.status, 200, path);
     assert.match(page.headers['content-type'], /text\/html/);
   }
   assert.equal((await request(app, '/privacy/private.json')).status, 404);
+  assert.equal((await request(app, encodeURI('/character/없는파일.json'))).status, 404);
   for (const path of ['/.git/config', '/.handoff/인계.md', '/.env', '/.data/community.sqlite', '/node_modules/better-auth/package.json', '/server/app.js', '/test/community.test.js', '/README.md', '/AGENTS.md', '/package.json', '/games/../server/app.js', '/assets/%2e%2e/server/app.js', '/assets/%252e%252e/server/app.js', '/assets/%2E%2E%2Fserver/app.js', '/assets/%5c..%5cserver%5capp.js', '//server/app.js', '/assets/%00.png']) {
     const res = await request(app, encodeURI(path).replaceAll('%25','%'));
     assert.equal(res.status, 404, path);
