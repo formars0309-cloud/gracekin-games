@@ -10,10 +10,11 @@
 <body>
 <a class="skip-link" href="#village-controls">대화와 조작으로 바로가기</a>
 <main class="village-shell">
-<header class="village-header"><div><p class="eyebrow">그레이스킨 마을 · 비공개 시험판</p><h1>분수 광장</h1></div><a class="home-link" href="/account/">내 계정</a></header>
+<header class="village-header"><div><p class="eyebrow">그레이스킨 마을 · 분수 광장 시험판</p><h1 id="village-title">분수 광장</h1><span id="operator-label" class="operator-label" hidden>운영자</span></div><a class="home-link" href="/account/">내 계정</a></header>
 <div id="connection-status" class="connection-status" role="status">마을 입장을 준비하고 있어요.</div>
 <section id="login-panel" class="login-panel" hidden><h2>우리 마을에서 만나요</h2><p>분수 광장은 로그인한 회원이 함께 걷고 이야기하는 공간이에요.<br>로그인한 뒤 이 페이지로 돌아와 새로고침해 주세요.</p><a class="primary" href="/account/">로그인하기</a></section>
 <section id="entry-panel" class="login-panel" hidden><h2 id="entry-message"></h2><p>입장 안내를 확인해 주세요. 도움이 필요하면 <a href="/account/">내 계정</a>에서 문의 방법을 확인할 수 있어요.</p></section>
+<div id="tour-controls" class="tour-controls" hidden><label for="tour-select">운영자 둘러보기</label><select id="tour-select"></select><button id="tour-start" type="button">마을 둘러보기</button></div>
 <section id="village-play" class="village-play" hidden aria-label="분수 광장">
 <div class="world-wrap"><div id="village-game" tabindex="0" role="application" aria-label="분수 광장. 바닥을 눌러 이동하거나 방향키와 W A S D 키를 사용하세요."></div><p class="world-tip" id="world-tip">바닥을 톡 눌러 걸어 보세요.</p><button id="recenter" class="recenter" type="button" aria-label="내 캐릭터 위치로 돌아오기">⌖</button></div>
 <div id="village-controls" class="village-controls">
@@ -27,9 +28,10 @@
 </section>
 <p id="action-status" class="action-status" role="status"></p>
 </main>
+<dialog id="birthyear-dialog" aria-labelledby="birthyear-title"><form id="birthyear-form"><p class="eyebrow">마을에 들어가기 전에</p><h2 id="birthyear-title">어느 해에 태어났나요?</h2><p>출생연도로 내 마을을 정해요. 생일·학교·학년은 받지 않아요.</p><p id="birthyear-warning" class="birthyear-warning">한 번 정하면 바꿀 수 없어요. 정확히 골라 주세요</p><div id="birthyear-selection"><label for="birthyear-select">출생연도</label><select id="birthyear-select" required aria-describedby="birthyear-warning"></select><p id="birthyear-calendar" class="help"></p><div class="dialog-actions"><button id="birthyear-next" class="primary" type="submit">선택 확인</button></div></div><div id="birthyear-confirm" hidden><p id="birthyear-confirm-text"></p><p class="help">잘못 입력했다면 저장 전에 다시 골라 주세요. 저장한 뒤에는 문의 메일로 운영자에게 수정을 요청해야 해요.</p><div class="dialog-actions"><button id="birthyear-back" type="button">다시 고르기</button><button id="birthyear-save" class="primary" type="submit">출생연도 확정</button></div></div><p id="birthyear-status" role="status"></p></form></dialog>
 <dialog id="wardrobe-dialog" aria-labelledby="wardrobe-title"><form id="wardrobe-form"><p class="eyebrow">첫 번째 만남</p><h2 id="wardrobe-title">나의 작은 옷장</h2><p>마을에서 입을 색을 골라 주세요.<br>캐릭터 만들기는 나중에 찾아올 거예요.</p><div id="wardrobe-preview" class="wardrobe-preview" aria-hidden="true"><span class="preview-shadow"></span><span class="preview-body"></span><span class="preview-head"></span><span class="preview-hair"></span></div><div id="wardrobe-fields"></div><p id="wardrobe-status" role="status"></p><div class="dialog-actions"><button id="wardrobe-cancel" type="button">닫기</button><button id="wardrobe-save" class="primary" type="submit">저장하고 입장</button></div></form></dialog>
 <dialog id="people-dialog" aria-labelledby="people-title"><h2 id="people-title">광장 주민</h2><p class="help">차단하면 그 주민의 대화와 말풍선이 보이지 않아요.</p><div id="people-list"></div><details><summary>차단한 주민 관리</summary><div id="blocked-list"></div></details><button id="people-close" type="button">닫기</button></dialog>
-<dialog id="report-dialog" aria-labelledby="report-title"><form id="report-form"><h2 id="report-title">주민 신고</h2><p id="report-target"></p><label for="report-reason">신고 사유</label><textarea id="report-reason" minlength="2" maxlength="500" required></textarea><p class="help">같은 광장의 최근 10분 대화 중 대상 주민의 메시지만 전달돼요.</p><div class="dialog-actions"><button id="report-cancel" type="button">취소</button><button class="primary" type="submit">신고 접수</button></div></form></dialog>
+<dialog id="report-dialog" aria-labelledby="report-title"><form id="report-form"><h2 id="report-title">주민 신고</h2><p id="report-target"></p><label for="report-reason">신고 사유</label><textarea id="report-reason" minlength="2" maxlength="500" required></textarea><p class="help">같은 마을·같은 채널에 있는 주민의 최근 10분 대화 중 대상 주민의 메시지만 전달돼요.</p><div class="dialog-actions"><button id="report-cancel" type="button">취소</button><button class="primary" type="submit">신고 접수</button></div></form></dialog>
 <noscript><p>마을에 들어오려면 자바스크립트를 켜 주세요.</p></noscript>
 </body>
 </html>

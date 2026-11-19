@@ -7,10 +7,10 @@ import { CONSENT_VERSION, CONSENT_TEXT } from '../server/guardian.js';
 import { VILLAGE_OPENS_AT, VILLAGE_CLEANUP_INTERVAL, oneYearAgo, startVillageCleanup } from '../server/village/policy.js';
 import { createVillageStore } from '../server/village/store.js';
 
-test('어린이는 자유 채팅을 받지 않고 어른은 모두 받으며 어린이 신고는 서버 기록을 사용한다', async () => scenario(async ({ app, db, signup, connect }) => {
-  const author = await signup('receive'), adult = seedMember(db, author.id, '어른'), child = seedMember(db, author.id, '어린이', { child: true });
+test('중학생 마을에서도 어린이는 자유 채팅을 받지 않고 허용 회원은 모두 받으며 신고는 서버 기록을 사용한다', async () => scenario(async ({ app, db, signup, connect }) => {
+  const author = await signup('receive', { birthYear: 2012 }), adult = seedMember(db, author.id, '어른'), child = seedMember(db, author.id, '어린이', { child: true });
   const sender = await connect(author), observer = await connect(adult), protectedPeer = await connect(child);
-  await protectedPeer.wait(message => message.type === 'welcome');
+  assert.equal((await protectedPeer.wait(message => message.type === 'welcome')).village.id, 'middle');
   sender.send({ type: 'chat', text: '어른에게만 전달하는 대화' });
   assert.equal((await observer.wait(message => message.text === '어른에게만 전달하는 대화')).kind, 'free');
   sender.send({ type: 'phrase', id: 'hello' });
@@ -27,7 +27,7 @@ test('어린이는 자유 채팅을 받지 않고 어른은 모두 받으며 어
 }));
 
 test('수신자의 연령이 접속 중 어린이로 바뀌어도 자유 채팅을 보내지 않는다', async () => scenario(async ({ db, signup, connect }) => {
-  const author = await signup('age-refresh'), member = seedMember(db, author.id, '변경회원', { child: true });
+  const author = await signup('age-refresh', { birthYear: 2012 }), member = seedMember(db, author.id, '변경회원', { child: true });
   db.prepare("UPDATE user SET ageBand='14plus' WHERE id=?").run(member.id);
   const sender = await connect(author), recipient = await connect(member); await recipient.wait(message => message.type === 'welcome');
   db.prepare("UPDATE user SET ageBand='under14' WHERE id=?").run(member.id);
@@ -82,11 +82,11 @@ test('v4 동의 어린이는 마을 입장·옷장 저장을 거부하고 기존
 test('신고·제한·감사 자료는 서버 시작과 하루 정리에서 생성 후 1년 경계까지만 삭제한다', async () => scenario(async ({ db, signup, now, advance, restart }) => {
   const actor = await signup('retention'), target = seedMember(db, actor.id, '신고대상'), cutoff = oneYearAgo(now());
   const insert = (id, time) => {
-    db.prepare('INSERT INTO village_reports VALUES(?,?,?,?,?,?,?)').run(id, actor.id, target.id, 1, '보존 시험', '[]', time);
-    db.prepare('INSERT INTO village_admin_audit VALUES(?,?,?,?,?,?,?)').run(id, actor.id, target.id, 'mute', time + 60000, '보존 시험', time);
+    db.prepare('INSERT INTO village_reports(id,reporterId,targetId,channelId,reason,snapshot,createdAt) VALUES(?,?,?,?,?,?,?)').run(id, actor.id, target.id, 1, '보존 시험', '[]', time);
+    db.prepare('INSERT INTO village_admin_audit(id,actorId,targetId,action,until,reason,createdAt) VALUES(?,?,?,?,?,?,?)').run(id, actor.id, target.id, 'mute', time + 60000, '보존 시험', time);
   };
   for (const [id, at] of [['지난자료', cutoff - 1], ['경계자료', cutoff], ['남길자료', cutoff + 1]]) insert(id, at);
-  db.prepare('INSERT INTO village_mutes VALUES(?,?,?,?,?)').run(target.id, cutoff + 60000, '보존 시험', actor.id, cutoff);
+  db.prepare('INSERT INTO village_mutes(userId,until,reason,actorId,createdAt) VALUES(?,?,?,?,?)').run(target.id, cutoff + 60000, '보존 시험', actor.id, cutoff);
   await restart();
   for (const table of ['village_reports', 'village_admin_audit']) assert.deepEqual(db.prepare(`SELECT id FROM ${table}`).all().map(row => row.id), ['남길자료']);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM village_mutes').get().n, 0);
@@ -109,6 +109,7 @@ test('회원 삭제와 본인 차단 해제는 캐릭터·차단 관계를 즉�
   // 실제 회원 삭제와 같은 user 삭제가 외래키를 통해 관련 자료를 지웁니다.
   db.prepare('DELETE FROM user WHERE id=?').run(member.id);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM village_avatars').get().n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM village_profiles WHERE userId=?').get(member.id).n, 0);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM village_blocks').get().n, 0);
 }));
 

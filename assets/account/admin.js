@@ -16,7 +16,7 @@
   }
   function clear() {
     authorized = false; generation++; byId('admin-content').hidden = true;
-    for (const id of ['admin-reports', 'admin-hidden', 'admin-users', 'admin-bugs', 'admin-events', 'admin-issues', 'admin-village-reports']) byId(id).replaceChildren();
+    for (const id of ['admin-reports', 'admin-hidden', 'admin-users', 'admin-bugs', 'admin-events', 'admin-issues', 'admin-village-reports', 'admin-village-mutes', 'admin-village-profile']) byId(id).replaceChildren();
     for (const form of byId('admin-content').querySelectorAll('form')) form.reset();
     for (const node of byId('admin-content').querySelectorAll('.tool-result')) message(node, '');
   }
@@ -48,20 +48,24 @@
   }
   async function load(kind) {
     if (!authorized) return; const current = generation;
-    const config = { reports: ['/admin/reports', 'reports-result', 'admin-reports'], hidden: ['/admin/hidden', 'hidden-result', 'admin-hidden'], bugs: ['/admin/bug-reports', 'bugs-result', 'admin-bugs'], events: ['/admin/events', 'events-result', 'admin-events'], issues: ['/community/known-issues', 'issues-result', 'admin-issues'], village: ['/admin/village/reports', 'village-result', 'admin-village-reports'] }[kind];
+    const config = { reports: ['/admin/reports', 'reports-result', 'admin-reports'], hidden: ['/admin/hidden', 'hidden-result', 'admin-hidden'], bugs: ['/admin/bug-reports', 'bugs-result', 'admin-bugs'], events: ['/admin/events', 'events-result', 'admin-events'], issues: ['/community/known-issues', 'issues-result', 'admin-issues'], village: ['/admin/village/reports', 'village-result', 'admin-village-reports', 'admin-village-mutes', 'admin-village-profile'] }[kind];
     const [path, statusId, listId] = config; const status = byId(statusId), list = byId(listId);
     message(status, '목록을 확인하고 있어요.');
     try {
-      const data = await request(path); if (!authorized || current !== generation) return; list.replaceChildren();
+      const [data, restrictions] = await Promise.all([request(path), kind === 'village' ? request('/admin/village/mutes') : Promise.resolve(null)]); if (!authorized || current !== generation) return; list.replaceChildren();
       if (kind === 'village') {
         if (!Array.isArray(data.reports)) throw new Error('마을 신고 응답을 확인하지 못했어요.');
         for (const item of data.reports) {
           const card = record(list, `마을 신고 · ${item.targetName || '주민'}`);
-          detail(card, '신고 ID', item.id); detail(card, '신고자', item.reporterName); detail(card, '대상 회원 ID', item.targetId); detail(card, '광장', `${item.channelId}번`); detail(card, '사유', item.reason); detail(card, '접수', formatDate(item.createdAt));
+          detail(card, '마을', item.villageName); detail(card, '신고 ID', item.id); detail(card, '신고자', item.reporterName); detail(card, '대상 회원 ID', item.targetId); detail(card, '광장', `${item.channelId}번`); detail(card, '사유', item.reason); detail(card, '접수', formatDate(item.createdAt));
           for (const chat of item.snapshot || []) detail(card, formatDate(chat.at), `${chat.name}: ${chat.text}`);
           if (!item.snapshot?.length) detail(card, '대화', '보관 시간 안에 해당 주민의 대화가 없어요.');
-          formFor(card, { fields: [field('채팅 금지 시간 (분, 0은 해제)', 'durationMinutes', { type: 'number', required: true, min: 0, max: 10080, step: 1, value: 60 }), field('조치 사유', 'reason', { required: true, minLength: 2, maxLength: 500, multiline: true })], label: '마을 채팅 제한 저장', path: '/admin/village/mutes', transform: data => ({ ...data, targetId: item.targetId, durationMinutes: Number(data.durationMinutes) }), success: response => `채팅 제한을 저장했어요. 적용 종료: ${formatDate(response.mute.until)}` });
+          formFor(card, { fields: [field('채팅 금지 시간 (분, 0은 해제)', 'durationMinutes', { type: 'number', required: true, min: 0, max: 10080, step: 1, value: 60 }), field('조치 사유', 'reason', { required: true, minLength: 2, maxLength: 500, multiline: true })], label: '마을 채팅 제한 저장', path: '/admin/village/mutes', transform: data => ({ ...data, targetId: item.targetId, durationMinutes: Number(data.durationMinutes) }), success: response => `${response.mute.villageName}의 채팅 제한을 저장했어요. 적용 종료: ${formatDate(response.mute.until)}` });
         }
+        const muteList = byId('admin-village-mutes'); muteList.replaceChildren();
+        if (!Array.isArray(restrictions.mutes)) throw new Error('채팅 제한 기록을 확인하지 못했어요.');
+        for (const item of restrictions.mutes) { const card = record(muteList, `${item.villageName} · ${item.name}`); detail(card, '대상 회원 ID', item.userId); detail(card, '사유', item.reason); detail(card, '처리 시각', formatDate(item.createdAt)); detail(card, '제한 종료', formatDate(item.until)); }
+        if (!restrictions.mutes.length) muteList.textContent = '채팅 제한 기록이 없어요.';
         message(status, data.reports.length ? '' : '접수된 마을 신고가 없어요.');
       } else if (kind === 'reports') {
         if (!Array.isArray(data.reports)) throw new Error('신고 응답을 확인하지 못했어요.');
@@ -99,7 +103,23 @@
       }
     } catch (error) { if (!denied(error)) message(status, error.message, true); }
   }
-  formFor(byId('village-mute-slot'), { fields: [idField('대상 회원 ID', 'targetId'), field('채팅 금지 시간 (분, 0은 해제)', 'durationMinutes', { type: 'number', required: true, min: 0, max: 10080, step: 1 }), field('조치 사유', 'reason', { required: true, minLength: 2, maxLength: 500, multiline: true })], label: '마을 채팅 제한 저장', path: '/admin/village/mutes', transform: data => ({ ...data, durationMinutes: Number(data.durationMinutes) }), success: () => '마을 채팅 제한을 저장했어요.' });
+  async function loadVillageProfile() {
+    if (!authorized) return;
+    const current = generation, result = byId('village-profile-status'), list = byId('admin-village-profile');
+    message(result, '회원 정보를 확인하고 있어요.'); list.replaceChildren();
+    try {
+      const targetId = byId('village-profile-target').value.trim();
+      const data = await request(`/admin/village/profiles/${encodeURIComponent(targetId)}`);
+      if (!authorized || current !== generation) return;
+      const card = record(list, `${data.user.name} · ${data.villageName}`);
+      detail(card, '회원 ID', data.user.id); detail(card, '출생연도', data.profile ? `${data.profile.birthYear}년` : '아직 입력하지 않음');
+      if (data.profile) formFor(card, { fields: [field('수정할 출생연도', 'birthYear', { type: 'number', required: true, min: data.birthYearOptions.minimumBirthYear, max: data.birthYearOptions.maximumBirthYear, step: 1, value: data.profile.birthYear }), field('수정 사유', 'reason', { required: true, minLength: 2, maxLength: 500, multiline: true })], label: '출생연도 수정', path: '/admin/village/profiles', transform: body => ({ ...body, targetId: data.user.id, birthYear: Number(body.birthYear), expectedRevision: data.profile.revision }), success: response => `${response.profile.birthYear}년으로 수정하고 ${response.profile.village.name}로 재배정했어요.`, refresh: loadVillageProfile });
+      for (const item of data.audit) { const audit = record(list, '출생연도 수정 감사'); detail(audit, '수정', `${item.details.beforeBirthYear}년 → ${item.details.afterBirthYear}년`); detail(audit, '사유', item.reason); detail(audit, '시각', formatDate(item.createdAt)); }
+      message(result, '회원 정보를 확인했어요.');
+    } catch (error) { if (!denied(error)) message(result, error.message, true); }
+  }
+  byId('village-profile-lookup').addEventListener('submit', async event => { event.preventDefault(); if (!authorized || !event.currentTarget.reportValidity()) return; const form = event.currentTarget; busy(form, true); try { await loadVillageProfile(); } finally { busy(form, false); } });
+  formFor(byId('village-mute-slot'), { fields: [idField('대상 회원 ID', 'targetId'), field('채팅 금지 시간 (분, 0은 해제)', 'durationMinutes', { type: 'number', required: true, min: 0, max: 10080, step: 1 }), field('조치 사유', 'reason', { required: true, minLength: 2, maxLength: 500, multiline: true })], label: '마을 채팅 제한 저장', path: '/admin/village/mutes', transform: data => ({ ...data, durationMinutes: Number(data.durationMinutes) }), success: response => `${response.mute.villageName}의 채팅 제한을 저장했어요.`, refresh: () => load('village') });
   formFor(byId('content-form-slot'), { fields: [typeField(), idField('대상 글·댓글 ID', 'targetId'), hiddenField(), reasonField()], label: '숨김 상태 저장', path: '/admin/content', transform: data => ({ ...data, hidden: data.hidden === 'true' }), success: () => '숨김 상태를 저장했어요.', refresh: () => load('hidden') });
   formFor(byId('issue-form-slot'), { fields: [field('공개 제목', 'title', { required: true, minLength: 2, maxLength: 100 }), field('공개 요약', 'summary', { required: true, minLength: 10, maxLength: 2000, multiline: true }), field('공개 상태', 'status', { choices: ['확인 중', '수정 중', '수정 완료'].map(value => [value, value]) }), reasonField()], label: '알려진 문제 등록', path: '/admin/known-issues', success: () => '알려진 문제를 등록했어요. 공개 제보 창구의 목록에서 확인할 수 있어요.', refresh: () => load('issues') });
   formFor(byId('best-form-slot'), { fields: [idField('선정할 글 ID', 'postId'), reasonField()], label: '우수 글 선정·보상', path: '/admin/best-post', success: response => response.awarded ? '우수 글로 선정하고 3,000 그레이스킨 코인을 지급했어요.' : response.duplicate ? '이미 우수 글 보상을 받은 글이에요. 추가 지급하지 않았어요.' : `선정 요청을 처리했어요. 보상 자격: ${eligibility[response.rewardEligibility] || '확인 필요'}. 추가 지급하지 않았어요.` });

@@ -10,8 +10,7 @@ export function villageAdmission(db, { opensAt = VILLAGE_OPENS_AT, now, isAdmin 
   if (typeof opensAt !== 'string' || !/(?:Z|[+-]\d{2}:\d{2})$/.test(opensAt) || !Number.isFinite(Date.parse(opensAt))) throw new Error('VILLAGE_OPENS_AT에는 시간대를 포함한 시행 시각을 설정해 주세요.');
   const opening = Date.parse(opensAt);
   const day = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' }).format(opening);
-  function assert(user) {
-    if (now() < opening && !isAdmin(user)) fail(403, 'VILLAGE_NOT_OPEN', `${day}에 문을 열어요`);
+  function assertGuardian(user) {
     if (accountAge(user) === 'under14') {
       const version = db.prepare("SELECT consentVersion FROM guardian_requests WHERE childUserId=? AND status='used'").get(user.id)?.consentVersion;
       const parsed = /^(\d{4}-\d{2}-\d{2})-v(\d+)$/.exec(version || '');
@@ -19,7 +18,11 @@ export function villageAdmission(db, { opensAt = VILLAGE_OPENS_AT, now, isAdmin 
       if (!parsed || parsed[1] < requiredDay || parsed[1] === requiredDay && Number(parsed[2]) < Number(requiredRevision)) fail(403, 'VILLAGE_GUARDIAN_CONSENT_REQUIRED', '보호자의 추가 동의가 필요해요');
     }
   }
-  return { assert, opensAt: new Date(opening).toISOString() };
+  function assert(user) {
+    if (now() < opening && !isAdmin(user)) fail(403, 'VILLAGE_NOT_OPEN', `${day}에 문을 열어요`);
+    assertGuardian(user);
+  }
+  return { assert, assertGuardian, opensAt: new Date(opening).toISOString() };
 }
 
 export function oneYearAgo(time) {

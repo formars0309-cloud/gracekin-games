@@ -2,7 +2,7 @@ import { findPath } from './pathfinding.js';
 import { drawAvatar } from './avatar.js';
 
 const byId = id => document.getElementById(id);
-const state = { session: null, socket: null, selfId: null, players: new Map(), channels: [], channelId: null, avatar: null, revision: 0, blocked: new Set(), retries: 0, reconnect: null, stopped: false, scene: null, map: null, goal: null };
+const state = { session: null, socket: null, selfId: null, players: new Map(), channels: [], channelId: null, villageId: null, avatar: null, revision: 0, blocked: new Set(), retries: 0, reconnect: null, stopped: false, scene: null, game: null, map: null, mapPath: null, goal: null };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const emoteSymbols = { wave: '안녕 👋', heart: '♡', laugh: '하하!', surprise: '!', clap: '짝짝!', dance: '♪' };
 const status = (text, error = false) => { byId('action-status').textContent = text; byId('action-status').classList.toggle('error', error); };
@@ -35,10 +35,14 @@ function clearPlayers() {
   state.players.clear();
 }
 function received(message) {
+  if (message.villageId && message.villageId !== state.villageId) return;
+  if (message.channelId && message.type !== 'welcome' && message.channelId !== state.channelId) return;
   if (message.type === 'welcome') {
     clearPlayers(); state.selfId = message.selfId; state.channelId = message.channelId; state.goal = null;
+    applyVillage(message.village);
     for (const player of message.players || []) addPlayer(player);
-    setChannels(message.channels); byId('connection-status').textContent = `${message.channelId}번 광장에 도착했어요. 바닥을 누르면 걸어요.`;
+    if (message.village.mapPath !== state.mapPath) void loadWorld(message.village.mapPath).catch(error => status(error.message, true));
+    setChannels(message.channels); byId('connection-status').textContent = `${message.village.name} ${message.channelId}번 광장에 도착했어요. 바닥을 누르면 걸어요.`;
     byId('chat-log').replaceChildren(); state.scene?.followSelf(); renderPeople();
   } else if (message.type === 'channels') {
     setChannels(message.channels);
@@ -66,13 +70,63 @@ function received(message) {
   } else if (message.type === 'error') { if (!showAdmission(message)) status(message.message, true); }
 }
 function showAdmission(error) {
-  if (!['VILLAGE_NOT_OPEN', 'VILLAGE_GUARDIAN_CONSENT_REQUIRED'].includes(error.code)) return false;
+  if (!['VILLAGE_NOT_OPEN', 'VILLAGE_GUARDIAN_CONSENT_REQUIRED', 'VILLAGE_PRESCHOOL', 'VILLAGE_ELEMENTARY_GUARDIAN_REQUIRED'].includes(error.code)) return false;
   state.stopped = true; clearTimeout(state.reconnect); state.socket?.close();
   byId('entry-message').textContent = error.message; byId('entry-panel').hidden = false;
   byId('village-play').hidden = true; byId('login-panel').hidden = true;
+  byId('tour-controls').hidden = true;
   byId('connection-status').textContent = error.message;
   if (byId('wardrobe-dialog').open) byId('wardrobe-dialog').close();
+  if (byId('birthyear-dialog').open) byId('birthyear-dialog').close();
   return true;
+}
+function applyVillage(village) {
+  state.villageId = village.id; state.requestedMapPath = village.mapPath;
+  document.documentElement.style.setProperty('--green', village.accent);
+  document.documentElement.dataset.village = village.id;
+  byId('village-title').textContent = village.name; document.title = `${village.name} · 분수 광장`;
+  byId('village-play').setAttribute('aria-label', `${village.name} 분수 광장`);
+  const operator = state.session.user.isOperator === true;
+  byId('operator-label').hidden = !operator; byId('tour-controls').hidden = !operator;
+  if (operator) {
+    const select = byId('tour-select'); select.replaceChildren();
+    for (const item of state.session.villages) {
+      const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; option.selected = item.id === village.id; select.append(option);
+    }
+  }
+}
+let worldChange = Promise.resolve();
+function loadWorld(path) {
+  worldChange = worldChange.catch(() => {}).then(async () => {
+    if (state.mapPath === path && state.game) return;
+    let map;
+    if (path === '/assets/village/maps/plaza.json') {
+      const response = await fetch('/assets/village/maps/plaza.json');
+      if (!response.ok) throw new Error('광장 지도를 불러오지 못했어요.');
+      map = await response.json();
+    } else map = (await api('/village/map')).map;
+    if (state.requestedMapPath !== path) return;
+    if (state.game) {
+      state.scene = null;
+      const old = state.game;
+      await new Promise(resolve => { old.events.once('destroy', resolve); old.destroy(true); });
+      for (const player of state.players.values()) { player.node = null; player.bubble = null; }
+    }
+    state.map = map; state.mapPath = path; state.game = createWorld(map);
+  });
+  return worldChange;
+}
+function openBirthYear() {
+  byId('village-play').hidden = true;
+  const select = byId('birthyear-select'); select.replaceChildren();
+  const empty = document.createElement('option'); empty.value = ''; empty.textContent = '출생연도를 골라 주세요'; select.append(empty);
+  const limits = state.session.birthYearOptions;
+  for (let year = limits.maximumBirthYear; year >= limits.minimumBirthYear; year--) {
+    const option = document.createElement('option'); option.value = year; option.textContent = `${year}년`; select.append(option);
+  }
+  byId('birthyear-calendar').textContent = `${limits.schoolYear}학년도 기준으로 마을을 정해요. 미취학 어린이는 아직 입장할 수 없어요.`;
+  byId('birthyear-selection').hidden = false; byId('birthyear-confirm').hidden = true; byId('birthyear-status').textContent = '';
+  if (!byId('birthyear-dialog').open) byId('birthyear-dialog').showModal();
 }
 function connect() {
   if (state.stopped) return;
@@ -87,14 +141,14 @@ function connect() {
     const wait = Math.min(30000, 1000 * 2 ** Math.min(state.retries++, 5));
     byId('connection-status').textContent = `연결이 잠시 끊겼어요. ${Math.ceil(wait / 1000)}초 뒤 다시 연결할게요.`;
     state.reconnect = setTimeout(async () => {
-      try { const current = await api('/village/session'); if (!current.user) { state.stopped = true; byId('login-panel').hidden = false; byId('connection-status').textContent = '로그인한 뒤 다시 입장해 주세요.'; return; } connect(); }
+      try { const current = await api('/village/session'); if (!current.user) { state.stopped = true; byId('login-panel').hidden = false; byId('connection-status').textContent = '로그인한 뒤 다시 입장해 주세요.'; return; } state.session = current; if (!current.profile) { state.socket = null; openBirthYear(); return; } connect(); }
       catch (error) { if (showAdmission(error)) return; if ([401, 403].includes(error.status)) { state.stopped = true; byId('login-panel').hidden = false; byId('connection-status').textContent = '로그인한 뒤 다시 입장해 주세요.'; } else connect(); }
     }, wait);
   });
   socket.addEventListener('error', () => { byId('connection-status').textContent = '마을 연결을 확인하고 있어요.'; });
 }
 function moveTo(goal) {
-  if (byId('wardrobe-dialog').open || byId('people-dialog').open || byId('report-dialog').open) return;
+  if (byId('birthyear-dialog').open || byId('wardrobe-dialog').open || byId('people-dialog').open || byId('report-dialog').open) return;
   const self = state.players.get(state.selfId); if (!self || !state.map) return;
   const start = { x: Math.round(self.x), y: Math.round(self.y) };
   const path = findPath(state.map, start, goal);
@@ -140,7 +194,7 @@ let reportTarget = null;
 function renderPeople() {
   const list = byId('people-list'); list.replaceChildren();
   for (const player of state.players.values()) {
-    const row = document.createElement('div'); row.className = 'person-row'; const name = document.createElement('span'); name.textContent = `${player.name}${player.id === state.selfId ? ' (나)' : ''}`; row.append(name);
+    const row = document.createElement('div'); row.className = 'person-row'; const name = document.createElement('span'); name.textContent = `${player.name}${player.isOperator ? ' · 운영자' : ''}${player.id === state.selfId ? ' (나)' : ''}`; row.append(name);
     if (player.id !== state.selfId) {
       const block = document.createElement('button'); block.type = 'button'; block.textContent = state.blocked.has(player.id) ? '차단 중' : '차단'; block.disabled = state.blocked.has(player.id);
       block.addEventListener('click', async () => { block.disabled = true; try { await api('/village/blocks', { targetId: player.id }); state.blocked.add(player.id); player.bubble?.destroy(); renderPeople(); await renderBlocks(); status(`${player.name} 님을 차단했어요.`); } catch (error) { block.disabled = false; status(error.message, true); } });
@@ -181,7 +235,7 @@ function createWorld(map) {
       this.keys = this.input.keyboard.addKeys('UP,DOWN,LEFT,RIGHT,W,A,S,D'); this.input.keyboard.removeCapture(['UP', 'DOWN', 'LEFT', 'RIGHT', 'W', 'A', 'S', 'D']);
       this.keyAt = 0; this.nearbyAt = 0; this.nearbyId = null; this.npcBubble = null;
       for (const player of state.players.values()) this.drawPlayer(player);
-      this.followSelf(); byId('recenter').addEventListener('click', () => this.followSelf());
+      this.followSelf(); byId('recenter').onclick = () => this.followSelf();
       this.game.scale.on('resize', () => this.cameras.main.setZoom(innerWidth < 741 ? 1 : 1.12));
     }
     drawFountain() {
@@ -200,7 +254,7 @@ function createWorld(map) {
     }
     drawPlayer(player, previous) {
       if (!player.node) {
-        const p = iso(player.x,player.y); player.node = this.add.container(p.x,p.y); player.avatarNode = this.add.container(0,0); player.parts = drawAvatar(player.avatarNode, player.avatar); player.label = this.add.text(0,13,`${player.name}${player.id === state.selfId ? ' · 나' : ''}`, { fontFamily:font,fontSize:'11px',color:player.id===state.selfId?'#574572':'#58634c',backgroundColor:'#fffaf0de',padding:{x:5,y:3} }).setOrigin(.5,0); player.node.add([player.avatarNode,player.label]); player.displayX = player.x; player.displayY = player.y;
+        const p = iso(player.x,player.y); player.node = this.add.container(p.x,p.y); player.avatarNode = this.add.container(0,0); player.parts = drawAvatar(player.avatarNode, player.avatar); player.label = this.add.text(0,13,`${player.name}${player.isOperator ? ' · 운영자' : ''}${player.id === state.selfId ? ' · 나' : ''}`, { fontFamily:font,fontSize:'11px',color:player.id===state.selfId?'#574572':'#58634c',backgroundColor:'#fffaf0de',padding:{x:5,y:3} }).setOrigin(.5,0); player.node.add([player.avatarNode,player.label]); player.displayX = player.x; player.displayY = player.y;
       } else if (JSON.stringify(previous?.avatar) !== JSON.stringify(player.avatar)) player.parts = drawAvatar(player.avatarNode, player.avatar);
     }
     followSelf() { const self = state.players.get(state.selfId); if (self?.node) this.cameras.main.startFollow(self.node, true, reducedMotion ? 1 : .12, reducedMotion ? 1 : .12, 0, 20); }
@@ -236,6 +290,24 @@ function createWorld(map) {
   return new Phaser.Game({type:Phaser.AUTO,parent:host,width:host.clientWidth,height:host.clientHeight,backgroundColor:'#cbd7b4',scene:Plaza,render:{antialias:true},scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH},audio:{noAudio:true},input:{keyboard:{target:host}},banner:false});
 }
 
+byId('birthyear-dialog').addEventListener('cancel', event => event.preventDefault());
+byId('birthyear-back').addEventListener('click', () => { byId('birthyear-selection').hidden = false; byId('birthyear-confirm').hidden = true; byId('birthyear-select').focus(); });
+byId('birthyear-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!event.currentTarget.reportValidity()) return;
+  if (byId('birthyear-confirm').hidden) {
+    byId('birthyear-confirm-text').textContent = `${byId('birthyear-select').value}년생으로 정할까요?`;
+    byId('birthyear-selection').hidden = true; byId('birthyear-confirm').hidden = false; byId('birthyear-save').focus(); return;
+  }
+  const button = byId('birthyear-save'); if (button.disabled) return; button.disabled = true;
+  try {
+    await api('/village/profile', { birthYear: Number(byId('birthyear-select').value), confirmed: true });
+    byId('birthyear-dialog').close(); await initialize();
+  } catch (error) {
+    if (!showAdmission(error)) { byId('birthyear-status').textContent = error.message; byId('birthyear-selection').hidden = false; byId('birthyear-confirm').hidden = true; }
+  } finally { button.disabled = false; }
+});
+byId('tour-start').addEventListener('click', () => send({ type: 'tour', villageId: byId('tour-select').value }));
 byId('wardrobe-fields').addEventListener('change',previewAvatar);
 byId('village-game').addEventListener('keydown',event=>{if(event.target===byId('village-game')&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))event.preventDefault();});
 byId('wardrobe-form').addEventListener('submit',async event=>{
@@ -248,7 +320,7 @@ byId('wardrobe-dialog').addEventListener('cancel',event=>{if(!state.revision)eve
 byId('wardrobe-cancel').addEventListener('click',()=>byId('wardrobe-dialog').close());byId('wardrobe-open').addEventListener('click',openWardrobe);
 byId('chat-form').addEventListener('submit',event=>{event.preventDefault();const input=byId('chat-input');if(input.dataset.composing==='true')return;const text=input.value.trim();if(text&&send({type:'chat',text}))input.value='';});
 byId('chat-input').addEventListener('compositionstart',()=>byId('chat-input').dataset.composing='true');byId('chat-input').addEventListener('compositionend',()=>byId('chat-input').dataset.composing='false');byId('chat-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.isComposing||event.keyCode===229))event.preventDefault();});
-byId('channel-change').addEventListener('click',()=>{const channelId=Number(byId('channel-select').value);if(channelId!==state.channelId)send({type:'channel',channelId});});
+byId('channel-change').addEventListener('click',()=>{const channelId=Number(byId('channel-select').value);if(channelId!==state.channelId)send({type:'channel',villageId:state.villageId,channelId});});
 byId('people-open').addEventListener('click',async()=>{renderPeople();byId('people-dialog').showModal();try{await renderBlocks();renderPeople();}catch(error){status(error.message,true);}});byId('people-close').addEventListener('click',()=>byId('people-dialog').close());byId('report-cancel').addEventListener('click',()=>byId('report-dialog').close());
 byId('report-form').addEventListener('submit',async event=>{event.preventDefault();const button=event.currentTarget.querySelector('[type="submit"]');button.disabled=true;try{await api('/village/reports',{targetId:reportTarget,reason:byId('report-reason').value.trim()});byId('report-dialog').close();status('신고를 접수했어요. 운영자가 확인할게요.');}catch(error){status(error.message,true);}finally{button.disabled=false;}});
 window.addEventListener('pagehide',()=>{state.stopped=true;clearTimeout(state.reconnect);state.socket?.close();});window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});
@@ -256,12 +328,14 @@ async function initialize(){
   if(window.gracekinCommunityRedirecting)return;
   try{
     state.session=await api('/village/session');if(!state.session.user){byId('login-panel').hidden=false;byId('connection-status').textContent='로그인하면 마을에 들어갈 수 있어요.';return;}
+    if(!state.session.profile){openBirthYear();return;}
+    applyVillage(state.session.profile.village);
     state.avatar=state.session.avatar?.data;state.revision=state.session.avatar?.revision||0;
-    const response=await fetch('/assets/village/maps/plaza.json');if(!response.ok)throw new Error('광장 지도를 불러오지 못했어요.');state.map=await response.json();
     byId('village-play').hidden=false;const free=state.session.user.canFreeChat===true;byId('chat-form').hidden=!free;byId('child-chat-note').hidden=free;
+    byId('phrase-buttons').replaceChildren();byId('emote-buttons').replaceChildren();
     for(const phrase of state.session.phrases){const button=document.createElement('button');button.type='button';button.textContent=phrase.text;button.addEventListener('click',()=>send({type:'phrase',id:phrase.id}));byId('phrase-buttons').append(button);}
     for(const emote of state.session.emotes){const button=document.createElement('button');button.id=`emote-${emote.id}`;button.type='button';button.textContent=emote.label;button.addEventListener('click',()=>send({type:'emote',id:emote.id}));byId('emote-buttons').append(button);}
-    setChannels(state.session.channels);await renderBlocks();if(!window.Phaser&&document.readyState!=='complete')await new Promise(resolve=>window.addEventListener('load',resolve,{once:true}));if(!window.Phaser)throw new Error('마을 그림 도구를 불러오지 못했어요.');createWorld(state.map);
+    setChannels(state.session.channels);await renderBlocks();if(!window.Phaser&&document.readyState!=='complete')await new Promise(resolve=>window.addEventListener('load',resolve,{once:true}));if(!window.Phaser)throw new Error('마을 그림 도구를 불러오지 못했어요.');await loadWorld(state.session.profile.village.mapPath);
     if(!state.revision)openWardrobe();else connect();
   }catch(error){if(showAdmission(error))return;byId('connection-status').textContent=error.message;if(error.status===401||error.status===403){byId('login-panel').hidden=false;status('회원 정보를 확인한 뒤 다시 입장해 주세요.');}else status('새로고침해 다시 입장해 주세요.',true);}
 }

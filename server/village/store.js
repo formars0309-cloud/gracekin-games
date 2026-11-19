@@ -13,7 +13,12 @@ export function fields(body, allowed) {
 }
 
 export function createVillageStore(db, now) {
-  db.exec(`CREATE TABLE IF NOT EXISTS village_avatars (
+  db.exec(`CREATE TABLE IF NOT EXISTS village_profiles (
+    userId TEXT PRIMARY KEY REFERENCES user(id) ON DELETE CASCADE,
+    birthYear INTEGER NOT NULL CHECK(typeof(birthYear)='integer'),
+    revision INTEGER NOT NULL DEFAULT 1 CHECK(revision>0), createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS village_avatars (
     userId TEXT PRIMARY KEY REFERENCES user(id) ON DELETE CASCADE, data TEXT NOT NULL,
     revision INTEGER NOT NULL CHECK(revision>0), updatedAt INTEGER NOT NULL
   );
@@ -40,6 +45,31 @@ export function createVillageStore(db, now) {
   );
   CREATE INDEX IF NOT EXISTS village_mutes_created ON village_mutes(createdAt);
   CREATE INDEX IF NOT EXISTS village_admin_audit_created ON village_admin_audit(createdAt);`);
+  // 이전 통합 광장의 신고는 연령대 마을로 추정하지 않고 이력을 구분합니다.
+  for (const table of ['village_reports', 'village_mutes', 'village_admin_audit']) {
+    if (!db.prepare(`PRAGMA table_info(${table})`).all().some(column => column.name === 'villageId')) db.exec(`ALTER TABLE ${table} ADD COLUMN villageId TEXT NOT NULL DEFAULT 'legacy'`);
+  }
+  if (!db.prepare('PRAGMA table_info(village_admin_audit)').all().some(column => column.name === 'details')) db.exec("ALTER TABLE village_admin_audit ADD COLUMN details TEXT NOT NULL DEFAULT '{}'");
+  function profile(userId) { return db.prepare('SELECT birthYear,revision FROM village_profiles WHERE userId=?').get(userId) ?? null; }
+  function saveProfile(userId, birthYear) {
+    const saved = db.prepare('INSERT OR IGNORE INTO village_profiles(userId,birthYear,createdAt,updatedAt) VALUES(?,?,?,?)').run(userId, birthYear, now(), now());
+    if (!saved.changes) fail(409, 'BIRTH_YEAR_LOCKED', '출생연도는 본인이 바꿀 수 없어요. 잘못 입력했다면 문의 메일로 알려 주세요.');
+    return profile(userId);
+  }
+  function correctProfile(actorId, targetId, birthYear, expectedRevision, reason, villageId) {
+    const previous = profile(targetId);
+    if (!previous) fail(409, 'BIRTH_YEAR_REQUIRED', '아직 출생연도를 입력하지 않은 회원입니다.');
+    if (previous.birthYear === birthYear) fail(422, 'UNCHANGED_BIRTH_YEAR', '현재와 다른 출생연도를 입력해 주세요.');
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) fail(422, 'INVALID_INPUT', '수정할 출생연도 기록을 먼저 확인해 주세요.');
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const changed = db.prepare('UPDATE village_profiles SET birthYear=?,revision=revision+1,updatedAt=? WHERE userId=? AND revision=?').run(birthYear, now(), targetId, expectedRevision);
+      if (!changed.changes) fail(409, 'REVISION_CONFLICT', '다른 운영자가 수정했습니다. 회원 정보를 다시 확인해 주세요.');
+      db.prepare('INSERT INTO village_admin_audit(id,actorId,targetId,action,until,reason,createdAt,villageId,details) VALUES(?,?,?,?,?,?,?,?,?)').run(randomUUID(), actorId, targetId, 'birth_year_correction', now(), reason, now(), villageId, JSON.stringify({ beforeBirthYear: previous.birthYear, afterBirthYear: birthYear, revision: previous.revision + 1 }));
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+    return profile(targetId);
+  }
   function cleanup() {
     const cutoff = oneYearAgo(now());
     db.exec('BEGIN IMMEDIATE');
@@ -72,11 +102,11 @@ export function createVillageStore(db, now) {
     if (!db.prepare('SELECT 1 FROM user WHERE id=?').get(id)) fail(404, 'NOT_FOUND', '회원을 찾을 수 없습니다.');
     return id;
   }
-  function report(userId, targetId, channelId, reason, snapshot) {
+  function report(userId, targetId, channelId, reason, snapshot, villageId) {
     if (db.prepare('SELECT COUNT(*) n FROM village_reports WHERE reporterId=? AND createdAt>?').get(userId, now() - 86400000).n >= 10) fail(429, 'REPORT_LIMIT', '신고는 하루 10건까지 접수할 수 있습니다.');
     const id = randomUUID();
-    db.prepare('INSERT INTO village_reports(id,reporterId,targetId,channelId,reason,snapshot,createdAt) VALUES(?,?,?,?,?,?,?)').run(id, userId, targetId, channelId, text(reason, 2, 500, '신고 사유'), JSON.stringify(snapshot), now());
+    db.prepare('INSERT INTO village_reports(id,reporterId,targetId,channelId,reason,snapshot,createdAt,villageId) VALUES(?,?,?,?,?,?,?,?)').run(id, userId, targetId, channelId, text(reason, 2, 500, '신고 사유'), JSON.stringify(snapshot), now(), villageId);
     return { id };
   }
-  return { avatar, saveAvatar, blocked, muted, target, report, cleanup };
+  return { avatar, saveAvatar, blocked, muted, target, report, cleanup, profile, saveProfile, correctProfile };
 }
