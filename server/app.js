@@ -15,6 +15,7 @@ import { createAccountService } from './account.js';
 import { createAccountSummary } from './account-summary.js';
 import { createGrainService } from './grain.js';
 import { createGrainRewards } from './grain-rewards.js';
+import { createCharacterService } from './character/index.js';
 import { createGrainAdmin } from './grain-admin.js';
 import { createSlimeRace } from './slime-race.js';
 import { createSlimeRaceRoutes } from './slime-race-routes.js';
@@ -30,14 +31,14 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=
 const AUTH_PATHS = new Set(['/api/auth/sign-up/email', '/api/auth/sign-in/email', '/api/auth/sign-out', '/api/auth/change-password', '/api/auth/send-verification-email', '/api/auth/request-password-reset', '/api/auth/reset-password']);
 
 function staticAllowed(path) {
-  return path === '/index.html' || path === '/privacy/index.html' || (/^\/(games|community|account|assets)\//.test(path) && Boolean(TYPES[extname(path)]));
+  return path === '/index.html' || path === '/privacy/index.html' || (/^\/(games|community|account|character|assets)\//.test(path) && Boolean(TYPES[extname(path)]));
 }
 
 async function serveStatic(request, path, root) {
   if (!['GET', 'HEAD'].includes(request.method)) fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
   if (path === '/') path = '/index.html';
   if (path === '/privacy/') path = '/privacy/index.html';
-  if (path.endsWith('/') && /^\/(games|community|account)\//.test(path)) path += 'index.html';
+  if (path.endsWith('/') && /^\/(games|community|account|character)\//.test(path)) path += 'index.html';
   if (!staticAllowed(path)) fail(404, 'NOT_FOUND', '페이지를 찾을 수 없습니다.');
   let target;
   try {
@@ -187,7 +188,8 @@ export async function startServer(options = {}) {
     cleanupTimer.unref();
     grain = createGrainService(db, { now: options.now });
     initializeCommunitySchema(db);
-    rewards = createGrainRewards(db, { now: options.now, startTimer: options.grainRewardsStartTimer, onTimerError: () => { console.error('그레이스킨 코인 보상 자동 확정 실패: 저장소 상태를 확인해 주세요.'); } });
+    const characters = createCharacterService(db, { now: options.now });
+    rewards = createGrainRewards(db, { characters, now: options.now, startTimer: options.grainRewardsStartTimer, onTimerError: () => { console.error('그레이스킨 코인 보상 자동 확정 실패: 저장소 상태를 확인해 주세요.'); } });
     const grainAdmin = createGrainAdmin(db, auth, { rewards, now: options.now, adminUserIds: options.adminUserIds ?? process.env.ADMIN_USER_IDS });
     accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, rewards, socialProviders: social.providers, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
     const community = createCommunity(db, auth, { rewards, isAdmin: grainAdmin.isAdmin, now: options.now });
@@ -252,6 +254,7 @@ export async function startServer(options = {}) {
           const messages = { INVALID_EMAIL_OR_PASSWORD: '이메일 또는 비밀번호를 확인해 주세요.', USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: '사용할 수 없는 이메일입니다.', PASSWORD_TOO_SHORT: '비밀번호는 8자 이상 입력해 주세요.', PASSWORD_TOO_LONG: '비밀번호는 128자 이하로 입력해 주세요.', INVALID_PASSWORD: '현재 비밀번호를 확인해 주세요.', EMAIL_NOT_VERIFIED: '이메일 확인을 마친 뒤 로그인해 주세요.', GUARDIAN_APPROVAL_REQUIRED: '보호자 동의 상태를 확인해 주세요.', INVALID_TOKEN: '링크가 만료되었거나 이미 사용되었습니다.', EMAIL_DELIVERY_FAILED: '메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.' };
           return hardened(json({ error: { code, message: messages[code] || '인증 요청을 처리하지 못했습니다. 입력 내용을 확인해 주세요.' } }, response.status, response.status === 429 ? { 'retry-after': '60' } : {}));
         }
+        if (path.startsWith('/api/character/')) return hardened(await characters.handle(request, url, auth));
         if (path === '/api/grain/attendance') {
           if (request.method !== 'POST') fail(405, 'METHOD_NOT_ALLOWED', '허용되지 않은 요청입니다.');
           if (url.search) fail(422, 'INVALID_INPUT', '출석 요청에는 추가 항목을 보낼 수 없습니다.');

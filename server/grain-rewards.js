@@ -43,7 +43,7 @@ export function reserveCommunityReward(db, rewards, { user, type, row, time }) {
   return { pending, amount: pending ? amount : 0 };
 }
 
-export function createGrainRewards(db, { now = Date.now, startTimer = true, onTimerError = () => {} } = {}) {
+export function createGrainRewards(db, { characters, now = Date.now, startTimer = true, onTimerError = () => {} } = {}) {
   db.exec(`CREATE TABLE IF NOT EXISTS grain_reward_suspensions (
     userId TEXT PRIMARY KEY REFERENCES user(id) ON DELETE CASCADE, reason TEXT NOT NULL, createdAt INTEGER NOT NULL
   );
@@ -111,6 +111,7 @@ export function createGrainRewards(db, { now = Date.now, startTimer = true, onTi
       const awarded = grant(user.id, eventId, activity.attendance.amount, '출석');
       if (awarded) db.prepare("INSERT INTO grain_activity_rewards(eventId,userId,targetType,targetId,amount,rewardDate,createdAt,confirmsAt,status) VALUES(?,?,'attendance',?,?,?,?,?,'confirmed')")
         .run(`${user.id}:${eventId}`, user.id, date, activity.attendance.amount, date, time, time);
+      if (awarded) characters?.checkinInTransaction(user.id);
       return { awarded, amount: awarded ? activity.attendance.amount : 0, date };
     });
   }
@@ -126,6 +127,7 @@ export function createGrainRewards(db, { now = Date.now, startTimer = true, onTi
         } else if (row.confirmsAt <= time) {
           grant(row.userId, row.eventId, row.amount, row.targetType === 'post' ? '커뮤니티 글 작성' : '커뮤니티 댓글 작성');
           db.prepare("UPDATE grain_activity_rewards SET status='confirmed' WHERE eventId=? AND status='pending'").run(row.eventId);
+          characters?.grantInTransaction(row.userId, `grain:${row.eventId}`, row.targetType);
         }
       }
     });

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { getPublicCharacter } from './character/index.js';
 import { canWriteCommunity, activeAccountUser } from './account.js';
 import { fail, json, readJson, text } from './security.js';
 import { kstDate, reserveCommunityReward } from './grain-rewards.js';
@@ -97,8 +98,8 @@ export function createCommunity(db, auth, { rewards, isAdmin = () => false, now 
   }
   function game(value) { if (!Object.hasOwn(BOARDS, value)) fail(422, 'INVALID_GAME', '게임을 확인해 주세요.'); return value; }
   function board(g, value) { if (!BOARDS[g].includes(value)) fail(422, 'INVALID_BOARD', '이 게시판에는 글을 작성할 수 없습니다.'); return value; }
-  function postData(row, user) { return { id: row.id, game: row.game, board: row.board, category: row.category, cover: row.cover, status: row.status, title: row.title, body: row.body, author: { name: row.authorName, isOperator: Boolean(isAdmin({ id: row.authorId })) }, createdAt: row.createdAt, updatedAt: row.updatedAt, commentCount: row.commentCount, ...(isAdmin(user) ? { hiddenAt: row.hiddenAt } : {}), canEdit: row.board === 'notice' ? Boolean(isAdmin(user)) : row.authorId === user?.id }; }
-  function commentData(row, user) { return { id: row.id, postId: row.postId, body: row.body, author: { name: row.authorName, isOperator: Boolean(isAdmin({ id: row.authorId })) }, createdAt: row.createdAt, updatedAt: row.updatedAt, ...(isAdmin(user) ? { hiddenAt: row.hiddenAt } : {}), canEdit: row.authorId === user?.id }; }
+  function postData(row, user) { return { id: row.id, game: row.game, board: row.board, category: row.category, cover: row.cover, status: row.status, title: row.title, body: row.body, author: { character: getPublicCharacter(db, row.authorId), name: row.authorName, isOperator: Boolean(isAdmin({ id: row.authorId })) }, createdAt: row.createdAt, updatedAt: row.updatedAt, commentCount: row.commentCount, ...(isAdmin(user) ? { hiddenAt: row.hiddenAt } : {}), canEdit: row.board === 'notice' ? Boolean(isAdmin(user)) : row.authorId === user?.id }; }
+  function commentData(row, user) { return { id: row.id, postId: row.postId, body: row.body, author: { character: getPublicCharacter(db, row.authorId), name: row.authorName, isOperator: Boolean(isAdmin({ id: row.authorId })) }, createdAt: row.createdAt, updatedAt: row.updatedAt, ...(isAdmin(user) ? { hiddenAt: row.hiddenAt } : {}), canEdit: row.authorId === user?.id }; }
   function post(id, expectedGame, user) {
     const row = db.prepare(`SELECT ${postFields(isAdmin(user))} FROM community_posts p JOIN user u ON u.id=p.authorId WHERE p.id=?`).get(id);
     if (!row || (row.hiddenAt !== null && !isAdmin(user)) || (expectedGame && row.game !== expectedGame)) fail(404, 'NOT_FOUND', '글을 찾을 수 없습니다.');
