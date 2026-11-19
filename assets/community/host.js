@@ -20,8 +20,11 @@
   }
   const COMMUNITY_ORIGIN = 'https://community.gracekingames.com';
   const isPages = location.hostname === 'gracekingames.com' || location.hostname === 'www.gracekingames.com';
-  window.gracekinCommunityRedirecting = isPages;
-  if (isPages) {
+  const isVillage = /^\/village(?:\/|$)/.test(location.pathname);
+  const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  const villageRedirect = isVillage && !isLocal && location.origin !== COMMUNITY_ORIGIN;
+  window.gracekinCommunityRedirecting = isPages || villageRedirect;
+  if (window.gracekinCommunityRedirecting) {
     const destination = new URL(COMMUNITY_ORIGIN);
     destination.pathname = location.pathname;
     destination.search = location.search;

@@ -5,13 +5,16 @@ import { fail, json, readJson, safePath, text, HttpError, trustedClientIP } from
 import { loadVillageMap } from './map.js';
 import { createVillageStore, fields, PALETTE, DEFAULT_AVATAR, PHRASES, EMOTES } from './store.js';
 import { containsBlockedWord } from './filter.js';
+import { villageAdmission, startVillageCleanup } from './policy.js';
 
 const CAPACITY = 50, MAX_SPEED = 4, RETAIN_MS = 10 * 60 * 1000;
 
-export async function createVillage({ server, db, auth, root, origin, legacyHosts, production, isAdmin, now = Date.now, trustFlyProxy = false }) {
+export async function createVillage({ server, db, auth, root, origin, legacyHosts, production, isAdmin, now = Date.now, trustFlyProxy = false, opensAt }) {
   const { spawn, walkable } = await loadVillageMap(root);
   const store = createVillageStore(db, now), players = new Map(), channels = new Map(), pending = new Set(), handshakes = new Map(), rateBuckets = new Map();
+  const admission = villageAdmission(db, { opensAt, now, isAdmin });
   const wss = new WebSocketServer({ noServer: true, maxPayload: 8192, perMessageDeflate: false, closeTimeout: 1000 });
+  const cleanupTimer = startVillageCleanup(store.cleanup);
   let closing = false;
   const allowedHost = new URL(origin).host, localOrigins = new Set();
   if (!production) {
@@ -31,6 +34,8 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
     const user = row?.userId === player.user.id && Number(new Date(row.expiresAt)) > Date.now() && currentUser(player.user.id);
     if (!user) { send(player, { type: 'error', code: 'AUTH_REQUIRED', message: '로그인 또는 보호자 동의 상태를 확인해 주세요.' }); player.ws.close(4001, '인증 만료'); return false; }
     player.user = user;
+    try { admission.assert(user); }
+    catch (error) { send(player, { type: 'error', code: error.code, message: error.message }); player.ws.close(4003, '마을 입장 제한'); return false; }
     return true;
   }
   function channel(id) {
@@ -47,6 +52,8 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
   function broadcast(room, value, senderId = null) {
     for (const id of room.players) {
       const recipient = players.get(id);
+      // 수신 시점의 연령을 다시 읽어 접속 뒤 연령 정보가 바뀌어도 자유 대화를 보내지 않습니다.
+      if (recipient && value.type === 'chat' && value.kind === 'free' && (!validPlayer(recipient) || accountAge(recipient.user) === 'under14')) continue;
       if (recipient && (!senderId || !store.blocked(id, senderId))) send(recipient, value);
     }
   }
@@ -124,7 +131,7 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
         if (/[\u0000-\u001f\u007f]/.test(content)) fail(422, 'INVALID_INPUT', '줄바꿈 없이 채팅을 입력해 주세요.');
         if (containsBlockedWord(content)) fail(422, 'BLOCKED_WORD', '사용할 수 없는 말이 들어 있습니다. 다른 표현으로 보내 주세요.');
       }
-      const room = channel(player.channelId), event = { type: 'chat', id: randomUUID(), userId: player.user.id, name: player.user.name, text: content, at: now() };
+      const room = channel(player.channelId), event = { type: 'chat', kind: message.type === 'phrase' ? 'phrase' : 'free', id: randomUUID(), userId: player.user.id, name: player.user.name, text: content, at: now() };
       room.history = room.history.filter(item => item.at > now() - RETAIN_MS); room.history.push(event); if (room.history.length > 50) room.history.shift();
       broadcast(room, event, player.user.id);
     } catch (error) { send(player, { type: 'error', code: error instanceof HttpError ? error.code : 'INTERNAL_ERROR', message: error instanceof HttpError ? error.message : '요청을 처리하지 못했습니다.' }); }
@@ -147,6 +154,7 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
       if (++bucket.count > 120) { refuse(socket, 403); return; }
       const headers = new Headers(); for (const [key, value] of Object.entries(request.headers)) if (typeof value === 'string') headers.set(key, value);
       const { user, sessionId } = await authenticate(headers);
+      admission.assert(user);
       if (closing || socket.destroyed) return;
       // 비동기 인증 중 계정이 비활성화되거나 세션이 사라진 경우에도 입장하지 않습니다.
       if (!currentUser(user.id) || !db.prepare('SELECT 1 FROM session WHERE id=? AND userId=? AND expiresAt>?').get(sessionId, user.id, Date.now())) { refuse(socket, 401); return; }
@@ -196,8 +204,10 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
     if (!path.startsWith('/api/village/') && !admin) return null;
     const { user } = await authenticate(request.headers);
     if (admin && !isAdmin(user)) fail(403, 'ADMIN_REQUIRED', '운영자 권한이 필요합니다.');
+    // 기존 자료 조회·삭제는 열어 두되, 새 마을 자료를 만드는 차단 추가도 입장 조건을 따릅니다.
+    if (['/api/village/session', '/api/village/avatar'].includes(path) || path === '/api/village/blocks' && request.method === 'POST') admission.assert(user);
     if (url.search) fail(422, 'INVALID_INPUT', '추가 조회 항목은 지원하지 않습니다.');
-    if (path === '/api/village/session' && request.method === 'GET') return json({ user: { id: user.id, name: user.name, ageBand: accountAge(user), canFreeChat: accountAge(user) !== 'under14' }, avatar: store.avatar(user.id), palette: PALETTE, phrases: PHRASES, emotes: EMOTES, channels: channelList() });
+    if (path === '/api/village/session' && request.method === 'GET') return json({ user: { id: user.id, name: user.name, ageBand: accountAge(user), canFreeChat: accountAge(user) !== 'under14' }, opensAt: admission.opensAt, avatar: store.avatar(user.id), palette: PALETTE, phrases: PHRASES, emotes: EMOTES, channels: channelList() });
     if (path === '/api/village/avatar' && request.method === 'PUT') {
       const avatar = store.saveAvatar(user.id, await readJson(request));
       const player = players.get(user.id); if (player) { player.avatar = avatar.data; channel(player.channelId).dirty.add(user.id); }
@@ -237,7 +247,7 @@ export async function createVillage({ server, db, auth, root, origin, legacyHost
     fail(404, 'NOT_FOUND', '마을 요청을 찾을 수 없습니다.');
   }
   async function close() {
-    if (closing) return; closing = true; clearInterval(tick); clearInterval(heartbeat);
+    if (closing) return; closing = true; clearInterval(tick); clearInterval(heartbeat); clearInterval(cleanupTimer);
     for (const socket of pending) socket.destroy(); pending.clear();
     for (const player of players.values()) { send(player, { type: 'shutdown', message: '잠시 뒤 다시 연결해 주세요.' }); player.ws.close(1012, '잠시 뒤 다시 연결'); }
     await new Promise(resolve => wss.close(resolve)); players.clear(); channels.clear(); rateBuckets.clear();

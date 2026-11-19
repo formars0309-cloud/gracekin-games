@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { fail, text } from '../security.js';
+import { oneYearAgo } from './policy.js';
 
 export const PALETTE = Object.freeze({ skin: ['#ffe0bd', '#edb98a', '#c68642', '#8d5524'], hair: ['#49352f', '#8b5e3c', '#e6bc76', '#434b68'], outfit: ['#8db9d3', '#d99eaa', '#a8bc98', '#c5afe0'] });
 export const DEFAULT_AVATAR = { v: 1, kind: 'placeholder', colors: Object.fromEntries(Object.entries(PALETTE).map(([key, colors]) => [key, colors[0]])) };
@@ -36,7 +37,17 @@ export function createVillageStore(db, now) {
     id TEXT PRIMARY KEY, actorId TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
     targetId TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
     action TEXT NOT NULL, until INTEGER NOT NULL, reason TEXT NOT NULL, createdAt INTEGER NOT NULL
-  );`);
+  );
+  CREATE INDEX IF NOT EXISTS village_mutes_created ON village_mutes(createdAt);
+  CREATE INDEX IF NOT EXISTS village_admin_audit_created ON village_admin_audit(createdAt);`);
+  function cleanup() {
+    const cutoff = oneYearAgo(now());
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      for (const table of ['village_reports', 'village_mutes', 'village_admin_audit']) db.prepare(`DELETE FROM ${table} WHERE createdAt<=?`).run(cutoff);
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+  }
   function avatar(userId) {
     const row = db.prepare('SELECT data,revision FROM village_avatars WHERE userId=?').get(userId);
     return row ? { data: JSON.parse(row.data), revision: row.revision } : null;
@@ -67,5 +78,5 @@ export function createVillageStore(db, now) {
     db.prepare('INSERT INTO village_reports(id,reporterId,targetId,channelId,reason,snapshot,createdAt) VALUES(?,?,?,?,?,?,?)').run(id, userId, targetId, channelId, text(reason, 2, 500, '신고 사유'), JSON.stringify(snapshot), now());
     return { id };
   }
-  return { avatar, saveAvatar, blocked, muted, target, report };
+  return { avatar, saveAvatar, blocked, muted, target, report, cleanup };
 }

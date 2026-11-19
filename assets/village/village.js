@@ -9,7 +9,7 @@ const status = (text, error = false) => { byId('action-status').textContent = te
 async function api(path, body, method = 'POST') {
   const response = await fetch(`/api${path}`, { credentials: 'same-origin', headers: body === undefined ? {} : { 'content-type': 'application/json' }, ...(body === undefined ? {} : { method, body: JSON.stringify(body) }) });
   const data = await response.json();
-  if (!response.ok) { const error = new Error(data.error?.message || '요청을 처리하지 못했어요.'); error.status = response.status; throw error; }
+  if (!response.ok) { const error = new Error(data.error?.message || '요청을 처리하지 못했어요.'); error.status = response.status; error.code = data.error?.code; throw error; }
   return data;
 }
 function send(message) {
@@ -50,6 +50,7 @@ function received(message) {
     if (message.channels) setChannels(message.channels);
     if (byId('people-dialog').open) renderPeople();
   } else if (message.type === 'chat') {
+    if (state.session.user.ageBand === 'under14' && message.kind !== 'phrase') return;
     if (state.blocked.has(message.userId)) return;
     const row = document.createElement('p'); row.className = 'chat-row';
     const name = document.createElement('strong'); name.textContent = message.name; row.append(name, document.createTextNode(message.text));
@@ -62,7 +63,16 @@ function received(message) {
     state.goal = null; status(message.message || '걸어갈 수 있는 길로 다시 이동해 주세요.', true);
   } else if (message.type === 'shutdown') {
     byId('connection-status').textContent = message.message || '잠시 뒤 다시 연결할게요.';
-  } else if (message.type === 'error') status(message.message, true);
+  } else if (message.type === 'error') { if (!showAdmission(message)) status(message.message, true); }
+}
+function showAdmission(error) {
+  if (!['VILLAGE_NOT_OPEN', 'VILLAGE_GUARDIAN_CONSENT_REQUIRED'].includes(error.code)) return false;
+  state.stopped = true; clearTimeout(state.reconnect); state.socket?.close();
+  byId('entry-message').textContent = error.message; byId('entry-panel').hidden = false;
+  byId('village-play').hidden = true; byId('login-panel').hidden = true;
+  byId('connection-status').textContent = error.message;
+  if (byId('wardrobe-dialog').open) byId('wardrobe-dialog').close();
+  return true;
 }
 function connect() {
   if (state.stopped) return;
@@ -78,7 +88,7 @@ function connect() {
     byId('connection-status').textContent = `연결이 잠시 끊겼어요. ${Math.ceil(wait / 1000)}초 뒤 다시 연결할게요.`;
     state.reconnect = setTimeout(async () => {
       try { const current = await api('/village/session'); if (!current.user) { state.stopped = true; byId('login-panel').hidden = false; byId('connection-status').textContent = '로그인한 뒤 다시 입장해 주세요.'; return; } connect(); }
-      catch (error) { if ([401, 403].includes(error.status)) { state.stopped = true; byId('login-panel').hidden = false; byId('connection-status').textContent = '로그인한 뒤 다시 입장해 주세요.'; } else connect(); }
+      catch (error) { if (showAdmission(error)) return; if ([401, 403].includes(error.status)) { state.stopped = true; byId('login-panel').hidden = false; byId('connection-status').textContent = '로그인한 뒤 다시 입장해 주세요.'; } else connect(); }
     }, wait);
   });
   socket.addEventListener('error', () => { byId('connection-status').textContent = '마을 연결을 확인하고 있어요.'; });
@@ -231,7 +241,7 @@ byId('village-game').addEventListener('keydown',event=>{if(event.target===byId('
 byId('wardrobe-form').addEventListener('submit',async event=>{
   event.preventDefault(); const button=byId('wardrobe-save');button.disabled=true;
   try{const data=await api('/village/avatar',{avatar:avatarFromForm(),revision:state.revision},'PUT');state.avatar=data.avatar.data;state.revision=data.avatar.revision;byId('wardrobe-dialog').close();if(!state.socket)connect();status('마을에서 입을 색을 저장했어요.');}
-  catch(error){byId('wardrobe-status').textContent=error.message;if(error.status===409){try{const fresh=await api('/village/session');state.avatar=fresh.avatar?.data;state.revision=fresh.avatar?.revision||0;openWardrobeAfterConflict();}catch(refreshError){byId('wardrobe-status').textContent=`최신 색을 확인하지 못했어요. ${refreshError.message}`;}}}
+  catch(error){if(!showAdmission(error)){byId('wardrobe-status').textContent=error.message;if(error.status===409){try{const fresh=await api('/village/session');state.avatar=fresh.avatar?.data;state.revision=fresh.avatar?.revision||0;openWardrobeAfterConflict();}catch(refreshError){if(!showAdmission(refreshError))byId('wardrobe-status').textContent=`최신 색을 확인하지 못했어요. ${refreshError.message}`;}}}}
   finally{button.disabled=false;}
 });
 byId('wardrobe-dialog').addEventListener('cancel',event=>{if(!state.revision)event.preventDefault();});
@@ -253,6 +263,6 @@ async function initialize(){
     for(const emote of state.session.emotes){const button=document.createElement('button');button.id=`emote-${emote.id}`;button.type='button';button.textContent=emote.label;button.addEventListener('click',()=>send({type:'emote',id:emote.id}));byId('emote-buttons').append(button);}
     setChannels(state.session.channels);await renderBlocks();if(!window.Phaser&&document.readyState!=='complete')await new Promise(resolve=>window.addEventListener('load',resolve,{once:true}));if(!window.Phaser)throw new Error('마을 그림 도구를 불러오지 못했어요.');createWorld(state.map);
     if(!state.revision)openWardrobe();else connect();
-  }catch(error){byId('connection-status').textContent=error.message;if(error.status===401||error.status===403){byId('login-panel').hidden=false;status('회원 정보를 확인한 뒤 다시 입장해 주세요.');}else status('새로고침해 다시 입장해 주세요.',true);}
+  }catch(error){if(showAdmission(error))return;byId('connection-status').textContent=error.message;if(error.status===401||error.status===403){byId('login-panel').hidden=false;status('회원 정보를 확인한 뒤 다시 입장해 주세요.');}else status('새로고침해 다시 입장해 주세요.',true);}
 }
 initialize();

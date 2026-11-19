@@ -190,7 +190,7 @@ export async function startServer(options = {}) {
     initializeCommunitySchema(db);
     rewards = createGrainRewards(db, { now: options.now, startTimer: options.grainRewardsStartTimer, onTimerError: () => { console.error('그레이스킨 코인 보상 자동 확정 실패: 저장소 상태를 확인해 주세요.'); } });
     const grainAdmin = createGrainAdmin(db, auth, { rewards, now: options.now, adminUserIds: options.adminUserIds ?? process.env.ADMIN_USER_IDS });
-    village = await createVillage({ server, db, auth, root: DEFAULT_ROOT, origin, legacyHosts, production, isAdmin: grainAdmin.isAdmin, now: options.now, trustFlyProxy });
+    village = await createVillage({ server, db, auth, root: DEFAULT_ROOT, origin, legacyHosts, production, isAdmin: grainAdmin.isAdmin, now: options.now, trustFlyProxy, opensAt: options.villageOpensAt ?? process.env.VILLAGE_OPENS_AT });
     accounts = createAccountService(db, auth, { origin, mailer, guardian, grain, rewards, socialProviders: social.providers, now: options.now, onDeliveryError: () => { const context = signupContext.getStore(); if (context) context.deliveryFailed = true; } });
     const community = createCommunity(db, auth, { rewards, isAdmin: grainAdmin.isAdmin, now: options.now });
     const accountSummary = createAccountSummary(db, auth, { origin });

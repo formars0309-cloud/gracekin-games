@@ -7,14 +7,29 @@
     "모바일 감정표현이 상대에게 전달",
     "390px·데스크톱 가로 넘침 없음·대화 화면 저장",
     "방향키 조작과 서버 위치 반영",
-    "비회원 로그인 안내"
+    "어린이 자유 채팅 미수신·입력 숨김·안내·문구와 감정 수신",
+    "비회원 로그인 안내",
+    "privacy 개정 페이지 데스크톱·390px 구조와 가로 넘침 확인",
+    "terms 개정 페이지 데스크톱·390px 구조와 가로 넘침 확인",
+    "privacy-guide 개정 페이지 데스크톱·390px 구조와 가로 넘침 확인",
+    "Pages에서 API·WebSocket 없이 정식 마을 출처로 전환",
+    "시행 전 일반 회원 안내와 WebSocket 미시작"
   ],
   "screenshots": [
     "desktop-wardrobe.png",
     "mobile-wardrobe.png",
     "desktop-plaza-chat.png",
     "mobile-plaza-chat.png",
-    "mobile-login.png"
+    "mobile-child-chat.png",
+    "mobile-login.png",
+    "policy-privacy-desktop.png",
+    "policy-privacy-mobile.png",
+    "policy-privacy-mobile-village.png",
+    "policy-terms-desktop.png",
+    "policy-terms-mobile.png",
+    "policy-privacy-guide-desktop.png",
+    "policy-privacy-guide-mobile.png",
+    "mobile-before-opening.png"
   ],
   "errors": []
 }

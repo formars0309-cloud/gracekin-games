@@ -184,6 +184,7 @@ server/village/**
 !server/village/map.js
 !server/village/store.js
 !server/village/filter.js
+!server/village/policy.js
 !village/
 village/**
 !village/index.html

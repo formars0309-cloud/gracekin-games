@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { startServer } from '../server/app.js';
 import { request, cookieFrom, registerAndLogin } from './account-helpers.js';
 import http from 'node:http';
+import { CONSENT_VERSION } from '../server/guardian.js';
 
 // 운영 자격증명과 무관한 격리 시험용 서명 키입니다.
 const fixtureKey = 'village-local-integration-fixture-only-2026-11-19';
@@ -17,10 +18,11 @@ export const avatar = { v: 1, kind: 'placeholder', colors: { skin: '#ffe0bd', ha
 
 export async function scenario(callback, options = {}) {
   const folder = await mkdtemp(join(tmpdir(), 'gracekin-village-')), mailbox = [], sockets = [];
-  let app, db, time = Date.now();
+  let app, db, time = options.initialTime ?? Date.now();
+  const startOptions = { port: 0, dataDir: folder, secret: fixtureKey, mailer: async mail => mailbox.push(mail), now: () => time, trustFlyProxy: true, flyAppName: 'gracekin-games-community',
+    guardianReplyTo: 'guardian@example.test', villageOpensAt: '2000-01-01T00:00:00Z', rateLimit: { authMax: 500, readMax: 5000, writeMax: 5000 }, ...options };
   try {
-    app = await startServer({ port: 0, dataDir: folder, secret: fixtureKey, mailer: async mail => mailbox.push(mail), now: () => time, trustFlyProxy: true, flyAppName: 'gracekin-games-community',
-      guardianReplyTo: 'guardian@example.test', rateLimit: { authMax: 500, readMax: 5000, writeMax: 5000 }, ...options });
+    app = await startServer(startOptions);
     db = new DatabaseSync(join(folder, 'community.sqlite')); db.exec('PRAGMA foreign_keys=ON');
     const signup = async (suffix = 'member') => {
       const response = await registerAndLogin(app, mailbox, { name: `마을회원${suffix}`, email: `village-${suffix}@example.test`, password: '마을시험전용-1234-password', ageBand: '14plus' }, { 'fly-client-ip': `198.51.100.${signupIP++}` });
@@ -28,7 +30,7 @@ export async function scenario(callback, options = {}) {
       return { id: response.body.user.id, cookie: cookieFrom(response), response };
     };
     const connect = (member, headers) => openSocket(app, member?.cookie, headers, sockets);
-    await callback({ app, db, mailbox, folder, signup, connect, sockets, now: () => time, advance: amount => { time += amount; }, async stop() { const running = app; app = null; await running.close(); } });
+    await callback({ app, db, mailbox, folder, signup, connect, sockets, now: () => time, advance: amount => { time += amount; }, async restart() { await app.close(); app = await startServer(startOptions); return app; }, async stop() { const running = app; app = null; await running.close(); } });
   } finally {
     await Promise.all(sockets.map(socket => socket.close()));
     db?.close(); await app?.close(); await rm(folder, { recursive: true, force: true });
@@ -44,7 +46,7 @@ export function upgradeStatus(app, cookie, headers = {}) {
   });
 }
 
-export function seedMember(db, templateId, suffix, { child = false, userId } = {}) {
+export function seedMember(db, templateId, suffix, { child = false, userId, consentVersion = CONSENT_VERSION } = {}) {
   // 인원 경계 시험은 51번 비밀번호 해시 계산 대신 실제 인증 스키마에 세션을 준비합니다.
   // 서명된 쿠키는 프로덕션과 같은 better-auth getSession 경로에서 검증됩니다.
   const id = userId ?? randomUUID(), token = randomUUID(), user = { ...db.prepare('SELECT * FROM user WHERE id=?').get(templateId), id, name: `광장회원${suffix}`, email: `seed-${suffix}@example.test` };
@@ -52,7 +54,7 @@ export function seedMember(db, templateId, suffix, { child = false, userId } = {
   db.prepare(`INSERT INTO user(${userColumns.map(key => `"${key}"`).join(',')}) VALUES(${userColumns.map(() => '?').join(',')})`).run(...userColumns.map(key => user[key]));
   if (child) {
     db.prepare("UPDATE user SET ageBand='under14' WHERE id=?").run(id);
-    db.prepare(`INSERT INTO guardian_requests(id,capabilityHash,status,createdAt,expiresAt,consentVersion,consentText,childUserId) VALUES(?,?,'used',?,?,?, ?,?)`).run(randomUUID(), randomUUID(), Date.now(), Date.now() + 86400000, 'fixture', '격리 시험의 유효한 보호자 동의', id);
+    db.prepare(`INSERT INTO guardian_requests(id,capabilityHash,status,createdAt,expiresAt,consentVersion,consentText,childUserId) VALUES(?,?,'used',?,?,?, ?,?)`).run(randomUUID(), randomUUID(), Date.now(), Date.now() + 86400000, consentVersion, '격리 시험의 유효한 보호자 동의', id);
   }
   const session = { ...db.prepare('SELECT * FROM session WHERE userId=? LIMIT 1').get(templateId), id: randomUUID(), token, userId: id, createdAt: Date.now(), updatedAt: Date.now(), expiresAt: Date.now() + 86400000 };
   const columns = Object.keys(session);

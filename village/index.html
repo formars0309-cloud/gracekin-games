@@ -13,13 +13,14 @@
 <header class="village-header"><div><p class="eyebrow">그레이스킨 마을 · 비공개 시험판</p><h1>분수 광장</h1></div><a class="home-link" href="/account/">내 계정</a></header>
 <div id="connection-status" class="connection-status" role="status">마을 입장을 준비하고 있어요.</div>
 <section id="login-panel" class="login-panel" hidden><h2>우리 마을에서 만나요</h2><p>분수 광장은 로그인한 회원이 함께 걷고 이야기하는 공간이에요.<br>로그인한 뒤 이 페이지로 돌아와 새로고침해 주세요.</p><a class="primary" href="/account/">로그인하기</a></section>
+<section id="entry-panel" class="login-panel" hidden><h2 id="entry-message"></h2><p>입장 안내를 확인해 주세요. 도움이 필요하면 <a href="/account/">내 계정</a>에서 문의 방법을 확인할 수 있어요.</p></section>
 <section id="village-play" class="village-play" hidden aria-label="분수 광장">
 <div class="world-wrap"><div id="village-game" tabindex="0" role="application" aria-label="분수 광장. 바닥을 눌러 이동하거나 방향키와 W A S D 키를 사용하세요."></div><p class="world-tip" id="world-tip">바닥을 톡 눌러 걸어 보세요.</p><button id="recenter" class="recenter" type="button" aria-label="내 캐릭터 위치로 돌아오기">⌖</button></div>
 <div id="village-controls" class="village-controls">
 <div class="toolbar"><label for="channel-select">광장</label><select id="channel-select" aria-label="광장 채널"></select><button id="channel-change" type="button">이동</button><button id="wardrobe-open" type="button">옷장</button><button id="people-open" type="button">주민</button></div>
+<p id="child-chat-note" class="help" hidden>어린이 회원에게는 인사말과 감정표현만 보여요</p>
 <div id="chat-log" class="chat-log" role="log" aria-label="채팅 기록" aria-live="polite" aria-relevant="additions"></div>
 <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">채팅 내용</label><input id="chat-input" maxlength="80" placeholder="따뜻한 인사를 건네 보세요 (80자)" autocomplete="off"><button id="chat-send" class="primary" type="submit">보내기</button></form>
-<p id="child-chat-note" class="help" hidden>어린이 회원은 아래 인사말과 감정표현으로 이야기해요.</p>
 <div id="phrase-buttons" class="phrase-buttons" aria-label="정해진 인사말"></div><div id="emote-buttons" class="emote-buttons" aria-label="감정표현"></div>
 <p class="privacy-note">일반 대화는 서버에 최대 10분간만 머물러요. 신고하면 대상 주민의 최근 대화 일부가 운영자에게 전달돼요.</p>
 </div>
