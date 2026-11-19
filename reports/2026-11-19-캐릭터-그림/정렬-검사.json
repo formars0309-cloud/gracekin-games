@@ -1,0 +1,122 @@
+{
+  "human": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1960,
+    "maxPx": 0.0,
+    "meanPx": 0.0,
+    "deliveredLowerAlphaMismatchPixels": 0
+  },
+  "elf": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1957,
+    "maxPx": 1.0,
+    "meanPx": 0.1824,
+    "deliveredLowerAlphaMismatchPixels": 0
+  },
+  "dwarf": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1961,
+    "maxPx": 1.4142,
+    "meanPx": 0.4297,
+    "deliveredLowerAlphaMismatchPixels": 0
+  },
+  "cat": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1960,
+    "maxPx": 1.0,
+    "meanPx": 0.2388,
+    "deliveredLowerAlphaMismatchPixels": 0
+  },
+  "fox": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1957,
+    "maxPx": 1.0,
+    "meanPx": 0.2816,
+    "deliveredLowerAlphaMismatchPixels": 0
+  },
+  "rabbit": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1960,
+    "maxPx": 1.0,
+    "meanPx": 0.2051,
+    "deliveredLowerAlphaMismatchPixels": 0
+  },
+  "bear": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1957,
+    "maxPx": 1.0,
+    "meanPx": 0.2672,
+    "deliveredLowerAlphaMismatchPixels": 0
+  },
+  "dragon": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1960,
+    "maxPx": 2.0,
+    "meanPx": 0.4343,
+    "deliveredLowerAlphaMismatchPixels": 0
+  },
+  "fairy": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1960,
+    "maxPx": 2.0,
+    "meanPx": 0.4966,
+    "deliveredLowerAlphaMismatchPixels": 0
+  },
+  "moon": {
+    "roi": [
+      300,
+      1250,
+      660,
+      1468
+    ],
+    "samples": 1954,
+    "maxPx": 1.0,
+    "meanPx": 0.3019,
+    "deliveredLowerAlphaMismatchPixels": 0
+  }
+}

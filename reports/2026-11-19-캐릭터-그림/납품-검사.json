@@ -1,0 +1,11 @@
+{
+  "parts": 82,
+  "layers": 42,
+  "masks": 40,
+  "partBytes": 1102060,
+  "largestPartBytes": 37856,
+  "proofSheets": 5,
+  "proofBytes": 1109477,
+  "sourceLowerMaxPx": 2.0,
+  "deliveredLowerAlphaMismatchPixels": 0
+}
