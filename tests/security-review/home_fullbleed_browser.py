@@ -122,7 +122,7 @@ def run():
                         metrics['horizontalOverflow'] = max(0, metrics['scrollWidth'] - width)
                         metrics['verticalScroll'] = max(0, metrics['scrollHeight'] - height)
                         assert page.locator('#games, .gb-game').count() == 0
-                        assert page.locator('h1').inner_text().replace('\n', ' ').split() == ['게임의', '세계로,', '함께', '떠나요.']
+                        assert page.locator('h1').inner_text().replace('\n', ' ').split() == ['모험의', '세계로,', '함께', '떠나요.']
                         button = page.locator('[data-umami-event="hero-character"]')
                         assert button.get_attribute('href') == '/character/'
                         assert button.inner_text() == '캐릭터 생성 게임으로 시작하기'

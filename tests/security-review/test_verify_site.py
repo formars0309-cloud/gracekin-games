@@ -238,7 +238,7 @@ class StoreLaunchTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         hero = ('<section class="gb-home-intro" aria-labelledby="hero-title">'
-                '<h1 id="hero-title">게임의 세계로, <br>함께 떠나요.</h1>'
+                '<h1 id="hero-title">모험의 세계로, <br>함께 떠나요.</h1>'
                 '<a href="/character/" data-umami-event="hero-character">캐릭터 생성 게임으로 시작하기</a></section>')
         cards = ''.join(f'<a href="/games/{game}/" data-umami-event="homepage-{game}" data-umami-event-from="{position}">게임 홈페이지 →</a>'
                         for game in SITE.GAME_URLS for position in ('card-image', 'card-button'))
@@ -311,11 +311,11 @@ class StoreLaunchTests(unittest.TestCase):
     def test_home_rejects_wrong_heading_and_accessibility_name(self):
         original = (self.root / 'index.html').read_text()
         for before, after in [
-            ('게임의 세계로,', '보드게임 세상으로,'),
+            ('모험의 세계로,', '보드게임 세상으로,'),
             ('<br>함께 떠나요.', ''),
             ('aria-labelledby="hero-title"', 'aria-labelledby="missing"'),
             ('id="hero-title"', ''),
-            ('</main>', '<h1>게임의 세계로, 함께 떠나요.</h1></main>'),
+            ('</main>', '<h1>모험의 세계로, 함께 떠나요.</h1></main>'),
             ('class="gb-home-intro"', 'class="gb-stage"'),
         ]:
             with self.subTest(after=after):

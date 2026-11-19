@@ -569,7 +569,7 @@ def verify(root: Path) -> Report:
               '대문: 레이스 섹션·스크립트·스타일 참조가 남아 있음')
         heroes = [attrs for tag, attrs in home.tags if tag == 'section' and 'gb-home-intro' in (attrs.get('class') or '').split()]
         check(len(heroes) == 1, '대문: gb-home-intro 섹션은 하나여야 함')
-        check(len(home.headings) == 1 and ' '.join(home.headings[0]['text'].split()) == '게임의 세계로, 함께 떠나요.',
+        check(len(home.headings) == 1 and ' '.join(home.headings[0]['text'].split()) == '모험의 세계로, 함께 떠나요.',
               '대문: h1 문구·개수 불일치')
         check(len(heroes) == 1 and len(home.headings) == 1 and bool(home.headings[0].get('id'))
               and heroes[0].get('aria-labelledby') == home.headings[0]['id'], '대문: h1 접근성 이름 연결 불일치')
