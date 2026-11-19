@@ -14,8 +14,13 @@ from urllib.request import urlopen
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = Path('/tmp/gracekin-fullbleed-shots')
-SIZES = [(1920, 1080), (1440, 900), (390, 844), (360, 740)]
+OUTPUT = Path('/tmp/gracekin-pano-shots')
+SIZES = [
+    (1512, 860), (1440, 790), (1920, 950), (1920, 1080),
+    (2560, 1300), (3440, 1300), (1180, 740), (1024, 1024), (390, 844),
+    # 지정 화면에 없는 3:2판과 이미지 전환 경계도 확인한다.
+    (1001, 1000), (1200, 800), (1501, 1000),
+]
 
 
 def run():
@@ -56,7 +61,34 @@ def run():
                     assert metrics['scrollWidth'] == width, (label, metrics)
                     if label == 'home':
                         assert metrics['scrollHeight'] <= height, metrics
-                        assert ('tall' if width <= height else 'wide') in metrics['image'], metrics
+                        shape = 'tall' if width <= height else 'wide' if width / height <= 1.5 else 'pano'
+                        assert f'hero-{shape}-' in metrics['image'], metrics
+                        artwork = page.locator('.gb-backdrop img').evaluate('''async image => {
+                            // naturalWidth는 srcset 밀도로 보정되므로 실제 파일의 종횡비를 쓴다.
+                            const bitmap = await createImageBitmap(await (await fetch(image.currentSrc)).blob());
+                            const sourceWidth = bitmap.width, sourceHeight = bitmap.height;
+                            bitmap.close();
+                            const rect = image.getBoundingClientRect(), style = getComputedStyle(image);
+                            const scale = Math.max(rect.width / sourceWidth, rect.height / sourceHeight);
+                            const displayedHeight = sourceHeight * scale;
+                            const positionY = parseFloat(style.objectPosition.split(' ')[1]) / 100;
+                            const top = rect.top + (rect.height - displayedHeight) * positionY;
+                            const bottom = top + displayedHeight;
+                            return {
+                                sourceWidth, sourceHeight, displayedHeight, top, bottom,
+                                cropTop: Math.max(0, -top), cropBottom: Math.max(0, bottom - innerHeight),
+                                verticalFits: displayedHeight <= innerHeight + 1,
+                                bottomVisible: bottom <= innerHeight + 1,
+                                objectFit: style.objectFit, objectPosition: style.objectPosition
+                            };
+                        }''')
+                        assert artwork['objectFit'] == 'cover', artwork
+                        assert artwork['objectPosition'] == ('50% 30%' if shape == 'pano' else '50% 50%'), artwork
+                        if shape != 'tall' and (width, height) != (3440, 1300):
+                            assert artwork['verticalFits'] and artwork['bottomVisible'], artwork
+                        metrics['artwork'] = artwork
+                        metrics['horizontalOverflow'] = max(0, metrics['scrollWidth'] - width)
+                        metrics['verticalScroll'] = max(0, metrics['scrollHeight'] - height)
                         assert page.locator('#games, .gb-game').count() == 0
                         assert page.locator('[data-umami-event="hero-games"]').get_attribute('href') == '/games/'
                         layout = page.evaluate('''() => {

@@ -23,7 +23,8 @@ GAME_URLS = {
     'gyeongguk': 'https://gyeongguk.gracekingames.com/',
 }
 HOME_IMAGES = tuple(f'assets/home/hero-{shape}-{size}.webp'
-                    for shape, sizes in [('wide', (1600, 2560, 3840)), ('tall', (720, 1080, 1440, 2160))]
+                    for shape, sizes in [('wide', (1600, 2560, 3840)), ('tall', (720, 1080, 1440, 2160)),
+                                         ('pano', (1920, 2560, 3840, 5120))]
                     for size in sizes)
 PRIVACY_URLS = {
     'https://community.gracekingames.com/community/privacy/',
@@ -578,16 +579,24 @@ def verify(root: Path) -> Report:
             resource = Path(relative)
             check((root / resource).is_file() and docker_allows(resource, docker_allowed),
                   f'대문: {resource} 자산 또는 운영 패키지 허용 누락')
-        images = [attrs for tag, attrs in home.tags if tag == 'img' and '/assets/home/hero-wide-' in attrs.get('src', '')]
-        sources = [attrs for tag, attrs in home.tags if tag == 'source' and attrs.get('media') == '(max-aspect-ratio: 1/1)']
-        check(any(tag == 'picture' for tag, _ in home.tags) and len(images) == 1 and len(sources) == 1,
-              '대문: 가로·세로 picture 구성 누락')
-        if len(images) == 1 and len(sources) == 1:
+        images = [attrs for tag, attrs in home.tags if tag == 'img' and '/assets/home/hero-' in attrs.get('src', '')]
+        sources = [attrs for tag, attrs in home.tags if tag == 'source' and '/assets/home/hero-' in attrs.get('srcset', '')]
+        check(any(tag == 'picture' for tag, _ in home.tags) and len(images) == 1 and len(sources) == 3
+              and [attrs.get('media') for attrs in sources] == ['(max-aspect-ratio: 1/1)', '(max-aspect-ratio: 3/2)', None],
+              '대문: 세로·가로·파노라마 picture 구성·순서 불일치')
+        if len(images) == 1 and len(sources) == 3:
+            variants = [('tall', '2160', '3240'), ('wide', '3840', '2560'), ('pano', '5120', '2324'), ('pano', '5120', '2324')]
+            entries = [*sources, images[0]]
             check(images[0].get('fetchpriority') == 'high' and images[0].get('loading') != 'lazy'
-                  and all(attrs.get('width') and attrs.get('height') and attrs.get('sizes') == '100vw' for attrs in [images[0], sources[0]]),
+                  and all(attrs.get('width') == width and attrs.get('height') == height and attrs.get('sizes') == '100vw'
+                          for attrs, (_, width, height) in zip(entries, variants)),
                   '대문: 첫 화면 이미지 크기·우선순위 불일치')
-            referenced = {candidate.strip().split()[0].lstrip('/') for attrs in [images[0], sources[0]] for candidate in attrs.get('srcset', '').split(',') if candidate.strip()}
-            check(referenced == set(HOME_IMAGES), '대문: 가로·세로 srcset 불일치')
+            check(images[0].get('src') == '/assets/home/hero-pano-1920.webp', '대문: 기본 이미지가 파노라마가 아님')
+            for attrs, (shape, _, _) in zip(entries, variants):
+                expected = {f'/{relative} {Path(relative).stem.rsplit("-", 1)[1]}w'
+                            for relative in HOME_IMAGES if f'hero-{shape}-' in relative}
+                candidates = [candidate.strip() for candidate in attrs.get('srcset', '').split(',')]
+                check(len(candidates) == len(expected) and set(candidates) == expected, f'대문: {shape} srcset 불일치')
 
     catalog = pages.get(root / 'games/index.html')
     if catalog:

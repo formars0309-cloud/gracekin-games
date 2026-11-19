@@ -245,8 +245,12 @@ class StoreLaunchTests(unittest.TestCase):
                         for game in SITE.GAME_URLS for position in ('card-image', 'card-button'))
         picture = ('<picture><source media="(max-aspect-ratio: 1/1)" width="2160" height="3240" sizes="100vw" srcset="'
                    + ', '.join(f'/assets/home/hero-tall-{size}.webp {size}w' for size in (720, 1080, 1440, 2160))
-                   + '"><img src="/assets/home/hero-wide-1600.webp" width="3840" height="2560" sizes="100vw" fetchpriority="high" srcset="'
-                   + ', '.join(f'/assets/home/hero-wide-{size}.webp {size}w' for size in (1600, 2560, 3840)) + '"></picture>')
+                   + '"><source media="(max-aspect-ratio: 3/2)" width="3840" height="2560" sizes="100vw" srcset="'
+                   + ', '.join(f'/assets/home/hero-wide-{size}.webp {size}w' for size in (1600, 2560, 3840))
+                   + '"><source width="5120" height="2324" sizes="100vw" srcset="'
+                   + ', '.join(f'/assets/home/hero-pano-{size}.webp {size}w' for size in (1920, 2560, 3840, 5120))
+                   + '"><img src="/assets/home/hero-pano-1920.webp" width="5120" height="2324" sizes="100vw" fetchpriority="high" srcset="'
+                   + ', '.join(f'/assets/home/hero-pano-{size}.webp {size}w' for size in (1920, 2560, 3840, 5120)) + '"></picture>')
         self.write('index.html', f'{picture}<main>{hero}</main><footer>{self.DELETION}<a href="/privacy/">개인정보처리방침</a></footer>')
         filters = ''.join(f'<button data-filter="{category}" aria-pressed="false">{label}</button>' for category, label in [('all', '전체'), ('puzzle', '퍼즐'), ('card', '카드 대전'), ('board', '보드게임')])
         self.write('games/index.html', cards + filters + '<div id="board-empty">보드게임은 준비 중이에요. 첫 게임이 열리면 커뮤니티 새 소식으로 알려 드릴게요.</div><a href="https://community.gracekingames.com/community/">커뮤니티</a>' + '<footer>' + self.DELETION + '<a href="/privacy/">개인정보처리방침</a></footer>')
@@ -332,6 +336,32 @@ class StoreLaunchTests(unittest.TestCase):
                 self.write('.dockerignore', original.replace('!' + relative, relative))
                 self.assertIn(f'대문: {relative} 자산 또는 운영 패키지 허용 누락', self.launch_failures())
                 self.write('.dockerignore', original)
+
+    def test_home_rejects_wrong_picture_order_and_default(self):
+        original = (self.root / 'index.html').read_text()
+        for before, after in [
+            ('(max-aspect-ratio: 1/1)', '(max-aspect-ratio: 3/2)'),
+            ('(max-aspect-ratio: 3/2)', '(max-aspect-ratio: 2/1)'),
+            ('<source width="5120"', '<source media="(min-width: 100px)" width="5120"'),
+            ('src="/assets/home/hero-pano-1920.webp"', 'src="/assets/home/hero-wide-1600.webp"'),
+        ]:
+            with self.subTest(after=after):
+                self.write('index.html', original.replace(before, after))
+                self.assertTrue(any('picture 구성' in failure or '기본 이미지' in failure for failure in self.launch_failures()))
+
+    def test_home_rejects_wrong_variant_srcset_size_and_priority(self):
+        original = (self.root / 'index.html').read_text()
+        for before, after in [
+            ('hero-pano-5120.webp 5120w', 'hero-wide-3840.webp 3840w'),
+            ('hero-wide-1600.webp 1600w', 'hero-wide-1600.webp 1200w'),
+            ('hero-tall-720.webp 720w, ', ''),
+            ('height="2324"', 'height="2560"'),
+            ('sizes="100vw"', 'sizes="50vw"'),
+            ('fetchpriority="high"', 'fetchpriority="low"'),
+        ]:
+            with self.subTest(after=after):
+                self.write('index.html', original.replace(before, after))
+                self.assertTrue(any('srcset 불일치' in failure or '이미지 크기·우선순위' in failure for failure in self.launch_failures()))
 
     def test_home_rejects_remaining_stage_game_entry(self):
         self.change('index.html', '</main>', '<a href="/games/slimeline/" data-umami-event="homepage-slimeline" data-umami-event-from="stage">홈페이지 보기</a></main>')

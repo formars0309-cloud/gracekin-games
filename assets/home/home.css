@@ -1,6 +1,6 @@
 /* 대문 그림은 화면을 채우고 문구·메뉴·법적 안내는 그림 위에 놓는다. */
 .gb-home{position:relative;isolation:isolate;background:#b9d4e2}
-.gb-backdrop{position:absolute;inset:0;z-index:-1;overflow:hidden}.gb-backdrop img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 0%}
+.gb-backdrop{position:absolute;inset:0;z-index:-1;overflow:hidden}.gb-backdrop img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
 .gb-home::before{content:"";position:absolute;inset:0 0 auto;height:160px;z-index:1;pointer-events:none;background:linear-gradient(180deg,#0c0a1099, #0c0a1033 65%,transparent)}
 .gb-home .gb-nav{max-width:none;padding-inline:clamp(24px,4vw,80px);border:0}
 .gb-home .gb-navlinks a{color:#f3ecdf;text-shadow:0 1px 4px #0c0a10}
@@ -16,4 +16,4 @@
 .gb-legal{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 10px;padding:10px 16px;background:#0c0a10b8;color:#eee5d5;font-size:12px;line-height:1.7}.gb-legal a{color:inherit;text-decoration:none;white-space:nowrap}.gb-legal a:hover{text-decoration:underline}
 @media(max-width:760px){.gb-home .gb-nav{padding:10px 16px}.gb-home .gb-main{padding:18px 22px 28px}.gb-home-intro h1{font-size:30px;margin:10px 0 12px}.gb-hero-subtitle{max-width:330px;font-size:13px;line-height:1.65}.gb-hero-actions{gap:8px;margin-top:16px}.gb-hero-actions a{font-size:12px;padding:10px 12px;min-height:44px}.gb-legal{gap:2px 7px;padding:8px 12px;font-size:11px}}
 @media(max-width:360px){.gb-home .gb-main{padding-inline:18px}.gb-home-intro h1{font-size:28px}}
-@media(max-aspect-ratio:1/1){.gb-backdrop img{object-position:50% 50%}}
+@media(max-aspect-ratio:3/2){.gb-backdrop img{object-position:50% 50%}}
