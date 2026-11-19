@@ -382,11 +382,34 @@
       message('login-methods-error', error.message);
     }
   }
+  let characterRequest = 0;
+  async function loadCharacterCard() {
+    const requestId = ++characterRequest, userId = state.user?.id;
+    const canvas = byId('member-character-portrait');
+    canvas.hidden = true;
+    byId('member-character-link').textContent = '캐릭터 만들기';
+    byId('member-character-status').textContent = '내 캐릭터를 확인하고 있어요.';
+    try {
+      const response = await fetch('/api/character/me', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(15000) });
+      if (!response.ok) throw new Error('캐릭터 연결 확인');
+      const { character } = await response.json();
+      if (requestId !== characterRequest || state.user?.id !== userId) return;
+      byId('member-character-link').textContent = character ? '내 캐릭터' : '캐릭터 만들기';
+      byId('member-character-status').textContent = character ? `레벨 ${character.progress.level} · 나의 꼬마 모험가` : '나만의 꼬마 모험가를 만들어 보세요.';
+      if (!character) return;
+      const { renderCharacter } = await import('/assets/character/render.js');
+      await renderCharacter(canvas, character.data, { mode: 'portrait', size: 96 });
+      if (requestId === characterRequest && state.user?.id === userId) canvas.hidden = false;
+    } catch {
+      if (requestId === characterRequest && state.user?.id === userId) byId('member-character-status').textContent = '캐릭터를 불러오지 못했어요. 캐릭터 화면에서 다시 확인할 수 있어요.';
+    }
+  }
   function showMember() {
     byId('member-title').textContent = `${state.user.name}님, 반가워요`;
     byId('member-email').textContent = state.user.email;
     byId('member-permission').textContent = state.user.canWriteCommunity ? '커뮤니티에서 글과 댓글을 나눌 수 있어요.' : '이 계정으로는 커뮤니티의 글과 공식 안내를 읽을 수 있어요. 글·댓글 작성은 제공하지 않아요.';
     navigate('member');
+    loadCharacterCard();
     loadWallet();
     loadLoginMethods();
   }

@@ -231,3 +231,6 @@ textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outl
 
 .post-meta>span,.comment-meta>span,.article-author>span,.news-author>span{min-width:0;max-width:100%;overflow-wrap:anywhere}
 .comment-meta .author-name{color:var(--ink);font-weight:600}
+
+/* 작성자에게 캐릭터가 있을 때만 나타나는 초상. */
+.author-portrait{display:inline-block;width:32px;height:32px;flex:0 0 32px;border-radius:50%;vertical-align:middle;background:#362a42;border:1px solid #b9a57c70;object-fit:contain}.comment-meta:has(.author-portrait),.post-meta:has(.author-portrait),.news-author:has(.author-portrait),#article-author:has(.author-portrait){display:flex;align-items:center;gap:8px;flex-wrap:wrap}
