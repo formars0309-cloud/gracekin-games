@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sculptFace } from '../assets/avatar/art/face.js';
+import { sculptHair } from '../assets/avatar/art/hair.js';
 import { BONE, Sculpture, rgb } from '../assets/avatar/art/sculpt.js';
 import { createAvatarPreset } from '../assets/avatar/model.js';
 
@@ -48,4 +49,29 @@ test('원화로 구운 얼굴과 뒤통수가 열린 틈 없이 연결되고 눈
     changes[Number(x > 0)]++;
   }
   assert.ok(changes.every((count) => count > 25));
+});
+
+test('소년 가르마 옆에서 앞머리가 이마 안쪽으로 들어가지 않는다', () => {
+  const appearance = createAvatarPreset('youth').appearance;
+  const model = face(appearance);
+  const hair = model.indices.length;
+  sculptHair(model, appearance, { skin: rgb(appearance.skinColor), hair: rgb(appearance.hairColor) });
+  // 이전 사선 캡처에서 두피가 드러난 지점들을 정면 광선으로 관통해 가장 앞의 두 표면을 비교한다.
+  for (const [x, y] of [[-0.265, 0.295], [-0.260, 0.300], [-0.255, 0.290], [-0.292, 0.255]]) {
+    const front = [-Infinity, -Infinity];
+    const v = model.vertices;
+    for (let i = 0; i < model.indices.length; i += 3) {
+      const a = model.indices[i] * 11, b = model.indices[i + 1] * 11, c = model.indices[i + 2] * 11;
+      const bx = v[b] - v[a], by = v[b + 1] - v[a + 1];
+      const cx = v[c] - v[a], cy = v[c + 1] - v[a + 1];
+      const dx = x - v[a], dy = y - v[a + 1], area = bx * cy - by * cx;
+      if (Math.abs(area) < 1e-10) continue;
+      const u = (dx * cy - dy * cx) / area, w = (bx * dy - by * dx) / area;
+      if (u < 0 || w < 0 || u + w > 1) continue;
+      const z = v[a + 2] * (1 - u - w) + v[b + 2] * u + v[c + 2] * w;
+      const layer = Number(i >= hair);
+      front[layer] = Math.max(front[layer], z);
+    }
+    assert.ok(Number.isFinite(front[0]) && front[1] > front[0] + 0.002, '앞머리 여유 깊이');
+  }
 });

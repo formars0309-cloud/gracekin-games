@@ -189,3 +189,5 @@ assets/avatar/art/**
 !assets/avatar/art/sculpt.js
 !assets/avatar/art/face.js
 !assets/avatar/art/face-data.js
+!assets/avatar/art/hair.js
+!assets/avatar/art/hair-tone.js

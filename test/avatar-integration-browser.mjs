@@ -17,8 +17,8 @@ const captures = process.env.AVATAR_CAPTURE_DIR;
 if (captures) await mkdir(captures, { recursive: true });
 const mailbox = [];
 const members = [
-  { device: '데스크톱', preset: '미소년', id: 'youth', name: '안개숲의 새벽', quiz: 'healer', recommendation: '별빛치유사', job: 'ranger', label: '숲길잡이', color: '#2d765c' },
-  { device: '모바일', preset: '미소녀', id: 'maiden', name: '보랏빛 노을', quiz: 'guardian', recommendation: '수호기사', job: 'arcanist', label: '룬술사', color: '#864f99' },
+  { device: '데스크톱', preset: '미소년', id: 'youth', name: '안개숲의 새벽', eyes: 61, nose: 48, jaw: 40, build: 51, eyeColor: '#466a52', quiz: 'healer', recommendation: '별빛치유사', job: 'ranger', label: '숲길잡이', color: '#2d765c' },
+  { device: '모바일', preset: '미소녀', id: 'maiden', name: '보랏빛 노을', eyes: 66, nose: 39, jaw: 30, build: 36, eyeColor: '#69517c', quiz: 'guardian', recommendation: '수호기사', job: 'arcanist', label: '룬술사', color: '#864f99' },
 ];
 const errors = [];
 const ids = new Set();
@@ -70,6 +70,11 @@ try {
     const page = await context.newPage();
     const $ = selector => page.locator(selector);
     const press = control => mobile ? control.tap() : control.click();
+    const setSlider = async field => {
+      const slider = $('#' + field);
+      const steps = member[field] - Number(await slider.inputValue());
+      for (let i = 0; i < Math.abs(steps); i++) await slider.press(steps > 0 ? 'ArrowRight' : 'ArrowLeft');
+    };
     const shot = async (label, control = page) => {
       if (captures) await control.screenshot({ path: join(captures, member.device + '-' + label + '.jpg'), quality: 90 });
     };
@@ -90,7 +95,12 @@ try {
     }
     await press(page.getByRole('button', { name: member.preset, exact: true }));
     await $('#hero-name').fill(member.name);
+    await press($('[data-section=body]'));
+    await setSlider('build');
+    await press($('[data-section=face]'));
+    for (const field of ['eyes', 'nose', 'jaw']) await setSlider(field);
     await press($('[data-section=color]'));
+    await $('#eyeColor').fill(member.eyeColor);
     await $('#clothColor').fill(member.color);
     await press($('#open-quiz'));
     for (let n = 1; n <= 10; n++) {
@@ -122,6 +132,7 @@ try {
     const saved = (await (await context.request.get(app.origin + '/api/avatar/me')).json()).avatar;
     const expected = createAvatarPreset(member.id);
     Object.assign(expected, { name: member.name, job: member.job, recommendedJob: member.quiz });
+    for (const field of ['build', 'eyes', 'nose', 'jaw', 'eyeColor']) expected.appearance[field] = member[field];
     expected.appearance.clothColor = member.color;
     assert.equal(saved.revision, 1);
     assert.deepEqual(saved.character, expected);
@@ -138,6 +149,9 @@ try {
     await press($('#account-avatar-link'));
     await page.waitForURL(app.origin + '/games/avatar/');
     await page.waitForFunction(name => document.querySelector('#hero-name').value === name, member.name);
+    for (const field of ['build', 'eyes', 'nose', 'jaw', 'eyeColor']) {
+      assert.equal(await $('#' + field).inputValue(), String(member[field]));
+    }
     assert.equal(await $('#clothColor').inputValue(), member.color);
     assert.equal(await $('#recommendation').isVisible(), true);
     for (const mode of ['board', 'rpg']) {

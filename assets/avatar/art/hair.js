@@ -78,7 +78,9 @@ function hairline(t, style) {
   const temple = smooth((a - 0.40) / 0.91);
   const ear = 0.114 * bell((a - 1.63) / 0.26);
   const nape = (style === 0 ? 0.264 : 0.223) * smooth((a - 1.58) / 1.25);
-  const feather = 0.0009 * Math.sin(t * 33 + 1.7 * Math.cos(9 * t));
+  // 앞이마의 잔가닥은 가르마에서 관자 쪽으로 길어지며 피부 위에 얇게 눕는다.
+  const feather = 0.0015 * Math.sin(t * 33 + 1.7 * Math.cos(9 * t))
+    - (0.003 + 0.004 * halfWave(13 * t)) * halfWave(t * 48 + 2.4 * Math.sin(t * 9)) ** 3 * (1 - temple);
   const sweep = style === 0 ? 0.076 * bell((t + 0.53) / 0.56) + 0.028 * bell((t + 0.57) / 0.13) : 0;
   return (front - sweep) * (1 - temple) + (0.018 - nape + ear) * temple
     - 0.052 * bell((a - 1.30) / 0.13) + feather + 0.019 * Math.sin(t * 7) * smooth((a - 1.82) / 0.65);
@@ -138,11 +140,11 @@ function combedScalp(m, style, shade, skin, faceZ) {
     const fine = Math.sin(93 * grain + 2.5 * Math.sin(13 * grain + 5 * distance) + 7 * Math.sin(grain * 3 - 2 * distance));
     const seam = bell((x - part * (0.72 + z * 0.65) * 0.449) / 0.008) * smooth((z + 0.11) / 0.31);
     const ridge = 0.12 * halfWave(phase) - 0.15 * halfWave(2.3 * Math.sin(grain * 7 + 2 * distance) + grain * 59 - distance * 3) ** 4;
-    const strands = (ridge + 0.14 * fine) * smooth((1 - distance) / 0.24);
+    const strands = (ridge + 0.23 * fine) * smooth((1 - distance) / 0.24);
     const sweep = fiber(0.5 + 0.48 * Math.sin(grain + 0.17 * distance), 0.90 - 0.81 * distance);
     const facing = smooth((z + 0.095) / 0.34);
     const tone = sweep * (1 - facing) + frontFiber(x, y, t, style) * facing;
-    const base = shade(0.26 + 0.43 * tone + 0.87 * strands + 0.035 * Math.sin(grain * 3 - 3 * distance) - 0.11 * seam);
+    const base = shade(0.18 + 0.60 * tone + 0.92 * strands + 0.035 * Math.sin(grain * 3 - 3 * distance) - 0.11 * seam);
     const hairlineTint = (0.19 + 0.17 * halfWave(78 * t)) * (1 - smooth(v / 0.037)) * smooth((Math.cos(t) + 0.42) / 0.67);
     return mix(base, skin, hairlineTint + 0.18 * seam * (1 - hairlineTint));
   };
@@ -180,11 +182,11 @@ function combedScalp(m, style, shade, skin, faceZ) {
         const t = Math.atan2(p[0], p[2] + 0.024);
         const q = (p[1] - hairline(t, style)) / radiusY;
         return color(p, t, clamp(q), u * TAU * 0.72, along(row));
-      }, 0.065);
+      }, 0.045);
     }
   } else {
     m.surface(240, 67, (u, v) => point(u * TAU, along(v)),
-      (p, u, v) => color(p, u * TAU, along(v), u * TAU, along(v)), 0.065);
+      (p, u, v) => color(p, u * TAU, along(v), u * TAU, along(v)), 0.045);
   }
   return { point, color };
 }

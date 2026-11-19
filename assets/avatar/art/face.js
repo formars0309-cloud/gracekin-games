@@ -56,8 +56,11 @@ function closeSkull(points, triangles) {
       const theta = Math.atan2((y + 0.046) / 0.405, x / 0.37);
       const sn = Math.sin(theta),
         cs = Math.cos(theta);
-      const mx = 0.401 * cs * (1 - 0.19 * Math.max(0, -sn) ** 2);
-      const my = 0.084 + 0.422 * sn + 0.075 * Math.max(-sn, 0) ** 2;
+      // 아래턱각을 귓불 아래까지 이어 목으로 돌아가는 턱밑 면을 만든다.
+      const lower = Math.max(0, -sn);
+      const jaw = smooth((-y - 0.015) / 0.21);
+      const mx = blend(0.401 * cs, x * (1 + 0.23 * lower), jaw);
+      const my = blend(0.084 + 0.422 * sn, y + 0.135 * lower ** 2, jaw);
       const mz = -0.048;
       const mid = 10;
       let point;
@@ -78,7 +81,9 @@ function closeSkull(points, triangles) {
         });
       } else {
         const t = (((row - mid) / (belts - mid)) * Math.PI) / 2;
-        point = [mx * Math.cos(t), 0.094 + (my - 0.094) * Math.cos(t), mz - 0.337 * Math.sin(t)];
+        const radius = Math.cos(t);
+        const depth = 0.337 - 0.135 * lower ** 2 * radius;
+        point = [mx * radius, 0.094 + (my - 0.094) * radius, mz - depth * Math.sin(t)];
       }
       points.push(point);
       const j = (i + 1) % rim;
@@ -181,7 +186,11 @@ export function sculptFace(m, appearance, palette) {
         return blend(unpainted, eye, iris) / blend(1, light[c], balance);
       });
     }
-    m.vertices.push(...points[i], nx, ny, nz, ...tint, 0.075, m.bone);
+    // 턱 아랫면에서 목으로 돌아가는 부분은 원화 정면광의 영향을 덜 받는다.
+    const underJaw = smooth((-points[i][1] - 0.13) / 0.18) * smooth((-ny - 0.12) / 0.77);
+    m.vertices.push(...points[i], nx, ny, nz,
+      tint[0] * (1 - 0.095 * underJaw), tint[1] * (1 - 0.13 * underJaw),
+      tint[2] * (1 - 0.14 * underJaw), 0.075, m.bone);
   }
   for (const i of indices) m.indices.push(start + i);
 }

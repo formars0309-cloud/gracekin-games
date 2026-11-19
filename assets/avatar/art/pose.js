@@ -47,13 +47,16 @@ export function pose(model, { angle, time, cycle, motion, mode, view, width, hei
   const rhythm = walking ? Math.sin(phase) : 0,
     breath = cycle === undefined ? Math.sin(time * 1.86) : Math.cos(phase);
   const pitch = face ? 0.042 : mode === 'board' ? 0.278 : mode === 'rpg' ? 0.165 : 0.104;
-  const hat = model.crown - model.headY > 0.73;
-  const portion = face
-    ? Math.max((hat ? 1.67 : 1.34) * model.scaleY, (1.16 * height) / width)
-    : Math.max((model.crown + 0.44) * (0.45 + 0.55 * model.scaleY), (1.98 * height) / width);
-  const center = face
-    ? (model.headY + (hat ? 0.095 : -0.045)) * model.scaleY
-    : (model.crown - 0.17) * (0.18 + 0.82 * model.scaleY) * 0.5;
+  // 정수리와 모자 끝은 실제 조형에서 읽고 얼굴 배율에 맞춰 어깨까지 담는다.
+  const top = face ? model.crown + 0.16 * model.headScale : model.figureTop + 0.14;
+  const bottom = face ? model.headY - 1.22 * model.headScale : 0;
+  const hasPlinth = mode === 'board' || mode === 'studio';
+  const floorSpace = hasPlinth ? 0.22 + 0.79 * Math.sin(pitch) : 0.14;
+  const upper = top * model.scaleY;
+  const lower = face ? bottom * model.scaleY : -floorSpace;
+  const span = face ? 1.64 * model.headScale : 2.74;
+  const portion = Math.max(upper - lower, span * height / width);
+  const center = (upper + lower) * 0.5;
   const observer = product(rotate(0, pitch), rotate(1, angle));
   const camera = product(shift(0, -center * Math.cos(pitch), 0), observer);
   const body = product(camera, scale(1, model.scaleY, 1));
@@ -78,14 +81,17 @@ export function pose(model, { angle, time, cycle, motion, mode, view, width, hei
       elbow = s < 0 ? BONE.leftElbow : BONE.rightElbow;
     const hip = s < 0 ? BONE.leftHip : BONE.rightHip,
       knee = s < 0 ? BONE.leftKnee : BONE.rightKnee;
+    // 지팡이를 든 손은 보폭을 따라 작게 움직이고 지팡이 끝은 어깨 위에 머무른다.
+    const staffArm = model.carriesStaff && s < 0;
     put(
       arm,
       bones[BONE.chest],
-      s * rhythm * 0.43 + (s < 0 ? 0.083 : -0.032),
+      s * rhythm * (staffArm ? 0.19 : 0.29) + (s < 0 ? 0.083 : -0.032),
       s * 0.045,
       s * (0.058 + 0.012 * breath),
     );
-    put(elbow, bones[arm], (s < 0 ? -0.19 : -0.1) - Math.max(0, -s * rhythm) * 0.24);
+    const bend = s < 0 && !staffArm ? -0.19 : -0.1;
+    put(elbow, bones[arm], bend - Math.max(0, -s * rhythm) * (staffArm ? 0.08 : 0.15));
     put(hip, base, -s * rhythm * 0.5 + s * 0.04, s * 0.045, s * 0.042);
     put(knee, bones[hip], walking ? 0.055 + 0.52 * Math.max(0, s * Math.cos(phase)) : 0.023);
   }

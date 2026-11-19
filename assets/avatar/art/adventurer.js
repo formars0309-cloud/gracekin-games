@@ -383,44 +383,46 @@ function tunic(m, p, job, hip, waist, shoulder) {
   }
 }
 
-export function buildAdventurer(character, mode) {
-  const { appearance: a, job } = readAppearance(character),
-    p = palette(a, job),
-    m = new Sculpture();
-  const hip = 0.285 + a.build * 0.0009,
-    waist = 0.217 + a.build * 0.0011;
-  const shoulder = 0.251 + a.shoulders * 0.00228 + a.build * 0.00027;
-  const hand = shoulder + 0.132,
-    headY = 2.498;
-  m.pivots[BONE.floor] = [0, 0, 0];
-  m.pivots[BONE.chest] = [0, 1.12, 0];
-  m.pivots[BONE.head] = [0, 2.01, 0];
-  m.pivots[BONE.cape] = [0, 1.9, -0.12];
-  if (mode === 'studio' || mode === 'board') plinth(m, mode === 'board');
-  bootsAndLegs(m, p, job, hip);
-  tunic(m, p, job, hip, waist, shoulder);
-  arms(m, p, job, shoulder, hand);
+function neckAndCollar(m, p) {
   m.bone = BONE.chest;
-  m.rings(
-    0,
-    0,
-    [
-      [1.88, 0.138, 0.127],
-      [2.018, 0.117, 0.116],
-      [2.12, 0.109, 0.11, -0.008],
-      [2.215, 0.133, 0.129, -0.023],
-      [2.303, 0.166, 0.15, -0.036],
-    ],
-    p.skin,
-    0.17,
+  // 목밑은 옷깃 안에서 넓어지고, 목덜미는 턱밑보다 높게 뒤통수로 들어간다.
+  const sections = [
+    [1.912, 0.16, 0.127, -0.01, 0.015],
+    [1.967, 0.144, 0.123, -0.013, 0.016],
+    [2.007, 0.124, 0.104, -0.014, 0.023],
+    [2.042, 0.107, 0.094, -0.009, 0.031],
+    [2.084, 0.093, 0.085, -0.002, 0.045],
+    [2.12, 0.089, 0.082, 0.002, 0.056],
+    [2.151, 0.091, 0.084, 0.009, 0.065],
+    [2.2, 0.092, 0.082, 0.011, 0.052],
+  ];
+  m.surface(
+    40,
+    sections.length - 1,
+    (u, v) => {
+      const [y, rx, rz, z, rise] = sections[Math.round(v * (sections.length - 1))];
+      const t = TAU * u, front = Math.cos(t);
+      // 귀 뒤에서 쇄골 안쪽으로 내려오는 좌우 근육을 곡면에 완만하게 돋운다.
+      const muscle = 0.01 * Math.sin(Math.PI * v) * Math.exp(-((front - 0.82 + 1.12 * v) ** 2) / 0.06);
+      return [(rx + muscle) * Math.sin(t), y + rise * (1 - front) / 2, z + (rz + muscle) * front];
+    },
+    (_, u, v) => {
+      const front = (1 + Math.cos(TAU * u)) / 2;
+      const shade = Math.min(1, v * v * 2.7) * (0.09 + 0.16 * front);
+      return [p.skin[0] * (1 - 0.78 * shade), p.skin[1] * (1 - shade), p.skin[2] * (1 - 1.08 * shade)];
+    },
+    0.09,
   );
   m.rings(
     0,
     0,
     [
-      [1.893, 0.19, 0.154],
-      [1.94, 0.173, 0.152],
-      [2.006, 0.141, 0.136],
+      [1.895, 0.227, 0.17, -0.004],
+      [1.939, 0.181, 0.155, -0.006],
+      [1.977, 0.152, 0.137, -0.009],
+      [2.001, 0.141, 0.126, -0.01],
+      [2.012, 0.137, 0.122, -0.01],
+      [2.014, 0.112, 0.099, -0.01],
     ],
     p.lining,
     0.22,
@@ -430,30 +432,83 @@ export function buildAdventurer(character, mode) {
     0,
     0,
     [
-      [1.989, 0.15, 0.141],
-      [2.008, 0.142, 0.138],
+      [1.992, 0.147, 0.133, -0.01],
+      [2.002, 0.143, 0.128, -0.01],
+      [2.009, 0.14, 0.125, -0.01],
     ],
     p.gold,
     0.5,
     24,
   );
-  vestments(m, p, job, shoulder, hip, hand, headY);
-  sculptHead(m, a, p, headY);
-  const headScale = 0.88 + 0.00033 * (64 - a.build);
-  const neck = 2.01;
-  for (let i = 0; i < m.vertices.length; i += 11) {
-    if (m.vertices[i + 10] !== BONE.head) continue;
-    m.vertices[i] *= headScale;
-    m.vertices[i + 1] = neck + (m.vertices[i + 1] - neck) * headScale;
-    m.vertices[i + 2] *= headScale;
+}
+
+// 목선 위는 얼굴·귀걸이·머리 장식을 한 덩어리로, 아래는 장비와 관절까지 같은 체격으로 맞춘다.
+function fitProportions(m, appearance) {
+  const bodyStretch = 1.17;
+  const headScale = 0.452 + (50 - appearance.build) * 0.00025;
+  const maiden = appearance.faceBase === 'maiden';
+  const eyeY = maiden ? 0.058 : 0.065;
+  const linear = maiden ? 0.075 : 0.09, cubic = maiden ? 0.37 : 0.45;
+  // 원화에서 동공 간격을 맞추면 코밑과 턱끝까지의 거리가 다르게 늘어난다.
+  // 눈 위의 두상과 모자는 함께 올리고 턱끝은 목과 맞닿던 높이에 둔다.
+  const chinDepth = eyeY + (maiden ? 0.449 : 0.468);
+  const stretch = depth => linear * depth + cubic * depth ** 3;
+  const chinOffset = stretch(chinDepth);
+  // 기본 턱끝과 옷깃 사이 간격을 유지한다.
+  const headY = 2.008 * bodyStretch + 0.069 + (0.47 + chinOffset) * headScale;
+  const headZ = 0.035;
+  let crown = headY, figureTop = headY;
+  const vertices = m.vertices;
+  for (let i = 0; i < vertices.length; i += 11) {
+    const bone = vertices[i + 10];
+    if (bone === BONE.floor) continue;
+    if (bone === BONE.head) {
+      vertices[i] *= headScale;
+      const localY = vertices[i + 1];
+      const depth = Math.min(chinDepth, Math.max(0, eyeY - localY));
+      vertices[i + 1] = headY + (localY - stretch(depth)) * headScale;
+      if (depth > 0 && depth < chinDepth) vertices[i + 4] /= 1 + linear + 3 * cubic * depth ** 2;
+      vertices[i + 2] = headZ + vertices[i + 2] * headScale;
+      crown = Math.max(crown, vertices[i + 1]);
+    } else {
+      vertices[i + 1] *= bodyStretch;
+      // 세로로 늘린 면의 법선은 역배율을 적용한다. 두 렌더러가 조명 계산 때 정규화한다.
+      vertices[i + 4] /= bodyStretch;
+    }
+    figureTop = Math.max(figureTop, vertices[i + 1]);
   }
-  const scaleY = 0.89 + a.height * 0.0022;
+  for (const pivot of m.pivots) {
+    if (pivot) pivot[1] *= bodyStretch;
+  }
+  m.pivots[BONE.head] = [0, headY - 0.22 * headScale, headZ - 0.10 * headScale];
+  return { headScale, headY, crown, figureTop };
+}
+
+export function buildAdventurer(character, mode) {
+  const { appearance: a, job } = readAppearance(character),
+    p = palette(a, job),
+    m = new Sculpture();
+  const hip = 0.285 + a.build * 0.0009,
+    waist = 0.217 + a.build * 0.0011;
+  const shoulder = 0.251 + a.shoulders * 0.00228 + a.build * 0.00027;
+  const hand = shoulder + 0.132;
+  m.pivots[BONE.floor] = [0, 0, 0];
+  m.pivots[BONE.chest] = [0, 1.12, 0];
+  m.pivots[BONE.cape] = [0, 1.9, -0.12];
+  if (mode === 'studio' || mode === 'board') plinth(m, mode === 'board');
+  bootsAndLegs(m, p, job, hip);
+  tunic(m, p, job, hip, waist, shoulder);
+  arms(m, p, job, shoulder, hand);
+  neckAndCollar(m, p);
+  vestments(m, p, job, shoulder, hip, hand, 0);
+  sculptHead(m, a, p, 0);
+  const framing = fitProportions(m, a);
   return {
     vertices: new Float32Array(m.vertices),
     indices: new Uint16Array(m.indices),
     pivots: m.pivots,
-    scaleY,
-    headY: neck + (headY - neck) * headScale,
-    crown: neck + (headY - neck + (job === 'arcanist' ? 0.95 : 0.64)) * headScale,
+    carriesStaff: job === 'arcanist' || job === 'healer',
+    scaleY: 0.89 + a.height * 0.0022,
+    ...framing,
   };
 }
