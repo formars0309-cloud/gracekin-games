@@ -152,6 +152,16 @@ export function sculptFace(m, appearance, palette) {
   }
   const faceCount = points.length;
   closeSkull(points, indices);
+  // 귀 앞에서 턱 뒤까지는 앞얼굴과 뒤통수 양쪽이 같은 하악 단면을 지난다.
+  for (const point of points) {
+    const [x, y, z] = point;
+    const lateral = smooth((Math.abs(x) - 0.1) / 0.145) * smooth((0.18 - y) / 0.13);
+    const side = lateral * smooth((0.28 - z) / 0.14) * smooth((z + 0.27) / 0.15);
+    if (side === 0) continue;
+    const width = (0.396 - 0.39 * (Math.max(-y, 0) / 0.49) ** 1.8) * (1 + 0.16 * jawEdit * smooth((-y - 0.1) / 0.29));
+    const arc = Math.sqrt(Math.max(0, 1 - ((z - 0.01) / 0.397) ** 2));
+    point[0] = blend(x, Math.sign(x) * Math.max(0, width) * arc, 0.94 * side);
+  }
   const normals = normalsOf(points, indices);
   const start = m.vertices.length / 11;
   const base = maiden ? [224, 192, 177] : [205, 170, 151];
@@ -159,9 +169,17 @@ export function sculptFace(m, appearance, palette) {
     const n = i * 3,
       k = i * 6;
     const length = Math.hypot(normals[n], normals[n + 1], normals[n + 2]) || 1;
-    const nx = normals[n] / length,
+    const [x, y, z] = points[i];
+    let nx = normals[n] / length,
       ny = normals[n + 1] / length,
       nz = normals[n + 2] / length;
+    // 머리와 따로 움직이는 목 관절의 접촉 둘레에서 두 표면이 같은 방향으로 빛을 받게 한다.
+    const radius = Math.hypot(x, z + 0.022);
+    const neck = smooth((0.248 - radius) / 0.107) * smooth((-y - 0.17) / 0.16);
+    if (neck > 0) {
+      const side = unit([x, -0.038, z + 0.022]);
+      [nx, ny, nz] = unit([blend(nx, side[0], neck), blend(ny, side[1], neck), blend(nz, side[2], neck)]);
+    }
     let tint = palette.skin;
     if (i < faceCount) {
       const iris = photoColors[k + 3] / 255;
@@ -176,21 +194,22 @@ export function sculptFace(m, appearance, palette) {
         0.65 + 0.073 * fill + 0.11 * sky + 0.3 * diffuse,
         0.72 + 0.068 * fill + 0.1 * sky + 0.23 * diffuse,
       ];
-      const balance = 0.72 * smooth((points[i][2] - 0.13) / 0.17);
+      const balance = 0.88 * smooth((z - 0.12) / 0.18);
+      const socket = falloff((Math.abs(x) - 0.166) / 0.11, (y - 0.083) / 0.06);
+      const ala = falloff((Math.abs(x) - 0.063) / 0.044, (y + 0.159) / 0.04);
+      const skinFill = (0.22 * socket + 0.19 * ala) * (1 - eyeOpening) * (1 - brow);
       tint = base.map((neutral, c) => {
         const photo = photoColors[k + c];
-        const skin = Math.min(1, (photo * palette.skin[c]) / neutral);
+        const original = photo / neutral;
+        const skin = Math.min(1, (original + skinFill * Math.max(0, 1 - original)) * palette.skin[c]);
         const strands = (photo * (0.48 + 1.75 * palette.hair[c])) / 255;
         const unpainted = blend(blend(skin, photo / 235, eyeOpening), strands, brow * 0.67);
         const eye = Math.min(1, palette.eye[c] * (0.14 + photo / 121));
         return blend(unpainted, eye, iris) / blend(1, light[c], balance);
       });
     }
-    // 턱 아랫면에서 목으로 돌아가는 부분은 원화 정면광의 영향을 덜 받는다.
-    const underJaw = smooth((-points[i][1] - 0.13) / 0.18) * smooth((-ny - 0.12) / 0.77);
-    m.vertices.push(...points[i], nx, ny, nz,
-      tint[0] * (1 - 0.095 * underJaw), tint[1] * (1 - 0.13 * underJaw),
-      tint[2] * (1 - 0.14 * underJaw), 0.075, m.bone);
+    if (neck > 0) tint = tint.map((c) => c * (1 - 0.077 * neck));
+    m.vertices.push(x, y, z, nx, ny, nz, ...tint, 0.075, m.bone);
   }
   for (const i of indices) m.indices.push(start + i);
 }
