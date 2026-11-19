@@ -10,16 +10,18 @@ export function rgbToHsv([r, g, b]) {
   if (delta) h = (max === r ? (g - b) / delta + (g < b ? 6 : 0) : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4) / 6;
   return [h, max ? delta / max : 0, max];
 }
-export function hsvToRgb([h, s, v]) {
+function hsvToRgbFloat([h, s, v]) {
   const i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
-  return [[v,t,p], [q,v,p], [p,v,t], [p,q,v], [t,p,v], [v,p,q]][((i % 6) + 6) % 6].map(value => Math.round(value * 255));
+  return [[v,t,p], [q,v,p], [p,v,t], [p,q,v], [t,p,v], [v,p,q]][((i % 6) + 6) % 6].map(value => value * 255);
 }
+export function hsvToRgb(hsv) { return hsvToRgbFloat(hsv).map(Math.round); }
 const median = values => { values.sort((a,b) => a-b); const i = Math.floor(values.length / 2); return values.length % 2 ? values[i] : (values[i-1] + values[i]) / 2; };
 
 export function recolorPixels(source, mask, target) {
   if (source.length !== mask.length || source.length % 4) throw new Error('그림과 색 영역 크기가 달라요.');
   const out = new Uint8ClampedArray(source), values = [], saturations = [];
-  const eligible = i => source[i+3] > 0 && mask[i+3] > 0 && mask[i] > 0;
+  // 납품 마스크는 불투명 회색조다. 강도는 RGB의 빨간 채널이며 그림 알파는 유지한다.
+  const eligible = i => source[i+3] > 0 && mask[i] > 0;
   for (let i = 0; i < source.length; i += 4) {
     if (!eligible(i)) continue;
     const [,s,v] = rgbToHsv(source.slice(i, i+3));
@@ -31,8 +33,8 @@ export function recolorPixels(source, mask, target) {
     if (!eligible(i)) continue;
     const [,s,v] = rgbToHsv(source.slice(i, i+3));
     if (v <= .22 || s <= .12) continue;
-    const rgb = hsvToRgb([ht, clamp(s / ms * Math.max(st,.04)), clamp(v / mv * vt)]), weight = mask[i] / 255 * mask[i+3] / 255;
-    for (let channel = 0; channel < 3; channel++) out[i+channel] = source[i+channel] * (1-weight) + rgb[channel] * weight;
+    const rgb = hsvToRgbFloat([ht, clamp(s / ms * Math.max(st,.04)), clamp(v / mv * vt)]), weight = mask[i] / 255;
+    for (let channel = 0; channel < 3; channel++) out[i+channel] = Math.round(source[i+channel] * (1-weight) + rgb[channel] * weight);
   }
   return out;
 }

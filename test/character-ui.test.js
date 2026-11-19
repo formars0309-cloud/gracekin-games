@@ -16,7 +16,7 @@ test('색 변경은 목표색을 입히고 선·무채색·투명 화소·마스
   assert.deepEqual([...out.slice(4)],[...source.slice(4)]);
   assert.deepEqual([...source.slice(0,4)],[180,90,45,255]);
 });
-test('명암 비율과 중앙값을 보존하고 반투명 마스크는 원본과 섞는다', () => {
+test('명암 비율과 중앙값을 보존하고 부분 강도 마스크는 원본과 섞는다', () => {
   const source = pixel(100,50,25,180, 200,100,50,255, 150,75,37,255);
   const mask = pixel(...white,...white,128,128,128,255);
   const out = recolorPixels(source,mask,[120,180,60]);
@@ -92,4 +92,26 @@ assert m.character_network_issues(art+"\\nfetch('https://example.test/tracker')"
 assert m.character_network_issues(art.replace('new URL(base).origin !==','new URL(base).origin ==='),renderer=True)
 `;
   execFileSync('python3',['-c',script],{cwd:new URL('../',import.meta.url)});
+});
+
+
+test('회색조 마스크는 빨간 채널 강도만 쓰고 원본 그림 알파를 보존한다', () => {
+  const source=pixel(180,90,45,77);
+  assert.deepEqual([...recolorPixels(source,pixel(128,128,128,255),[50,120,180])],[115,105,113,77]);
+  assert.deepEqual([...recolorPixels(source,pixel(128,128,128,0),[50,120,180])],[115,105,113,77]);
+});
+test('부분 마스크 혼합을 끝낸 뒤 반올림하고 유효 화소 두 개의 중앙값을 쓴다', () => {
+  const source=pixel(180,90,45,255,68,40,20,128);
+  const out=recolorPixels(source,pixel(...white,128,128,128,255),[50,120,180]);
+  assert.deepEqual([...out],[65,167,255,255,49,53,60,128]);
+});
+test('실제 manifest의 고정 피부와 긴 뒷머리를 계약 순서로 선택한다', async () => {
+  const actual=JSON.parse(await readFile(new URL('../assets/character/manifest.json',import.meta.url)));
+  for (const race of ['dragon','moon']) {
+    const data=createDefaultCharacter();data.race=race;data.appearance.skin=null;data.appearance.hair='h2';
+    const layers=characterLayers(actual,data);
+    assert.equal(layers.find(row => row.name==='body').masks[0][0],null);
+    assert.ok(layers.findIndex(row => row.name==='hairBack') < layers.findIndex(row => row.name==='body'));
+    assert.ok(layers.findIndex(row => row.name==='hairFront') > layers.findIndex(row => row.name==='outfit'));
+  }
 });
