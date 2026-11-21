@@ -4,6 +4,7 @@
   if (window.gracekinCommunityRedirecting || location.hostname === 'gracekingames.com' || location.hostname === 'www.gracekingames.com') return;
   const studioPath = path => location.hostname === 'community.gracekingames.com' ? `https://gracekingames.com${path}` : path;
   for (const link of document.querySelectorAll('.studio-home-link')) link.href = studioPath('/');
+  const WEB_PLAY_OPEN = false;
   const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSezA52mxi13kKNyLORsFTjZGpxHa84rIzh7GVKfOthP6AI16w/viewform';
   const GAMES = {
     slimeline: {
@@ -321,6 +322,8 @@
   byId('hero-home').href = studioPath(game.home);
   byId('hero-start').href = `https://${gameId}.gracekingames.com/`;
   byId('hero-start').setAttribute('data-umami-event', `play-${gameId}`);
+  // 국내 등급분류 전까지 웹 플레이 진입을 닫는다(2026-11-21). 다시 열려면 true.
+  byId('hero-start').hidden = !WEB_PLAY_OPEN;
   if (gameId === 'gyeongguk') byId('hero-links').prepend(byId('hero-start'));
   byId('board-group-title').textContent = gameId === 'gyeongguk' ? '천하의 이야기' : '우리들의 이야기';
   byId('hero-description').textContent = game.description;

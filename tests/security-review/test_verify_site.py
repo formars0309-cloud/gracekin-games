@@ -230,7 +230,7 @@ class PublicAssetTests(unittest.TestCase):
 
 class StoreLaunchTests(unittest.TestCase):
     STORE = '<span class="button button-store is-pending" data-store="google-play" role="status" aria-disabled="true"><span>Google Play 출시 준비 중</span></span>'
-    WEB = '<a class="button button-web" href="{url}" data-umami-event="play-{game}" data-umami-event-from="homepage-web"><span>웹에서 체험하기</span></a>'
+    WEB = '<p class="web-gate" data-web-gate role="note">웹 체험은 국내 등급분류가 끝날 때까지 쉬어요.</p>'
     DELETION = '<a href="/community/account-deletion/">계정 삭제 안내</a>'
 
     def setUp(self):
@@ -457,15 +457,15 @@ class StoreLaunchTests(unittest.TestCase):
             self.change(f'games/{game}/index.html', self.STORE, store)
         self.assertEqual(self.launch_failures(), [])
 
-    def test_web_trial_requires_one_link_label_and_tracking(self):
+    def test_web_entry_closed_requires_notice_and_no_link(self):
         relative = 'games/slimeline/index.html'
         original = (self.root / relative).read_text()
         web = self.WEB.format(game='slimeline', url=SITE.GAME_URLS['slimeline'])
-        for before, after in [(web, ''), (web, web + web), ('웹에서 체험하기', '게임 실행'),
-                              ('play-slimeline', 'play-gyeongguk'), ('homepage-web', 'homepage-start')]:
+        link = f'<a href="{SITE.GAME_URLS["slimeline"]}">웹에서 체험하기</a>'
+        for before, after in [(web, ''), (web, web + web), (web, web + link)]:
             with self.subTest(after=after):
                 self.write(relative, original.replace(before, after))
-                self.assertTrue(any('웹 체험 링크' in failure for failure in self.launch_failures()))
+                self.assertTrue(any('웹 체험' in failure for failure in self.launch_failures()))
 
     def test_store_requires_one_element_and_disabled_pending_state(self):
         relative = 'games/slimeline/index.html'
