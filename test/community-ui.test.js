@@ -71,6 +71,7 @@ test('게임별 이름·탭 그림·첫 화면을 분리하고 기존 게시판 
     assert.equal(ui.node('game-hero-art').attributes.fetchpriority, 'high');
     assert.equal(ui.node('hero-links').hidden, false);
     assert.equal(ui.node('hero-start').href, `https://${game}.gracekingames.com/`);
+    assert.equal(ui.node('hero-start').hidden, true, '등급분류 전에는 웹 플레이 시작 단추를 숨긴다');
     assert.equal(ui.node('board-group-title').textContent, game === 'gyeongguk' ? '천하의 이야기' : '우리들의 이야기');
     assert.equal(ui.node('hero-home').href, `/games/${game}/`);
   }

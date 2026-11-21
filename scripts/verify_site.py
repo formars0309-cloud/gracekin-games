@@ -18,6 +18,8 @@ import sys
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
+# 국내 등급분류 전까지 웹 플레이 진입을 닫는다(2026-11-21). 다시 열려면 True로 바꾸고 games/*/index.html 단추를 되돌린다.
+WEB_ENTRY_OPEN = False
 GAME_URLS = {
     'slimeline': 'https://slimeline.gracekingames.com/',
     'gyeongguk': 'https://gyeongguk.gracekingames.com/',
@@ -666,9 +668,13 @@ def verify(root: Path) -> Report:
             continue
         rel = page.path.relative_to(root)
         web_links = [link for link in page.links if link.get('href') == url]
-        check(len(web_links) == 1, f'{rel}: 웹 체험 링크는 1개여야 함')
-        check(all('웹' in link.get('text', '') for link in web_links), f'{rel}: 웹 체험 링크 문구에 웹 표시가 없음')
-        check(all(link.get('data-umami-event') == f'play-{game}' and link.get('data-umami-event-from') == 'homepage-web' for link in web_links), f'{rel}: 웹 체험 링크 이벤트 불일치')
+        if WEB_ENTRY_OPEN:
+            check(len(web_links) == 1, f'{rel}: 웹 체험 링크는 1개여야 함')
+            check(all('웹' in link.get('text', '') for link in web_links), f'{rel}: 웹 체험 링크 문구에 웹 표시가 없음')
+            check(all(link.get('data-umami-event') == f'play-{game}' and link.get('data-umami-event-from') == 'homepage-web' for link in web_links), f'{rel}: 웹 체험 링크 이벤트 불일치')
+        else:
+            check(not web_links, f'{rel}: 등급분류 전에는 웹 체험 링크가 없어야 함')
+            check(sum(1 for tag, attrs in page.tags if 'data-web-gate' in attrs) == 1, f'{rel}: 웹 체험 링크 대신 중단 안내가 1개여야 함')
         # tags는 span을 포함한 모든 요소를 수집하므로 출시 전 상태도 검사한다.
         stores = [(tag, attrs) for tag, attrs in page.tags if attrs.get('data-store') == 'google-play']
         check(len(stores) == 1, f'{rel}: Google Play 스토어 요소는 1개여야 함')

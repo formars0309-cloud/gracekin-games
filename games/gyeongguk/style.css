@@ -151,3 +151,5 @@ html{scroll-padding-top:20px}
 }
 @media(max-width:360px){.hero-actions{gap:8px}.button-store{font-size:15px;padding:0 9px;gap:5px}.button-web{font-size:13px;padding:0 12px;gap:8px}.hero-subtitle{font-size:15px;letter-spacing:.06em}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}}
+
+.web-gate{margin:12px 0 0;align-self:center;max-width:30em;font-size:14px;line-height:1.6;color:#4a3524;text-align:center}

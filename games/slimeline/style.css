@@ -1012,3 +1012,5 @@ h1 img{
     filter:none
   }
 }
+
+.web-gate{margin:12px 0 0;max-width:30em;font-size:14px;line-height:1.6;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.55);text-align:center}
